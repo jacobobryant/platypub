@@ -1,0 +1,36 @@
+(ns com.platypub.feat.worker
+  (:require [clojure.tools.logging :as log]
+            [com.biffweb :as biff :refer [q]]
+            [xtdb.api :as xt]))
+
+(defn every-minute []
+  (iterate #(biff/add-seconds % (* 5 60)) (java.util.Date.)))
+
+(defn print-usage [{:keys [biff/db]}]
+  ;; For a real app, you can have this run once per day and send you the output
+  ;; in an email.
+  (let [n-users (nth (q db
+                        '{:find (count user)
+                          :where [[user :user/email]]})
+                     0
+                     0)]
+    (log/info "There are" n-users "users."
+              "(This message gets printed every 5 minutes. You can disable it"
+              "by setting `:com.platypub/enable-worker false` in config.edn)")))
+
+(defn alert-new-user [{:keys [com.platypub/enable-worker biff.xtdb/node]} tx]
+  (doseq [_ [nil]
+          :when enable-worker
+          :let [db-before (xt/db node {::xt/tx-id (dec (::xt/tx-id tx))})]
+          [op & args] (::xt/tx-ops tx)
+          :when (= op ::xt/put)
+          :let [[doc] args]
+          :when (and (contains? doc :user/email)
+                     (nil? (xt/entity db-before (:xt/id doc))))]
+    ;; You could send this as an email instead of printing.
+    (log/info "WOAH there's a new user")))
+
+(def features
+  {:tasks [{:task #'print-usage
+            :schedule every-minute}]
+   :on-tx alert-new-user})
