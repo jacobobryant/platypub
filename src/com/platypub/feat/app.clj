@@ -1,6 +1,9 @@
 (ns com.platypub.feat.app
   (:require [com.biffweb :as biff :refer [q]]
+            [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [rum.core :as rum]
             [xtdb.api :as xt]
             [ring.adapter.jetty9 :as jetty]
@@ -89,11 +92,60 @@
      [:div#messages
       (map message (sort-by :msg/sent-at #(compare %2 %1) messages))]]))
 
-(defn app [{:keys [session biff/db] :as req}]
-  (let [{:user/keys [email foo bar]} (xt/entity db (:uid session))]
+(defn parse-uuid [s]
+  (biff/catchall (java.util.UUID/fromString s)))
+
+(defn edit-post [{:keys [params] :as req}]
+  (let [{:keys [id html published]} params]
+    (biff/submit-tx req
+      [{:db/doc-type :post
+        :db/op :update
+        :xt/id (parse-uuid id)
+        :post/html html
+        :post/published-at (edn/read-string published)}])
+    {:status 303
+     :headers {"location" (str "/app/posts/" id)}}))
+
+(defn edit-post-page [{:keys [path-params biff/db] :as req}]
+  (let [post-id (java.util.UUID/fromString (:id path-params))
+        post (xt/entity db post-id)]
     (ui/page
       {}
-      nil
+      [:div [:a.link {:href "/app"} "Home"]]
+      [:.h-3]
+      (biff/form
+        {:action (str "/app/posts/" post-id)
+         :hidden {:id post-id}}
+
+        [:div "Edited at: " (:post/edited-at post)]
+        [:.h-1]
+        [:.h-3]
+
+        [:label.block {:for "published"} "Published:"]
+        [:.h-1]
+        [:input#published.w-full
+         {:type "text"
+          :name "published"
+          :value (pr-str (:post/published-at post))}]
+        [:.h-3]
+
+        [:label.block {:for "content"} "Content:"]
+        [:.h-1]
+        [:textarea#content.w-full
+         {:type "text"
+          :name "html"
+          :value (:post/html post)}]
+        [:.h-3]
+
+        [:button.btn {:type "submit"} "Save"]))))
+
+(defn app [{:keys [session biff/db] :as req}]
+  (let [{:user/keys [email foo bar]} (xt/entity db (:uid session))
+        posts (q db
+                 '{:find (pull post [*])
+                   :where [[post :post/html]]})]
+    (ui/page
+      {}
       [:div "Signed in as " email ". "
        (biff/form
          {:action "/auth/signout"
@@ -103,21 +155,16 @@
        "."]
       [:.h-6]
       (biff/form
-        {:action "/app/set-foo"}
-        [:label.block {:for "foo"} "Foo: "
-         [:span.font-mono (pr-str foo)]]
-        [:.h-1]
-        [:.flex
-         [:input.w-full#foo {:type "text" :name "foo" :value foo}]
-         [:.w-3]
-         [:button.btn {:type "submit"} "Update"]]
-        [:.h-1]
-        [:.text-sm.text-gray-600
-         "This demonstrates updating a value with a plain old form."])
-      [:.h-6]
-      (bar-form {:value bar})
-      [:.h-6]
-      (chat req))))
+        {:action "/app/publish"}
+        [:button.btn {:type "submit"} "Publish"])
+      [:.h-3]
+      [:ul
+       (for [{:keys [post/edited-at
+                     post/published-at
+                     post/html
+                     xt/id]} (sort-by :post/edited-at #(compare %2 %1) posts)]
+         [:li [:a.link {:href (str "/app/posts/" id)}
+               "Post last edited at " edited-at]])])))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as req}]
@@ -137,10 +184,32 @@
         :on-close (fn [ws status-code reason]
                     (swap! chat-clients disj ws))}})
 
+(defn publish [{:keys [biff/db] :as req}]
+  (let [post (first (q db
+                       '{:find (pull post [*])
+                         :where [[post :post/html]]}))
+        site-id "d51accde-a88f-48b3-ba15-5defbf798df2"]
+    (io/make-parents (io/file "storage/site/_"))
+    (spit "storage/site/index.html" (:post/html post))
+    (netlify/deploy! {:api-key (:netlify/api-key req)
+                      :site-id site-id
+                      :dir "storage/site"}))
+  {:status 303
+   :headers {"location" "/app"}})
+
+(comment
+  (slurp "storage/site/index.html")
+  )
+
 (def features
   {:routes ["/app" {:middleware [wrap-signed-in]}
             ["" {:get app}]
             ["/set-foo" {:post set-foo}]
             ["/set-bar" {:post set-bar}]
-            ["/chat" {:get ws-handler}]]
+            ["/chat" {:get ws-handler}]
+            ["/posts/:id" {:get edit-post-page
+                           :post edit-post}]
+            ["/publish" {:post publish}]
+            
+            ]
    :on-tx notify-clients})

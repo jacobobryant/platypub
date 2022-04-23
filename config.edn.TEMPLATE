@@ -1,0 +1,27 @@
+;; vim: ft=clojure
+{:prod {:com.platypub/enable-web true
+        :com.platypub/enable-worker true
+        :biff.xtdb/dir "storage/xtdb"
+        :biff.xtdb/topology :standalone
+        ;; Standalone topology in production isn't recommended for anything
+        ;; serious. You can uncomment the following to use managed postgres
+        ;; instead.
+        ;; :biff.xtdb/topology :jdbc
+        ;; :biff.xtdb.jdbc/jdbcUrl "postgresql://user:password@host:port/dbname?sslmode=require"
+        :biff/base-url "https://example.com"
+        :mailersend/api-key nil
+        :mailersend/defaults {[:from :email] "hello@mail.example.com"
+                              [:from :name] "My Application"
+                              [:reply_to :email] "hello@example.com"
+                              [:reply_to :name] "My Application"}
+        :biff.middleware/cookie-secret nil
+        :biff/jwt-secret nil
+        :netlify/api-key "..."}
+ :dev {:merge [:prod]
+       ;; See com.platypub.feat.worker
+       ;; :com.platypub/enable-worker false
+       :com.platypub/enable-hawk true
+       :biff/host "0.0.0.0"
+       :biff/base-url "http://localhost:8080"
+       :biff.xtdb/topology :standalone
+       :biff.middleware/secure false}}

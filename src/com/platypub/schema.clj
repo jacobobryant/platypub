@@ -21,6 +21,17 @@
          [:xt/id :msg/id]
          :msg/user
          :msg/text
-         :msg/sent-at]})
+         :msg/sent-at]
+
+   :post/id :uuid
+   :post/html :string
+   :post/published-at inst?
+   :post/edited-at inst?
+   :post [:map {:closed true}
+          [:xt/id :post/id]
+          :post/html
+          :post/published-at
+          :post/edited-at]
+   })
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})
