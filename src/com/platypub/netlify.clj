@@ -44,7 +44,7 @@
       (println path)
       (netlify {:method :put
                 :oauth-token api-key
-                :url (str "/deploys/" site-id "/files" path)
+                :url (str "/deploys/" id "/files" path)
                 :content-type :application/octet-stream
                 :body (io/input-stream f)}))
     (println "Done.")))
