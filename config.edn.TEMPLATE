@@ -16,7 +16,8 @@
                               [:reply_to :name] "My Application"}
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
-        :netlify/api-key "..."}
+        :netlify/api-key "..."
+        :tinycloud/api-key "no-api-key"}
  :dev {:merge [:prod]
        ;; See com.platypub.feat.worker
        ;; :com.platypub/enable-worker false

@@ -60,6 +60,7 @@
 
 (defn on-save [sys]
   (biff/eval-files! sys)
+  (println :done)
   (generate-assets! sys)
   (test/run-all-tests #"com.platypub.test.*"))
 

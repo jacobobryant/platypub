@@ -92,9 +92,6 @@
      [:div#messages
       (map message (sort-by :msg/sent-at #(compare %2 %1) messages))]]))
 
-(defn parse-uuid [s]
-  (biff/catchall (java.util.UUID/fromString s)))
-
 (defn edit-post [{:keys [params] :as req}]
   (let [{:keys [id html published]} params]
     (biff/submit-tx req
@@ -106,37 +103,37 @@
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
-(defn edit-post-page [{:keys [path-params biff/db] :as req}]
+(defn edit-post-page [{:keys [path-params
+                              biff/db
+                              tinycloud/api-key]
+                       :or {api-key "no-api-key"}
+                       :as req}]
   (let [post-id (java.util.UUID/fromString (:id path-params))
         post (xt/entity db post-id)]
     (ui/page
-      {}
+      {:base/head [[:script {:referrerpolicy "origin",
+                             :src (str "https://cdn.tiny.cloud/1/" api-key "/tinymce/6/tinymce.min.js")}]
+                   [:script (biff/unsafe "tinymce.init({ selector: '#content' });")]]}
       [:div [:a.link {:href "/app"} "Home"]]
       [:.h-3]
       (biff/form
         {:action (str "/app/posts/" post-id)
          :hidden {:id post-id}}
-
-        [:div "Edited at: " (:post/edited-at post)]
-        [:.h-1]
+        (ui/text-input {:id "edited"
+                        :label "Last edited"
+                        :value (pr-str (:post/edited-at post))
+                        :disabled true})
         [:.h-3]
-
-        [:label.block {:for "published"} "Published:"]
-        [:.h-1]
-        [:input#published.w-full
-         {:type "text"
-          :name "published"
-          :value (pr-str (:post/published-at post))}]
+        (ui/text-input {:id "published"
+                        :name "published"
+                        :label "Published"
+                        :value (pr-str (:post/published-at post))})
         [:.h-3]
-
-        [:label.block {:for "content"} "Content:"]
-        [:.h-1]
         [:textarea#content.w-full
          {:type "text"
           :name "html"
           :value (:post/html post)}]
         [:.h-3]
-
         [:button.btn {:type "submit"} "Save"]))))
 
 (defn app [{:keys [session biff/db] :as req}]
