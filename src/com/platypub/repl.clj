@@ -16,11 +16,6 @@
   (:url (:body result)) ; nil
 
   (let [{:keys [biff/db netlify/api-key] :as sys} (get-sys)]
-    (def result (http/post "https://api.netlify.com/api/v1/sites"
-                           {:oauth-token api-key
-                            :as :json}))
-
-    
     )
 
   (sort (keys @biff/system))

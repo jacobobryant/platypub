@@ -29,15 +29,21 @@
     [:.p-3.mx-auto.max-w-screen-sm.w-full
      body]))
 
-(defn text-input [{:keys [id label] :as opts}]
+(defn text-input [{:keys [id label element]
+                   :or {element :input}
+                   :as opts}]
   (list
     [:label.block.text-sm {:for id} label]
     [:.h-1]
-    [:input (merge {:type "text"
-                    :class '[w-full
-                             border-gray-300
-                             rounded
-                             disabled:bg-slate-50
-                             disabled:text-slate-500
-                             disabled:border-slate-200]}
-                   (dissoc opts :label))]))
+    [element (merge {:type "text"
+                     :class '[w-full
+                              border-gray-300
+                              rounded
+                              disabled:bg-slate-50
+                              disabled:text-slate-500
+                              disabled:border-slate-200]
+                     :name id}
+                    (dissoc opts :label))]))
+
+(defn textarea [opts]
+  (text-input (assoc opts :element :textarea)))

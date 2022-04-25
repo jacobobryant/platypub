@@ -4,6 +4,7 @@
             [com.platypub.ui :as ui]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [rum.core :as rum]
             [xtdb.api :as xt]
             [ring.adapter.jetty9 :as jetty]
@@ -93,13 +94,27 @@
       (map message (sort-by :msg/sent-at #(compare %2 %1) messages))]]))
 
 (defn edit-post [{:keys [params] :as req}]
-  (let [{:keys [id html published]} params]
+  (let [{:keys [id
+                html
+                published
+                tags
+                slug
+                description
+                image
+                canonical]} params]
     (biff/submit-tx req
       [{:db/doc-type :post
         :db/op :update
         :xt/id (parse-uuid id)
         :post/html html
-        :post/published-at (edn/read-string published)}])
+        :post/published-at (edn/read-string published)
+        :post/slug slug
+        :post/tags (->> (str/split tags #"\s+")
+                        distinct
+                        vec)
+        :post/description description
+        :post/image image
+        :post/canonical canonical}])
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
@@ -110,31 +125,62 @@
                        :as req}]
   (let [post-id (java.util.UUID/fromString (:id path-params))
         post (xt/entity db post-id)]
-    (ui/page
+    (ui/base
       {:base/head [[:script {:referrerpolicy "origin",
                              :src (str "https://cdn.tiny.cloud/1/" api-key "/tinymce/6/tinymce.min.js")}]
-                   [:script (biff/unsafe "tinymce.init({ selector: '#content' });")]]}
-      [:div [:a.link {:href "/app"} "Home"]]
-      [:.h-3]
-      (biff/form
-        {:action (str "/app/posts/" post-id)
-         :hidden {:id post-id}}
-        (ui/text-input {:id "edited"
-                        :label "Last edited"
-                        :value (pr-str (:post/edited-at post))
-                        :disabled true})
-        [:.h-3]
-        (ui/text-input {:id "published"
-                        :name "published"
-                        :label "Published"
-                        :value (pr-str (:post/published-at post))})
-        [:.h-3]
-        [:textarea#content.w-full
-         {:type "text"
-          :name "html"
-          :value (:post/html post)}]
-        [:.h-3]
-        [:button.btn {:type "submit"} "Save"]))))
+                   [:script (biff/unsafe "tinymce.init({ selector: '#content', height: '100%', width: '100%' });")]]}
+      [:.bg-gray-100.flex.flex-col.flex-grow
+       [:.p-3 [:a.link {:href "/app"} "< Home"]]
+       (biff/form
+         {:action (str "/app/posts/" post-id)
+          :hidden {:id post-id}
+          :class '[flex flex-col flex-grow]}
+         [:.flex.flex-row-reverse.flex-grow
+          [:.w-6]
+          [:.w-80
+           (ui/text-input {:id "title"
+                           :label "Title"
+                           :value (:post/title post)})
+           [:.h-3]
+           (ui/text-input {:id "slug"
+                           :label "Slug"
+                           :value (:post/slug post)})
+           [:.h-3]
+           (ui/text-input {:id "published"
+                           :label "Published"
+                           :value (pr-str (:post/published-at post))})
+           [:.h-3]
+           (ui/text-input {:id "tags"
+                           :label "Tags"
+                           :value (str/join " " (:post/tags post))})
+           [:.h-3]
+           (ui/textarea {:id "description"
+                         :label "Description"
+                         :value (:post/description post)})
+           [:.h-3]
+           (ui/text-input {:id "image"
+                           :label "Image"
+                           :value (str/join " " (:post/tags post))})
+           [:.h-3]
+           (ui/text-input {:id "canonical"
+                           :label "Canonical URL"
+                           :value (:post/canonical post)})
+           [:.h-3]
+           (ui/text-input {:id "edited"
+                           :name nil
+                           :label "Last saved:"
+                           :disabled true
+                           :value (pr-str (:post/edited-at post))})
+           [:.h-4]
+           [:button.btn.w-full {:type "submit"} "Save"]]
+          [:.w-6]
+          [:.max-w-screen-sm.mx-auto.w-full
+           [:textarea#content
+            {:type "text"
+             :name "html"
+             :value (:post/html post)}]]
+          [:.w-6]])
+       [:.h-3]])))
 
 (defn app [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email foo bar]} (xt/entity db (:uid session))
@@ -194,10 +240,6 @@
   {:status 303
    :headers {"location" "/app"}})
 
-(comment
-  (slurp "storage/site/index.html")
-  )
-
 (def features
   {:routes ["/app" {:middleware [wrap-signed-in]}
             ["" {:get app}]
@@ -206,7 +248,5 @@
             ["/chat" {:get ws-handler}]
             ["/posts/:id" {:get edit-post-page
                            :post edit-post}]
-            ["/publish" {:post publish}]
-            
-            ]
+            ["/publish" {:post publish}]]
    :on-tx notify-clients})
