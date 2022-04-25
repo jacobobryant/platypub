@@ -3,7 +3,6 @@
             [com.platypub.feat.app :as app]
             [com.platypub.feat.auth :as auth]
             [com.platypub.feat.home :as home]
-            [com.platypub.feat.worker :as worker]
             [com.platypub.schema :refer [malli-opts]]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -15,8 +14,7 @@
 (def features
   [app/features
    auth/features
-   home/features
-   worker/features])
+   home/features])
 
 (def routes [["" {:middleware [anti-forgery/wrap-anti-forgery
                                biff/wrap-anti-forgery-websockets
