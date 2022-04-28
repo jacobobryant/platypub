@@ -41,6 +41,7 @@
    :post/authors [:sequential :author/id]
    :post/canonical :string
    :post/image :string
+   :post/status [:enum :draft :published]
    :post (doc {:id :post/id
                :required [:post/title
                           :post/html
@@ -51,7 +52,8 @@
                           :post/tags
                           :post/authors
                           :post/canonical
-                          :post/image]})
+                          :post/image
+                          :post/status]})
 
    :author/id :uuid
    :author/name :string

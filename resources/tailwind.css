@@ -18,16 +18,21 @@
   ul, ol {
     @apply my-3 pl-10;
   }
+
+  .mceContentBody {
+    @apply bg-black;
+  }
 }
 
 @layer components {
   .btn {
-    @apply bg-blue-500 hover:bg-blue-700 text-center py-2 px-4 rounded disabled:opacity-50 text-white;
+    @apply bg-amber-600 hover:bg-amber-700
+    text-center py-2 px-4 rounded disabled:opacity-50 text-white;
   }
 }
 
 @layer utilities {
   .link {
-    @apply text-blue-600 hover:underline;
+    @apply text-amber-700 dark:text-amber-600 hover:underline;
   }
 }

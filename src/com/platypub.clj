@@ -51,6 +51,7 @@
          (run! (fn [f]
                  (log/info "deleting" f)
                  (io/delete-file f))))
+    (log/info "Generating CSS...")
     (biff/sh "bin/tailwindcss"
              "-c" "resources/tailwind.config.js"
              "-i" "resources/tailwind.css"
@@ -62,7 +63,8 @@
   (biff/eval-files! sys)
   (println :done)
   (generate-assets! sys)
-  (test/run-all-tests #"com.platypub.test.*"))
+  ;; Uncomment this if we add any real tests.
+  #_(test/run-all-tests #"com.platypub.test.*"))
 
 (defn start []
   (biff/start-system

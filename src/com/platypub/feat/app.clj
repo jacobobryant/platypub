@@ -2,12 +2,14 @@
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
+            [com.platypub.util :as util]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [rum.core :as rum]
             [xtdb.api :as xt]
             [ring.adapter.jetty9 :as jetty]
+            [ring.middleware.anti-forgery :as anti-forgery]
             [cheshire.core :as cheshire]))
 
 (defn set-foo [{:keys [session params] :as req}]
@@ -101,43 +103,82 @@
                 slug
                 description
                 image
-                canonical]} params]
+                canonical
+                draft
+                title]} params]
     (biff/submit-tx req
       [{:db/doc-type :post
         :db/op :update
         :xt/id (parse-uuid id)
+        :post/title title
         :post/html html
         :post/published-at (edn/read-string published)
         :post/slug slug
+        :post/status (if (= draft "on")
+                       :draft
+                       :published)
         :post/tags (->> (str/split tags #"\s+")
+                        (remove empty?)
                         distinct
                         vec)
         :post/description description
         :post/image image
-        :post/canonical canonical}])
+        :post/canonical canonical
+        :post/edited-at :db/now}])
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
+
+(defn new-post [req]
+  (let [id (random-uuid)]
+    (biff/submit-tx req
+      [{:db/doc-type :post
+        :xt/id id
+        :post/html ""
+        :post/published-at :db/now
+        :post/slug ""
+        :post/status :draft
+        :post/tags []
+        :post/title ""
+        :post/description ""
+        :post/image ""
+        :post/canonical ""
+        :post/edited-at :db/now
+        :post/authors []}])
+    {:status 303
+     :headers {"location" (str "/app/posts/" id)}}))
+
+(defn delete-post [{:keys [path-params] :as req}]
+  (biff/submit-tx req
+    [{:xt/id (parse-uuid (:id path-params))
+      :db/op :delete}])
+  {:status 303
+   :headers {"location" "/app"}})
 
 (defn edit-post-page [{:keys [path-params
                               biff/db
                               tinycloud/api-key]
                        :or {api-key "no-api-key"}
                        :as req}]
-  (let [post-id (java.util.UUID/fromString (:id path-params))
+  (let [post-id (parse-uuid (:id path-params))
         post (xt/entity db post-id)]
     (ui/base
-      {:base/head [[:script {:referrerpolicy "origin",
+      {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
+                   [:script {:referrerpolicy "origin",
                              :src (str "https://cdn.tiny.cloud/1/" api-key "/tinymce/6/tinymce.min.js")}]
-                   [:script (biff/unsafe "tinymce.init({ selector: '#content', height: '100%', width: '100%' });")]]}
-      [:.bg-gray-100.flex.flex-col.flex-grow
+                   [:script (biff/unsafe "tinymce.init({ selector: '#content',
+                                         skin: (darkModeOn ? 'oxide-dark' : 'oxide'),
+                                         content_css: (darkModeOn ? 'dark' : 'default'),
+                                         height: '100%', width: '100%' });")]]}
+      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex.flex-col.flex-grow
        [:.p-3 [:a.link {:href "/app"} "< Home"]]
-       (biff/form
-         {:action (str "/app/posts/" post-id)
-          :hidden {:id post-id}
-          :class '[flex flex-col flex-grow]}
-         [:.flex.flex-row-reverse.flex-grow
-          [:.w-6]
-          [:.w-80
+       [:.flex.flex-row-reverse.flex-grow
+        [:.w-6]
+        [:.w-80
+         (biff/form
+           {:id "edit"
+            :action (str "/app/posts/" post-id)
+            :hidden {:id post-id}
+            :class '[flex flex-col flex-grow]}
            (ui/text-input {:id "title"
                            :label "Title"
                            :value (:post/title post)})
@@ -146,8 +187,12 @@
                            :label "Slug"
                            :value (:post/slug post)})
            [:.h-3]
+           (ui/checkbox {:id "draft"
+                         :label "Draft"
+                         :checked (not= :published (:post/status post))})
+           [:.h-3]
            (ui/text-input {:id "published"
-                           :label "Published"
+                           :label "Publish date"
                            :value (pr-str (:post/published-at post))})
            [:.h-3]
            (ui/text-input {:id "tags"
@@ -160,7 +205,7 @@
            [:.h-3]
            (ui/text-input {:id "image"
                            :label "Image"
-                           :value (str/join " " (:post/tags post))})
+                           :value (str/join " " (:post/image post))})
            [:.h-3]
            (ui/text-input {:id "canonical"
                            :label "Canonical URL"
@@ -168,46 +213,75 @@
            [:.h-3]
            (ui/text-input {:id "edited"
                            :name nil
-                           :label "Last saved:"
+                           :label "Last saved"
                            :disabled true
                            :value (pr-str (:post/edited-at post))})
            [:.h-4]
-           [:button.btn.w-full {:type "submit"} "Save"]]
-          [:.w-6]
-          [:.max-w-screen-sm.mx-auto.w-full
-           [:textarea#content
-            {:type "text"
-             :name "html"
-             :value (:post/html post)}]]
-          [:.w-6]])
-       [:.h-3]])))
+           [:button.btn.w-full {:type "submit"} "Save"])
+         [:.h-3]
+         (biff/form
+           {:onSubmit "return confirm('Delete post?')"
+            :method "POST"
+            :action (str "/app/posts/" (:xt/id post) "/delete")}
+           [:button.text-red-600 {:type "submit"} "Delete"])]
+        [:.w-6]
+        [:.max-w-screen-sm.mx-auto.w-full
+         [:textarea#content
+          {:form "edit"
+           :type "text"
+           :name "html"
+           :value (:post/html post)}]]
+        [:.w-6]]
+       [:.h-3]]
+      [:script (biff/unsafe (str
+                              "document.body.addEventListener('htmx:configRequest', (event) => {
+                              event.detail.headers['X-CSRF-Token'] = '"
+                              anti-forgery/*anti-forgery-token*
+                              "';})"))])))
+
+(defn post-list-item [{:keys [post/edited-at
+                              post/published-at
+                              post/html
+                              post/title
+                              post/status
+                              post/tags
+                              xt/id]}]
+  [:.mb-4
+   [:a.link.block {:href (str "/app/posts/" id)}
+    (or (not-empty (str/trim title)) "[No title]")]
+   [:.text-sm.text-stone-600.dark:text-stone-300
+    (if (= status :draft)
+      (str "edited " (biff/format-date edited-at "dd MMM yyyy, H:mm aa"))
+      (str "published " (biff/format-date published-at "dd MMM yyyy, H:mm aa")))
+    (when (not-empty (remove empty? tags))
+      ui/interpunct)
+    (str/join ", " tags)]])
 
 (defn app [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email foo bar]} (xt/entity db (:uid session))
         posts (q db
                  '{:find (pull post [*])
-                   :where [[post :post/html]]})]
-    (ui/page
-      {}
-      [:div "Signed in as " email ". "
-       (biff/form
-         {:action "/auth/signout"
-          :class "inline"}
-         [:button.text-blue-500.hover:text-blue-800 {:type "submit"}
-          "Sign out"])
-       "."]
-      [:.h-6]
+                   :where [[post :post/html]]})
+        [drafts published] (util/split-by #(= :published (:post/status %)) posts)]
+    (ui/nav-page
+      {:current :posts
+       :email email}
       (biff/form
-        {:action "/app/publish"}
-        [:button.btn {:type "submit"} "Publish"])
-      [:.h-3]
-      [:ul
-       (for [{:keys [post/edited-at
-                     post/published-at
-                     post/html
-                     xt/id]} (sort-by :post/edited-at #(compare %2 %1) posts)]
-         [:li [:a.link {:href (str "/app/posts/" id)}
-               "Post last edited at " edited-at]])])))
+        {:action "/app/posts"}
+        [:button.btn {:type "submit"} "New post"])
+      [:.h-6]
+      (when (not-empty drafts)
+        (list
+          [:.text-lg.my-2 "Drafts"]
+          (->> drafts
+               (sort-by :post/edited-by #(compare %2 %1))
+               (map post-list-item))
+          [:.h-2]))
+      (when (not-empty published)
+        [:.text-lg.my-2 "Published"])
+      (->> published
+           (sort-by :post/published-at #(compare %2 %1))
+           (map post-list-item)))))
 
 (defn wrap-signed-in [handler]
   (fn [{:keys [session] :as req}]
@@ -246,7 +320,10 @@
             ["/set-foo" {:post set-foo}]
             ["/set-bar" {:post set-bar}]
             ["/chat" {:get ws-handler}]
-            ["/posts/:id" {:get edit-post-page
-                           :post edit-post}]
+            ["/posts/:id"
+             ["" {:get edit-post-page
+                  :post edit-post}]
+             ["/delete" {:post delete-post}]]
+            ["/posts" {:post new-post}]
             ["/publish" {:post publish}]]
    :on-tx notify-clients})
