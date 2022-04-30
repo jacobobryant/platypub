@@ -170,69 +170,68 @@
                    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
                    [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
                                        "autoloader/prism-autoloader.min.js")}]]}
-      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex.flex-col.flex-grow
-       [:.p-3 [:a.link {:href "/app"} "< Home"]]
-       [:.flex.flex-row-reverse.flex-grow
-        [:.w-6]
-        [:.w-80
-         (biff/form
-           {:id "edit"
-            :action (str "/app/posts/" post-id)
-            :hidden {:id post-id}
-            :class '[flex flex-col flex-grow]}
-           (ui/text-input {:id "title"
-                           :label "Title"
-                           :value (:post/title post)})
-           [:.h-3]
-           (ui/text-input {:id "slug"
-                           :label "Slug"
-                           :value (:post/slug post)})
-           [:.h-3]
-           (ui/checkbox {:id "draft"
-                         :label "Draft"
-                         :checked (not= :published (:post/status post))})
-           [:.h-3]
-           (ui/text-input {:id "published"
-                           :label "Publish date"
-                           :value (pr-str (:post/published-at post))})
-           [:.h-3]
-           (ui/text-input {:id "tags"
-                           :label "Tags"
-                           :value (str/join " " (:post/tags post))})
-           [:.h-3]
-           (ui/textarea {:id "description"
-                         :label "Description"
-                         :value (:post/description post)})
-           [:.h-3]
-           (ui/text-input {:id "image"
-                           :label "Image"
-                           :value (str/join " " (:post/image post))})
-           [:.h-3]
-           (ui/text-input {:id "canonical"
-                           :label "Canonical URL"
-                           :value (:post/canonical post)})
-           [:.h-3]
-           (ui/text-input {:id "edited"
-                           :name nil
-                           :label "Last saved"
-                           :disabled true
-                           :value (pr-str (:post/edited-at post))})
-           [:.h-4]
-           [:button.btn.w-full {:type "submit"} "Save"])
-         [:.h-3]
-         (biff/form
-           {:onSubmit "return confirm('Delete post?')"
-            :method "POST"
-            :action (str "/app/posts/" (:xt/id post) "/delete")}
-           [:button.text-red-600 {:type "submit"} "Delete"])]
-        [:.w-6]
-        [:.max-w-screen-md.mx-auto.w-full
-         [:textarea#content
-          {:form "edit"
-           :type "text"
-           :name "html"
-           :value (:post/html post)}]]
-        [:.w-6]]
+      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex.flex-grow
+       [:.w-6]
+       [:.w-80
+        [:.my-3 [:a.link {:href "/app"} "< Home"]]
+        (biff/form
+          {:id "edit"
+           :action (str "/app/posts/" post-id)
+           :hidden {:id post-id}
+           :class '[flex flex-col flex-grow]}
+          (ui/text-input {:id "title"
+                          :label "Title"
+                          :value (:post/title post)})
+          [:.h-3]
+          (ui/text-input {:id "slug"
+                          :label "Slug"
+                          :value (:post/slug post)})
+          [:.h-3]
+          (ui/checkbox {:id "draft"
+                        :label "Draft"
+                        :checked (not= :published (:post/status post))})
+          [:.h-3]
+          (ui/text-input {:id "published"
+                          :label "Publish date"
+                          :value (pr-str (:post/published-at post))})
+          [:.h-3]
+          (ui/text-input {:id "tags"
+                          :label "Tags"
+                          :value (str/join " " (:post/tags post))})
+          [:.h-3]
+          (ui/textarea {:id "description"
+                        :label "Description"
+                        :value (:post/description post)})
+          [:.h-3]
+          (ui/text-input {:id "image"
+                          :label "Image"
+                          :value (str/join " " (:post/image post))})
+          [:.h-3]
+          (ui/text-input {:id "canonical"
+                          :label "Canonical URL"
+                          :value (:post/canonical post)})
+          [:.h-3]
+          (ui/text-input {:id "edited"
+                          :name nil
+                          :label "Last saved"
+                          :disabled true
+                          :value (pr-str (:post/edited-at post))})
+          [:.h-4]
+          [:button.btn.w-full {:type "submit"} "Save"])
+        [:.h-3]
+        (biff/form
+          {:onSubmit "return confirm('Delete post?')"
+           :method "POST"
+           :action (str "/app/posts/" (:xt/id post) "/delete")}
+          [:button.text-red-600 {:type "submit"} "Delete"])]
+       [:.w-6]
+       [:.max-w-screen-md.mx-auto.w-full
+        [:textarea#content
+         {:form "edit"
+          :type "text"
+          :name "html"
+          :value (:post/html post)}]]
+       [:.w-6]
        [:.h-3]]
       [:script (biff/unsafe (str
                               "document.body.addEventListener('htmx:configRequest', (event) => {

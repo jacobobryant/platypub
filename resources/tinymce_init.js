@@ -71,6 +71,4 @@ tinymce.init({ selector: '#content',
   skin: (darkModeOn ? 'oxide-dark' : 'oxide'),
   content_css: (darkModeOn ? 'dark' : 'default'),
   content_style: "body {font-size: 18px;}",
-  height: '100%',
-  width: '100%'
 });
