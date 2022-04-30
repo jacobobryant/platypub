@@ -170,9 +170,8 @@
                    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
                    [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
                                        "autoloader/prism-autoloader.min.js")}]]}
-      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex.flex-grow
-       [:.w-6]
-       [:.w-80
+      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
+       [:.md:w-80.mx-3
         [:.my-3 [:a.link {:href "/app"} "< Home"]]
         (biff/form
           {:id "edit"
@@ -205,7 +204,11 @@
           [:.h-3]
           (ui/text-input {:id "image"
                           :label "Image"
-                          :value (str/join " " (:post/image post))})
+                          :value (:post/image post)})
+          (when-some [url (not-empty (:post/image post))]
+            [:.mt-3.flex.justify-center
+             [:img {:src url
+                    :style {:max-height "10rem"}}]])
           [:.h-3]
           (ui/text-input {:id "canonical"
                           :label "Canonical URL"
@@ -223,8 +226,8 @@
           {:onSubmit "return confirm('Delete post?')"
            :method "POST"
            :action (str "/app/posts/" (:xt/id post) "/delete")}
-          [:button.text-red-600 {:type "submit"} "Delete"])]
-       [:.w-6]
+          [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+        [:.h-6]]
        [:.max-w-screen-md.mx-auto.w-full
         [:textarea#content
          {:form "edit"
