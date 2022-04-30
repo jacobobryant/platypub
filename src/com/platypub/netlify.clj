@@ -1,18 +1,7 @@
 (ns com.platypub.netlify
   (:require [clj-http.client :as http]
-            [clojure.java.io :as io]))
-
-(defn sha1
-  "Compute the SHA-1 of a File's contents and return the hex string"
-  [file]
-  (with-open [f (java.io.FileInputStream. file)]
-    (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance "SHA-1") ]
-      (loop [nread (.read f buffer)]
-        (if (pos? nread)
-          (do (.update md buffer 0 nread)
-              (recur (.read f buffer)))
-          (format "%040x" (BigInteger. 1 (.digest md)) 16))))))
+            [clojure.java.io :as io]
+            [com.platypub.util :as util]))
 
 (defn netlify [m]
   (-> (merge {:method :post
@@ -28,7 +17,7 @@
                         (into {}))
         path->sha1 (->> path->file
                         (map (fn [[path file]]
-                               [path (sha1 file)]))
+                               [path (util/sha1-hex file)]))
                         (into {}))
         {:keys [id required]} (:body
                                 (netlify

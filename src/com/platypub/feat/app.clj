@@ -165,10 +165,11 @@
       {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
                    [:script {:referrerpolicy "origin",
                              :src (str "https://cdn.tiny.cloud/1/" api-key "/tinymce/6/tinymce.min.js")}]
-                   [:script (biff/unsafe "tinymce.init({ selector: '#content',
-                                         skin: (darkModeOn ? 'oxide-dark' : 'oxide'),
-                                         content_css: (darkModeOn ? 'dark' : 'default'),
-                                         height: '100%', width: '100%' });")]]}
+                   [:script (biff/unsafe (slurp (io/resource "tinymce_init.js")))]
+                   [:link {:rel "stylesheet" :href "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/themes/prism-okaidia.min.css"}]
+                   [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
+                   [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
+                                       "autoloader/prism-autoloader.min.js")}]]}
       [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex.flex-col.flex-grow
        [:.p-3 [:a.link {:href "/app"} "< Home"]]
        [:.flex.flex-row-reverse.flex-grow
@@ -225,7 +226,7 @@
             :action (str "/app/posts/" (:xt/id post) "/delete")}
            [:button.text-red-600 {:type "submit"} "Delete"])]
         [:.w-6]
-        [:.max-w-screen-sm.mx-auto.w-full
+        [:.max-w-screen-md.mx-auto.w-full
          [:textarea#content
           {:form "edit"
            :type "text"
@@ -314,9 +315,22 @@
   {:status 303
    :headers {"location" "/app"}})
 
+(defn upload-image [{:keys [s3/cdn] :as req}]
+  (let [key (str (random-uuid))
+        file-info (get-in req [:multipart-params "file"])]
+    (util/s3 req {:method "PUT"
+                  :key key
+                  :file (:tempfile file-info)
+                  :headers {"x-amz-acl" "public-read"
+                            "content-type" (:content-type file-info)}})
+    {:status 200
+     :headers {"content-type" "application/json"}
+     :body {:location (str cdn "/" key)}}))
+
 (def features
   {:routes ["/app" {:middleware [wrap-signed-in]}
             ["" {:get app}]
+            ["/images/upload" {:post upload-image}]
             ["/set-foo" {:post set-foo}]
             ["/set-bar" {:post set-bar}]
             ["/chat" {:get ws-handler}]
