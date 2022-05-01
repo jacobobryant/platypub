@@ -1,8 +1,9 @@
 (ns com.platypub
   (:require [com.biffweb :as biff]
-            [com.platypub.feat.app :as app]
             [com.platypub.feat.auth :as auth]
             [com.platypub.feat.home :as home]
+            [com.platypub.feat.posts :as posts]
+            [com.platypub.feat.sites :as sites]
             [com.platypub.schema :refer [malli-opts]]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -12,9 +13,10 @@
             [nrepl.cmdline :as nrepl-cmd]))
 
 (def features
-  [app/features
-   auth/features
-   home/features])
+  [auth/features
+   home/features
+   posts/features
+   sites/features])
 
 (def routes [["" {:middleware [anti-forgery/wrap-anti-forgery
                                biff/wrap-anti-forgery-websockets

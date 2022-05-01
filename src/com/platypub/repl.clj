@@ -1,5 +1,6 @@
 (ns com.platypub.repl
   (:require [com.biffweb :as biff :refer [q]]
+            [com.platypub.netlify :as netlify]
             [clj-http.client :as http]))
 
 (defn get-sys []

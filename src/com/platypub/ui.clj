@@ -28,7 +28,7 @@
 (def nav-options
   [{:name :posts
     :label "Posts"
-    :href "/"}
+    :href "/app"}
    {:name :sites
     :label "Sites"
     :href "/sites"}
@@ -110,3 +110,11 @@
                       block]
              :name id}
             (dissoc opts :label))]))
+
+(defn image [{:keys [value] :as opts}]
+  (list
+    (text-input opts)
+    (when (not-empty value)
+      [:.mt-3.flex.justify-center
+       [:img {:src value
+              :style {:max-height "10rem"}}]])))

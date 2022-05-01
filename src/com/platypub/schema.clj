@@ -20,16 +20,6 @@
           [:user/foo {:optional true}]
           [:user/bar {:optional true}]]
 
-   :msg/id :uuid
-   :msg/user :user/id
-   :msg/text :string
-   :msg/sent-at inst?
-   :msg [:map {:closed true}
-         [:xt/id :msg/id]
-         :msg/user
-         :msg/text
-         :msg/sent-at]
-
    :post/id :uuid
    :post/title :string
    :post/html :string
@@ -62,6 +52,34 @@
    :author (doc {:id :author/id
                  :required [:author/name
                             :author/image
-                            :author/url]})})
+                            :author/url]})
+
+   :image/id :uuid
+   :image/url :string
+   :image/filename :string
+   :image/uploaded-at inst?
+   :image (doc {:id :image/id
+                :required [:image/url
+                           :image/filename
+                           :image/uploaded-at]})
+
+   :site/id :uuid
+   :site/url :string
+   :site/title :string
+   :site/description :string
+   :site/image :string
+   :site/tag :string
+   :site/theme :qualified-symbol
+   :site/redirects :string
+   :site/netlify-id :string
+   :site (doc {:id :site/id
+               :required [:site/url
+                          :site/title
+                          :site/description
+                          :site/image
+                          :site/tag
+                          :site/theme
+                          :site/redirects
+                          :site/netlify-id]})})
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})

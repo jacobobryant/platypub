@@ -1,4 +1,4 @@
-(ns com.platypub.feat.app
+(ns com.platypub.feat.posts
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
@@ -6,94 +6,8 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [rum.core :as rum]
             [xtdb.api :as xt]
-            [ring.adapter.jetty9 :as jetty]
-            [ring.middleware.anti-forgery :as anti-forgery]
-            [cheshire.core :as cheshire]))
-
-(defn set-foo [{:keys [session params] :as req}]
-  (biff/submit-tx req
-    [{:db/op :update
-      :db/doc-type :user
-      :xt/id (:uid session)
-      :user/foo (:foo params)}])
-  {:status 303
-   :headers {"location" "/app"}})
-
-(defn bar-form [{:keys [value]}]
-  (biff/form
-    {:hx-post "/app/set-bar"
-     :hx-swap "outerHTML"}
-    [:label.block {:for "bar"} "Bar: "
-     [:span.font-mono (pr-str value)]]
-    [:.h-1]
-    [:.flex
-     [:input.w-full#bar {:type "text" :name "bar" :value value}]
-     [:.w-3]
-     [:button.btn {:type "submit"} "Update"]]
-    [:.h-1]
-    [:.text-sm.text-gray-600
-     "This demonstrates updating a value with HTMX."]))
-
-(defn set-bar [{:keys [session params] :as req}]
-  (biff/submit-tx req
-    [{:db/op :update
-      :db/doc-type :user
-      :xt/id (:uid session)
-      :user/bar (:bar params)}])
-  (biff/render (bar-form {:value (:bar params)})))
-
-(defn message [{:msg/keys [text sent-at]}]
-  [:.mt-3 {:_ "init send newMessage to #message-header"}
-   [:.text-gray-600 (biff/format-date sent-at "dd MMM yyyy HH:mm:ss")]
-   [:div text]])
-
-(defn notify-clients [{:keys [com.platypub/chat-clients]} tx]
-  (doseq [[op & args] (::xt/tx-ops tx)
-          :when (= op ::xt/put)
-          :let [[doc] args]
-          :when (contains? doc :msg/text)
-          :let [html (rum/render-static-markup
-                       [:div#messages {:hx-swap-oob "afterbegin"}
-                        (message doc)])]
-          ws @chat-clients]
-    (jetty/send! ws html)))
-
-(defn send-message [{:keys [session] :as req} {:keys [text]}]
-  (let [{:keys [text]} (cheshire/parse-string text true)]
-    (biff/submit-tx req
-      [{:db/doc-type :msg
-        :msg/user (:uid session)
-        :msg/text text
-        :msg/sent-at :db/now}])))
-
-(defn chat [{:keys [biff/db]}]
-  (let [messages (q db
-                    '{:find (pull msg [*])
-                      :in [t0]
-                      :where [[msg :msg/sent-at t]
-                              [(<= t0 t)]]}
-                    (biff/add-seconds (java.util.Date.) (* -60 10)))]
-    [:div {:hx-ws "connect:/app/chat"}
-     [:form.mb0 {:hx-ws "send"
-                 :_ "on submit set value of #message to ''"}
-      [:label.block {:for "message"} "Write a message"]
-      [:.h-1]
-      [:textarea.w-full#message {:name "text"}]
-      [:.h-1]
-      [:.text-sm.text-gray-600
-       "Sign in with an incognito window to have a conversation with yourself."]
-      [:.h-2]
-      [:div [:button.btn {:type "submit"} "Send message"]]]
-     [:.h-6]
-     [:div#message-header
-      {:_ "on newMessage put 'Messages sent in the past 10 minutes:' into me"}
-      (if (empty? messages)
-        "No messages yet."
-        "Messages sent in the past 10 minutes:")]
-     [:div#messages
-      (map message (sort-by :msg/sent-at #(compare %2 %1) messages))]]))
+            [ring.middleware.anti-forgery :as anti-forgery]))
 
 (defn edit-post [{:keys [params] :as req}]
   (let [{:keys [id
@@ -235,12 +149,7 @@
           :name "html"
           :value (:post/html post)}]]
        [:.w-6]
-       [:.h-3]]
-      [:script (biff/unsafe (str
-                              "document.body.addEventListener('htmx:configRequest', (event) => {
-                              event.detail.headers['X-CSRF-Token'] = '"
-                              anti-forgery/*anti-forgery-token*
-                              "';})"))])))
+       [:.h-3]])))
 
 (defn post-list-item [{:keys [post/edited-at
                               post/published-at
@@ -261,7 +170,7 @@
     (str/join ", " tags)]])
 
 (defn app [{:keys [session biff/db] :as req}]
-  (let [{:user/keys [email foo bar]} (xt/entity db (:uid session))
+  (let [{:user/keys [email]} (xt/entity db (:uid session))
         posts (q db
                  '{:find (pull post [*])
                    :where [[post :post/html]]})
@@ -286,60 +195,31 @@
            (sort-by :post/published-at #(compare %2 %1))
            (map post-list-item)))))
 
-(defn wrap-signed-in [handler]
-  (fn [{:keys [session] :as req}]
-    (if (some? (:uid session))
-      (handler req)
-      {:status 303
-       :headers {"location" "/"}})))
-
-(defn ws-handler [{:keys [com.platypub/chat-clients] :as req}]
-  {:status 101
-   :headers {"upgrade" "websocket"
-             "connection" "upgrade"}
-   :ws {:on-connect (fn [ws]
-                      (swap! chat-clients conj ws))
-        :on-text (fn [ws text-message]
-                   (send-message req {:ws ws :text text-message}))
-        :on-close (fn [ws status-code reason]
-                    (swap! chat-clients disj ws))}})
-
-(defn publish [{:keys [biff/db] :as req}]
-  (let [post (first (q db
-                       '{:find (pull post [*])
-                         :where [[post :post/html]]}))
-        site-id "d51accde-a88f-48b3-ba15-5defbf798df2"]
-    (io/make-parents (io/file "storage/site/_"))
-    (spit "storage/site/index.html" (:post/html post))
-    (netlify/deploy! {:api-key (:netlify/api-key req)
-                      :site-id site-id
-                      :dir "storage/site"}))
-  {:status 303
-   :headers {"location" "/app"}})
-
 (defn upload-image [{:keys [s3/cdn] :as req}]
-  (let [key (str (random-uuid))
-        file-info (get-in req [:multipart-params "file"])]
+  (let [image-id (random-uuid)
+        file-info (get-in req [:multipart-params "file"])
+        url (str cdn "/" image-id)]
     (util/s3 req {:method "PUT"
-                  :key key
+                  :key image-id
                   :file (:tempfile file-info)
                   :headers {"x-amz-acl" "public-read"
                             "content-type" (:content-type file-info)}})
+    (biff/submit-tx req
+      [{:db/doc-type :image
+        :xt/id image-id
+        :image/url url
+        :image/filename (:filename file-info)
+        :image/uploaded-at :db/now}])
     {:status 200
      :headers {"content-type" "application/json"}
-     :body {:location (str cdn "/" key)}}))
+     :body {:location url}}))
 
 (def features
-  {:routes ["/app" {:middleware [wrap-signed-in]}
+  {:routes ["/app" {:middleware [util/wrap-signed-in]}
             ["" {:get app}]
             ["/images/upload" {:post upload-image}]
-            ["/set-foo" {:post set-foo}]
-            ["/set-bar" {:post set-bar}]
-            ["/chat" {:get ws-handler}]
             ["/posts/:id"
              ["" {:get edit-post-page
                   :post edit-post}]
              ["/delete" {:post delete-post}]]
-            ["/posts" {:post new-post}]
-            ["/publish" {:post publish}]]
-   :on-tx notify-clients})
+            ["/posts" {:post new-post}]]})
