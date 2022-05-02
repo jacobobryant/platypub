@@ -68,10 +68,13 @@
                    '{:find (pull post [*])
                      :in [tag]
                      :where [[post :post/tag tag]]}
-                   (:site/tag site))
+                   tag)
                 (q db
                    '{:find (pull post [*])
                      :where [[post :post/title]]}))
+        posts (->> posts
+                   (filter #(= :published (:post/status %)))
+                   (sort-by :post/published-at #(compare %2 %1)))
         theme (:site @(requiring-resolve (:site/theme site)))
         dir (str "storage/site/" (random-uuid))]
     (doseq [[path contents] (theme req {:site site
@@ -92,10 +95,13 @@
                    '{:find (pull post [*])
                      :in [tag]
                      :where [[post :post/tag tag]]}
-                   (:site/tag site))
+                   tag)
                 (q db
                    '{:find (pull post [*])
                      :where [[post :post/title]]}))
+        posts (->> posts
+                   (filter #(= :published (:post/status %)))
+                   (sort-by :post/published-at #(compare %2 %1)))
         theme (:site @(requiring-resolve (:site/theme site)))
         files (theme req {:site site :posts posts})
         path (or (:path params) "/index.html")
