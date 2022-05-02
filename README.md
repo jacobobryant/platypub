@@ -1,6 +1,56 @@
-# Biff example project
+# Platypub (work in progress, see TODO)
 
-This is the example/template project for Biff.
+See [Platypub: plans for building a blogging platform with Biff](https://biffweb.com/p/platypub-plans/).
+
+In a nutshell, Platypub is an attempt to take the experience of writing your
+own static site generator in Clojure, and factor out all the incidental parts
+into a web service.
+
+## Getting started
+
+1. Run `cp config.edn.TEMPLATE config.edn`
+2. Run `cp config.sh.TEMPLATE config.sh`
+3. Add credentials for Netlify and S3 to your config. See the comments in
+   `config.edn`.
+3. Run `./task dev`
+
+After signing in, you can create blog posts and deploy/preview the site. There is a
+default theme at `com.platypub.themes.default` which is currently empty. You can edit that
+file, save, then click `Preview`, and your changes will be shown immediately.
+
+You can create a new site and deploy it to a subdomain from Netlify. You can
+add a custom domain to your site from within Netlify.
+
+## TODO
+
+Core functionality:
+
+ - Add support for newsletters via Mailgun
+ - Create a fully-featured default theme
+ - Update the data model to support multiple users
+ - Figure out some kind of sandbox for themes so that a managed instance of
+   Platypub can safely run custom themes from users. Hopefully this is
+   workable. If in-JVM sandboxing doesn't work, maybe run an external process
+   (e.g. Babashka) and sandbox that somehow? Use Docker if we absolutely have
+   to? Decide how themes should be packaged and shared.
+
+Additional stuff:
+
+ - Lots of various UI improvements, for example:
+   - Make TinyMCE's color scheme match Platypub's in dark mode
+   - Add tooltips etc as needed
+   - Make `com.platypub.ui/image` support uploading images (currently I upload
+     images in TinyMCE then copy the URL)
+ - Make a simple landing page
+ - (Bonus points) add some kind of editor within Platypub so you can edit
+   themes from there
+    - great way to get people hooked on Clojure
+ - Schedule newsletters and/or posts
+ - Import posts from a CSV or something
+ - Integrate with Stripe so that anyone who wants to can provide Platypub as a
+   managed service and at a minimum cover hosting costs
+    - And if someone wants to try to build a business off of Platypub that
+      would be awesome
 
 ## Commands
 
@@ -30,8 +80,9 @@ regenerates HTML and CSS files. Does not refresh or restart.
 
 ### `./task refresh`
 
-Reloads code and restarts the system via
-`clojure.tools.namespace.repl/refresh` (on the server).
+Reloads code and restarts the system via `clojure.tools.namespace.repl/refresh`
+(on the server). To do this in local development, evaluate
+`(com.biffweb/refresh)` with your editor.
 
 ### `./task restart`
 
@@ -48,5 +99,5 @@ Open an SSH tunnel so you can connect to the server via nREPL.
 ### `./task prod-dev`
 
 Runs `./task logs` and `./task prod-repl`. In addition, whenever you save a
-file, it will be copied to the server (via rsync) and eval'd, after which HTML
-and CSS will be regenerated.
+file, it will be copied to the server (via rsync) and evaluated, after which
+HTML and CSS will be regenerated.

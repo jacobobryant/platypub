@@ -16,8 +16,24 @@
                               [:reply_to :name] "My Application"}
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
+        ;; You'll need to create a Netlify account to deploy websites.
         :netlify/api-key "..."
-        :tinycloud/api-key "no-api-key"}
+        ;; You can leave this as "no-api-key". You'll get a warning banner in
+        ;; the CMS telling you to register. It's free, so might as well. They
+        ;; just want you to register so they can try to get you hooked on the
+        ;; premium plugins etc, which you get access to for 30 days.
+        :tinycloud/api-key "no-api-key"
+        ;; S3 is used for hosting images that you upload in the CMS. It's
+        ;; intended that site themes can either copy the images to Netlify or
+        ;; just link to S3.
+        ;; I'm using DigitalOcean Spaces (an S3 clone). The values of base-url,
+        ;; bucket, and cdn below are what I'm actually using, for illustration.
+        ;; You will need to change them to your own values.
+        :s3/base-url "https://sfo3.digitaloceanspaces.com"
+        :s3/bucket "platypub"
+        :s3/cdn "https://platypub.sfo3.cdn.digitaloceanspaces.com"
+        :s3/access-key "..."
+        :s3/secret-key "..."}
  :dev {:merge [:prod]
        ;; See com.platypub.feat.worker
        ;; :com.platypub/enable-worker false
