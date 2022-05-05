@@ -3,11 +3,14 @@
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
             [com.platypub.util :as util]
+            [clj-http.client :as http]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [xtdb.api :as xt]
             [ring.middleware.anti-forgery :as anti-forgery]
+            [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
             [lambdaisland.uri :as uri]))
 
@@ -29,7 +32,7 @@
         :site/description description
         :site/image image
         :site/tag tag
-        :site/theme (symbol theme)
+        :site/theme theme
         :site/redirects redirects}])
     {:status 303
      :headers {"location" (str "/sites/" id)}}))
@@ -47,7 +50,7 @@
         :site/description ""
         :site/image ""
         :site/tag ""
-        :site/theme 'com.platypub.themes.default/theme
+        :site/theme "default"
         :site/redirects ""
         :site/netlify-id site_id}])
     {:status 303
@@ -61,13 +64,29 @@
   {:status 303
    :headers {"location" "/sites"}})
 
-(defn publish [{:keys [biff/db path-params] :as req}]
+(defn download [uri file]
+  (io/make-parents file)
+  ;; I'm using http/get instead of io/input-stream to prevent a malicious user
+  ;; from passing in a path to a local file. Inspecting uri might be another
+  ;; option?
+  (with-open [in (:body (http/get uri {:as :stream}))
+              out (io/output-stream file)]
+    (io/copy in out)))
+
+(defn cache-file! [{:keys [url force]}]
+  (let [path (io/file "storage/cache/" (str (java.util.UUID/nameUUIDFromBytes (.getBytes url))))]
+    (when (or force (not (.exists path)))
+      (log/info "Downloading" url)
+      (download url path))
+    path))
+
+(defn generate! [{:keys [biff/db path-params params dir] :as req}]
   (let [site (xt/entity db (parse-uuid (:id path-params)))
         posts (if-some [tag (:site/tag site)]
                 (q db
                    '{:find (pull post [*])
                      :in [tag]
-                     :where [[post :post/tag tag]]}
+                     :where [[post :post/tags tag]]}
                    tag)
                 (q db
                    '{:find (pull post [*])
@@ -75,61 +94,103 @@
         posts (->> posts
                    (filter #(= :published (:post/status %)))
                    (sort-by :post/published-at #(compare %2 %1)))
-        theme (:site @(requiring-resolve (:site/theme site)))
-        dir (str "storage/site/" (random-uuid))]
-    (doseq [[path contents] (theme req {:site site
-                                        :posts posts})
-            :let [file (io/file (str dir path))]]
-      (io/make-parents file)
-      (spit file contents))
-    (netlify/deploy! {:api-key (:netlify/api-key req)
-                      :site-id (:site/netlify-id site)
-                      :dir dir})
-    {:status 303
-     :headers {"location" "/sites"}}))
+        theme-files (->> (file-seq (io/file "themes" (:site/theme site)))
+                         (filter #(.isFile %)))
+        force-refresh (= "true" (:force-refresh params))]
+    (biff/sh "rm" "-rf" (str dir))
+    (io/make-parents (io/file dir "_"))
+    (spit (io/file dir "_input.edn") (pr-str {:site site :posts posts}))
+    (doseq [f theme-files]
+      (io/copy f (io/file dir (.getName f))))
+    (biff/sh "chmod" "+x" (str (io/file dir "theme")))
+    (some-> (biff/sh "./theme" :dir dir) not-empty log/info)
+    (some->> (biff/catchall (slurp (io/file dir "_files")))
+             str/split-lines
+             (run! (fn [line]
+                     (let [[path url] (str/split line #"\s+")
+                           path (io/file dir (subs path 1))
+                           cached-path (cache-file! {:url url :force force-refresh})]
+                       (io/make-parents path)
+                       ;; TODO prevent malicious user from setting path to
+                       ;; outside working directory
+                       (io/copy cached-path path)))))
+    (->> theme-files
+         (map (fn [f]
+                (io/file dir (subs (str f) (count (str "themes/" (:site/theme site) "/"))))))
+         (concat [(io/file dir "_files")
+                  (io/file dir "_redirects")
+                  (io/file dir "_input.edn")])
+         (run! (fn [f]
+                 (io/delete-file f true))))))
 
 (defn preview [{:keys [biff/db path-params params] :as req}]
   (let [site (xt/entity db (parse-uuid (:id path-params)))
-        posts (if-some [tag (:site/tag site)]
-                (q db
-                   '{:find (pull post [*])
-                     :in [tag]
-                     :where [[post :post/tag tag]]}
-                   tag)
-                (q db
-                   '{:find (pull post [*])
-                     :where [[post :post/title]]}))
-        posts (->> posts
-                   (filter #(= :published (:post/status %)))
-                   (sort-by :post/published-at #(compare %2 %1)))
-        theme (:site @(requiring-resolve (:site/theme site)))
-        files (theme req {:site site :posts posts})
-        path (or (:path params) "/index.html")
-        path (if (contains? files path)
-               path
-               (str/replace-first path #"/?$" "/index.html"))
-        body (get files path)
-        body (some-> body
-                     (str/replace
-                       #"href=\"([^\"]+)\""
-                       (fn [[_ href]]
-                         (str "href=\""
-                              (if (some #(str/starts-with? href %) ["/" (:site/url site)])
-                                (str "/sites/" (:xt/id site) "/preview?"
-                                     (uri/map->query-string {:path (:path (uri/uri href))}))
-                                href)
-                              "\""))))
-        mime-type (some-> (re-find #"\.([^./\\]+)$" path)
-                          second
-                          str/lower-case
-                          mime/default-mime-types)]
-    (if body
-      {:status 200
-       :headers {"content-type" mime-type}
-       :body body}
-      {:status 404
-       :headers {"content-type" "text/html"}
-       :body "<h1>Not found.</h1>"})))
+        post-last-edited (first (q db
+                                   '{:find (max edited-at)
+                                     :where [[post :post/edited-at edited-at]]}))
+        theme-last-modified (->> (file-seq (io/file "themes" (:site/theme site)))
+                                 (filter #(.isFile %))
+                                 (map ring-io/last-modified-date)
+                                 (apply max-key inst-ms))
+        h (hash [site post-last-edited theme-last-modified])
+        dir (io/file "storage/previews" (str (:xt/id site)))
+        force-refresh (= "true" (:force-refresh params))
+        _ (when (or force-refresh
+                    (not= (biff/catchall (slurp (io/file dir "_hash"))) (str h)))
+            (generate! (assoc req :dir dir))
+            (spit (io/file dir "_hash") (str h)))
+        path (or (:path params) "/")
+        file (when-not (#{"/_redirects"
+                          "/_files"} path)
+               (->> (file-seq (io/file dir))
+                    (filter (fn [file]
+                              (and (.isFile file)
+                                   (= (str/replace (subs (.getPath file) (count (str dir)))
+                                                   #"/index.html$"
+                                                   "/")
+                                      path))))
+                    first))
+        rewrite-url (fn [href]
+                      (let [url (uri/join (:site/url site) path href)]
+                        (if (str/starts-with? (str url) (:site/url site))
+                          (str "/sites/" (:xt/id site) "/preview?"
+                               (uri/map->query-string {:path (:path url)}))
+                          href)))
+        [mime body] (cond
+                      (some-> file (.getPath) (str/ends-with? ".html"))
+                      ["text/html"
+                       (str/replace (slurp file)
+                                    #"(href|src)=\"([^\"]+)\""
+                                    (fn [[_ attr href]]
+                                      (str attr "=\"" (rewrite-url href) "\"")))]
+
+                      (some-> file (.getPath) (str/ends-with? ".css"))
+                      ["text/css"
+                       (str/replace (slurp file)
+                                    #"url\(([^\)]+)\)"
+                                    (fn [[_ href]]
+                                      (str "url(" (rewrite-url href) ")")))])]
+    (cond
+      force-refresh {:status 303
+                     :headers {"location" (str "/sites/" (:xt/id site) "/preview?path=/")}}
+      body {:status 200
+            :headers {"content-type" mime}
+            :body body}
+      file (util/serve-static-file file)
+      :else {:status 404
+             :headers {"content-type" "text/html"}
+             :body "<h1>Not found.</h1>"})))
+
+(defn publish [{:keys [biff/db path-params] :as req}]
+  (let [site (xt/entity db (parse-uuid (:id path-params)))
+        dir (io/file "storage/deploys" (str (random-uuid)))]
+    (generate! (assoc req :dir dir))
+    (netlify/deploy! {:api-key (:netlify/api-key req)
+                      :site-id (:site/netlify-id site)
+                      :dir (str dir)})
+    (biff/sh "rm" "-rf" (str dir))
+    {:status 303
+     :headers {"location" "/sites"}}))
 
 (defn edit-site-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
@@ -184,15 +245,19 @@
     [:.text-sm.text-stone-600.dark:text-stone-300
      [:a.hover:underline {:href url :target "_blank"} "View"]
      ui/interpunct
+     [:a.hover:underline {:href (str "/sites/" id "/preview?path=/")
+                          :target "_blank"}
+      "Preview"]
+     ui/interpunct
+     [:a.hover:underline {:href (str "/sites/" id "/preview?path=/&force-refresh=true")
+                          :target "_blank"}
+      "Force refresh"]
+     ui/interpunct
      (biff/form
        {:method "POST"
         :action (str "/sites/" id "/publish")
         :class "inline-block"}
-       [:button.hover:underline {:type "submit"} "Publish"])
-     ui/interpunct
-     [:a.hover:underline {:href (str "/sites/" id "/preview?path=/")
-                          :target "_blank"}
-      "Preview"]]]])
+       [:button.hover:underline {:type "submit"} "Publish"])]]])
 
 (defn sites-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))

@@ -10,12 +10,15 @@ into a web service.
 
 1. Run `cp config.edn.TEMPLATE config.edn`
 2. Run `cp config.sh.TEMPLATE config.sh`
-3. Add credentials for Netlify and S3 to your config. See the comments in
+3. Run `cp themes.TEMPLATE themes`
+4. Make sure `bb` is on your path (See [Babashka Quickstart](https://github.com/babashka/babashka#quickstart))
+5. Add credentials for Netlify and S3 to your config. See the comments in
    `config.edn`.
-3. Run `./task dev`
+6. Run `./task dev`
 
-(If you get an error about `parse-uuid` not being defined, it means you need to upgrade to Clojure 1.11.1. However
-I _think_ this shouldn't be a problem because I added `org.clojure/clojure {:mvn/version "1.11.1"}` to `deps.edn`.)
+(If you get an error about `parse-uuid` not being defined, it means you need to
+upgrade to Clojure 1.11.1. However I _think_ this shouldn't be a problem
+because I added `org.clojure/clojure {:mvn/version "1.11.1"}` to `deps.edn`.)
 
 After signing in, you can create blog posts and deploy/preview the site. There is a
 default theme at `com.platypub.themes.default` which is currently empty. You can edit that
@@ -54,6 +57,7 @@ Additional stuff:
    managed service and at a minimum cover hosting costs
     - And if someone wants to try to build a business off of Platypub that
       would be awesome
+ - And of course, documentation
 
 ## Commands
 

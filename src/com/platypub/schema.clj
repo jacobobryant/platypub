@@ -69,7 +69,7 @@
    :site/description :string
    :site/image :string
    :site/tag :string
-   :site/theme :qualified-symbol
+   :site/theme :string
    :site/redirects :string
    :site/netlify-id :string
    :site (doc {:id :site/id

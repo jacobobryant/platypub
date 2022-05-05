@@ -5,7 +5,9 @@
             [clojure.string :as str]
             [com.biffweb :as biff]
             [lambdaisland.uri :as uri]
-            [ring.util.mime-type :as mime-type]))
+            [ring.util.io :as ring-io]
+            [ring.util.mime-type :as mime]
+            [ring.util.time :as ring-time]))
 
 (defn split-by [pred coll]
   [(remove pred coll)
@@ -88,3 +90,10 @@
       (handler req)
       {:status 303
        :headers {"location" "/"}})))
+
+(defn serve-static-file [file]
+  {:status 200
+   :headers {"content-length" (str (.length file))
+             "last-modified" (ring-time/format-date (ring-io/last-modified-date file))
+             "content-type" (mime/ext-mime-type (.getName file))}
+   :body file})
