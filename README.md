@@ -8,13 +8,26 @@ into a web service.
 
 ## Getting started
 
-1. Run `cp config.edn.TEMPLATE config.edn`
-2. Run `cp config.sh.TEMPLATE config.sh`
-3. Run `cp themes.TEMPLATE themes`
-4. Make sure `bb` is on your path (See [Babashka Quickstart](https://github.com/babashka/babashka#quickstart))
-5. Add credentials for Netlify and S3 to your config. See the comments in
-   `config.edn`.
-6. Run `./task dev`
+Run the following:
+
+```
+cp config.edn.TEMPLATE config.edn
+cp config.sh.TEMPLATE config.sh
+cp themes.TEMPLATE themes
+npm install
+./task install-tailwind
+```
+
+You'll also need `bb` and `tailwindcss` on your path. See [Babashka
+Quickstart](https://github.com/babashka/babashka#quickstart). For Tailwind,
+after running `./task install-tailwind` above, you could do `sudo cp
+bin/tailwindcss /usr/local/bin/`.
+
+
+Then add credentials for Netlify, S3, and Mailgun to your config. See the
+comments in `config.edn`.
+
+Finally, run `./task dev` to start the application
 
 (If you get an error about `parse-uuid` not being defined, it means you need to
 upgrade to Clojure 1.11.1. However I _think_ this shouldn't be a problem

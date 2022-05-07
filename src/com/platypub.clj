@@ -2,6 +2,7 @@
   (:require [com.biffweb :as biff]
             [com.platypub.feat.auth :as auth]
             [com.platypub.feat.home :as home]
+            [com.platypub.feat.lists :as lists]
             [com.platypub.feat.posts :as posts]
             [com.platypub.feat.sites :as sites]
             [com.platypub.schema :refer [malli-opts]]
@@ -15,6 +16,7 @@
 (def features
   [auth/features
    home/features
+   lists/features
    posts/features
    sites/features])
 

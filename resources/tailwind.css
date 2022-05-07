@@ -29,6 +29,9 @@
     @apply bg-amber-600 hover:bg-amber-700
     text-center py-2 px-4 rounded disabled:opacity-50 text-white;
   }
+  .btn-secondary {
+    @apply btn bg-slate-700 hover:bg-slate-800;
+  }
 }
 
 @layer utilities {

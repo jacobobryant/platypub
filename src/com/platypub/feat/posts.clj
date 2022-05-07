@@ -1,5 +1,6 @@
 (ns com.platypub.feat.posts
   (:require [com.biffweb :as biff :refer [q]]
+            [com.platypub.mailgun :as mailgun]
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
             [com.platypub.util :as util]
@@ -7,7 +8,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [xtdb.api :as xt]
-            [ring.middleware.anti-forgery :as anti-forgery]))
+            [ring.middleware.anti-forgery :as anti-forgery])
+  (:import [io.github.furstenheim CopyDown]))
 
 (defn edit-post [{:keys [params] :as req}]
   (let [{:keys [id
@@ -68,6 +70,108 @@
   {:status 303
    :headers {"location" "/app"}})
 
+(defn send-page [{:keys [biff/db session path-params params] :as req}]
+  (let [{:user/keys [email]} (xt/entity db (:uid session))
+        post-id (parse-uuid (:id path-params))
+        post (xt/entity db post-id)
+        lists (q db
+                 '{:find (pull list [*])
+                   :where [[list :list/address]]})]
+    (ui/nav-page
+      {:current :posts
+       :email email}
+      (when (= "true" (:sent params))
+        [:div
+         {:class '[bg-stone-200
+                   dark:bg-stone-900
+                   p-3
+                   text-center
+                   border-l-8
+                   border-green-700]
+          :_ "on load wait 5s then remove me"}
+         "Message sent"])
+      [:.flex
+       (biff/form
+         {:id "send"
+          :action (str "/app/posts/" post-id "/send")
+          :hidden {:post-id post-id}
+          :class '[flex
+                   flex-col
+                   flex-grow
+                   max-w-lg
+                   w-full]}
+         [:.text-lg.my-2 "Send newsletter"]
+         (ui/text-input {:id "post"
+                         :label "Post"
+                         :value (:post/title post)
+                         :disabled true})
+         [:.h-3]
+         (ui/select {:label "Newsletter"
+                     :id "list"
+                     :name "list-id"
+                     :options (for [lst (sort-by :list/title lists)]
+                                {:label (or (not-empty (:list/title lst)) "[No title]")
+                                 :value (str (:xt/id lst))})})
+         [:.h-3]
+         [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
+         [:.flex.gap-3
+          (ui/text-input {:id "test-address"})
+          [:button.btn-secondary {:type "submit" :name "send-test" :value "true"}
+           "Send"]]
+         [:.h-6]
+         [:.flex.gap-3
+          [:button.btn-secondary.flex-1
+           {:type "submit"
+            :formmethod "get"
+            :formaction "preview"
+            :formtarget "_blank"}
+           "Preview"]
+          [:button.btn.flex-1 {:type "submit"} "Send"]])])))
+
+(defn preview [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
+  (let [post (xt/entity db (parse-uuid post-id))
+        lst (xt/entity db (parse-uuid list-id))
+        theme (str "themes/" (:list/theme lst) "/theme")
+        _ (biff/sh "chmod" "+x" theme)
+        {:keys [html]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
+        html (biff/sh "npx" "juice"
+                      "--web-resources-images" "false"
+                      "/dev/stdin" "/dev/stdout"
+                      :in html)]
+    {:status 200
+     :headers {"content-type" "text/html"}
+     :body html}))
+
+(defn html->md [html]
+  (-> (.convert (CopyDown.) html)
+      ;; Helps email clients render links correctly.
+      (str/replace "(" "( ")
+      (str/replace ")" " )")))
+
+(defn send! [{:keys [biff/db params] {:keys [list-id post-id send-test test-address]} :params :as req}]
+  (let [post (xt/entity db (parse-uuid post-id))
+        lst (xt/entity db (parse-uuid list-id))
+        theme (str "themes/" (:list/theme lst) "/theme")
+        _ (biff/sh "chmod" "+x" theme)
+        {:keys [html text subject]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
+        text (or text (some-> html html->md))
+        html (when html
+               (biff/sh "npx" "juice"
+                        "--web-resources-images" "false"
+                        "/dev/stdin" "/dev/stdout"
+                        :in html))
+        to (if send-test
+             test-address
+             (:list/address lst))]
+    (mailgun/send! req {:to to
+                        :from (str (:list/title lst) " <doreply@m.platypub.com>")
+                        :h:Reply-To (:list/reply-to lst)
+                        :subject (or subject (:post/title post))
+                        :html html
+                        :text text}))
+  {:status 303
+   :headers {"location" "send?sent=true"}})
+
 (defn edit-post-page [{:keys [path-params
                               biff/db
                               tinycloud/api-key]
@@ -86,7 +190,9 @@
                                        "autoloader/prism-autoloader.min.js")}]]}
       [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
        [:.md:w-80.mx-3
-        [:.my-3 [:a.link {:href "/app"} "< Home"]]
+        [:.flex.justify-between
+         [:.my-3 [:a.link {:href "/app"} "< Home"]]
+         [:.my-3 [:a.link {:href (str "/app/posts/" post-id "/send")} "Send"]]]
         (biff/form
           {:id "edit"
            :action (str "/app/posts/" post-id)
@@ -136,11 +242,12 @@
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]
-        (biff/form
-          {:onSubmit "return confirm('Delete post?')"
-           :method "POST"
-           :action (str "/app/posts/" (:xt/id post) "/delete")}
-          [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+        [:.flex.justify-between
+         (biff/form
+           {:onSubmit "return confirm('Delete post?')"
+            :method "POST"
+            :action (str "/app/posts/" (:xt/id post) "/delete")}
+           [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])]
         [:.h-6]]
        [:.max-w-screen-md.mx-auto.w-full
         [:textarea#content
@@ -221,5 +328,8 @@
             ["/posts/:id"
              ["" {:get edit-post-page
                   :post edit-post}]
-             ["/delete" {:post delete-post}]]
+             ["/delete" {:post delete-post}]
+             ["/send" {:get send-page
+                       :post send!}]
+             ["/preview" {:get preview}]]
             ["/posts" {:post new-post}]]})

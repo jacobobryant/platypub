@@ -33,7 +33,9 @@
         :s3/bucket "platypub"
         :s3/cdn "https://platypub.sfo3.cdn.digitaloceanspaces.com"
         :s3/access-key "..."
-        :s3/secret-key "..."}
+        :s3/secret-key "..."
+        :mailgun/api-key "..."
+        :mailgun/domain "..."}
  :dev {:merge [:prod]
        ;; See com.platypub.feat.worker
        ;; :com.platypub/enable-worker false

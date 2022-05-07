@@ -80,6 +80,17 @@
                           :site/tag
                           :site/theme
                           :site/redirects
-                          :site/netlify-id]})})
+                          :site/netlify-id]})
+
+   :list/id :uuid
+   :list/address :string
+   :list/title :string
+   :list/theme :string
+   :list/reply-to :string
+   :list (doc {:id :list/id
+               :required [:list/address
+                          :list/title
+                          :list/theme
+                          :list/reply-to]})})
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})

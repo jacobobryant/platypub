@@ -1,0 +1,23 @@
+{
+  "name": "platypub",
+  "version": "1.0.0",
+  "description": "See [Platypub: plans for building a blogging platform with Biff](https://biffweb.com/p/platypub-plans/).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobobryant/platypub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jacobobryant/platypub/issues"
+  },
+  "homepage": "https://github.com/jacobobryant/platypub#readme",
+  "dependencies": {
+    "juice": "^8.0.0"
+  }
+}

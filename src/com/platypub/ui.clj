@@ -79,8 +79,8 @@
                    :or {element :input}
                    :as opts}]
   (list
-    [:label.block.text-sm {:for id} label]
-    [:.h-1]
+    (when label
+      [:label.block.text-sm.mb-1 {:for id} label])
     [element (merge {:type "text"
                      :class '[w-full
                               border-gray-300
@@ -118,3 +118,44 @@
       [:.mt-3.flex.justify-center
        [:img {:src value
               :style {:max-height "10rem"}}]])))
+
+(defn select
+  [{:keys [id options default label] :as opts}]
+  [:div
+   [:label.block.text-sm {:for id} label]
+   [:.h-1]
+   [:select.cursor-pointer
+    (-> opts
+        (dissoc :options :default :outer-class)
+        (assoc :class '[appearance-none
+                        border
+                        border-gray-300
+                        py-1
+                        px-2
+                        pr-6
+                        rounded
+                        leading-tight
+                        focus:outline-none
+                        focus:shadow-outline
+                        bg-white
+                        text-black
+                        dark:bg-stone-600
+                        dark:border-stone-600
+                        dark:text-gray-300]))
+    (for [{:keys [label value]} options]
+      [:option.cursor-pointer
+       {:value value
+        :selected (when (= value default) "selected")}
+       label])]])
+
+(defn radio [{:keys [options id name default label] :as opts}]
+  (list
+    [:label.block.text-sm {:for id} label]
+    [:.h-1]
+    (for [{:keys [label value]} options]
+      [:label.flex.items-center.cursor-pointer.py-1.text-sm
+       [:input.cursor-pointer.form-radio
+        {:type "radio" :name name :value value
+         :checked (when (= default value)
+                    "checked")}]
+       [:span.ml-2 label]])))
