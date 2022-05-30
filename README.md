@@ -13,7 +13,7 @@ Run the following:
 ```
 cp config.edn.TEMPLATE config.edn
 cp config.sh.TEMPLATE config.sh
-cp themes.TEMPLATE themes
+cp -r themes.TEMPLATE themes
 npm install
 ./task install-tailwind
 ```
