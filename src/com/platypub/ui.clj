@@ -25,6 +25,13 @@
                                      head))))
     body))
 
+(def hamburger-icon
+  [:div.md:hidden.cursor-pointer
+   {:_ "on click toggle .hidden on #dropdown"}
+   (for [_ (range 3)]
+     [:div.bg-white
+      {:class "h-[4px] w-[30px] my-[6px]"}])])
+
 (def nav-options
   [{:name :posts
     :label "Posts"
@@ -36,38 +43,63 @@
     :label "Newsletters"
     :href "/newsletters"}])
 
+(defn menu [current email layout]
+  (let [classes '[md:w-64
+                  bg-stone-900
+                  text-white
+                  fixed
+                  h-screen
+                  flex
+                  flex-col]
+        dropdown '[hidden w-full]
+        sidebar '[invisible md:visible]
+        classes (vec (concat classes
+                             (if (= layout :dropdown) dropdown sidebar)))]
+    
+  [:div {:class classes
+         :id layout}
+   [:.h-3]
+   [:.text-xl.mx-6 "Platypub"]
+   [:.h-6]
+   (for [{:keys [name label href]} nav-options]
+     [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
+                                               '[text-white
+                                                 bg-stone-800]
+                                               '[text-gray-400
+                                                 hover:bg-stone-800])
+                                      :href href}
+      label])
+   [:.flex-grow]
+   [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
+   [:.px-6.text-sm email]
+   [:.px-6.text-sm
+    (biff/form
+     {:action "/auth/signout"
+      :class "inline"}
+     [:button.text-amber-600.hover:underline {:type "submit"}
+      "sign out"])]
+   [:.h-3]]))
+
 (defn nav-page [{:keys [current email] :as opts} & body]
   (base
-    {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]}
-    [:div {:class '[w-64
-                    bg-stone-900
-                    text-white
-                    fixed
-                    h-screen
-                    flex
-                    flex-col]}
-     [:.h-3]
-     [:.text-xl.mx-6 "Platypub"]
-     [:.h-6]
-     (for [{:keys [name label href]} nav-options]
-       [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
-                                                 '[text-white
-                                                   bg-stone-800]
-                                                 '[text-gray-400
-                                                   hover:bg-stone-800])
-                                        :href href}
-        label])
-     [:.flex-grow]
-     [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
-     [:.px-6.text-sm email]
-     [:.px-6.text-sm
-      (biff/form
-        {:action "/auth/signout"
-         :class "inline"}
-        [:button.text-amber-600.hover:underline {:type "submit"}
-         "sign out"])]
-     [:.h-3]]
-    [:.p-3.ml-64.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.min-h-screen body]))
+   {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]}
+
+   [:div {:class '[bg-stone-900
+                   text-gray-100
+                   flex
+                   justify-between
+                   md:hidden]}
+    [:a {:href "#"
+         :class '[block
+                  text-xl
+                  mx-3
+                  p-3
+                  text-white
+                  fold-bold]} "Platypub"]
+    [:.p-4 hamburger-icon]]
+   (menu current email :dropdown)
+   (menu current email :sidebar)
+   [:.p-3.md:ml-64.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.min-h-screen body]))
 
 (defn page [opts & body]
   (base
