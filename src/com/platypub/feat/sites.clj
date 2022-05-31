@@ -81,75 +81,50 @@
     path))
 
 (defn generate! [{:keys [biff/db path-params params dir] :as req}]
-  (let [site (xt/entity db (parse-uuid (:id path-params)))
-        posts (if-some [tag (:site/tag site)]
-                (q db
-                   '{:find (pull post [*])
-                     :in [tag]
-                     :where [[post :post/tags tag]]}
-                   tag)
-                (q db
-                   '{:find (pull post [*])
-                     :where [[post :post/title]]}))
-        posts (->> posts
-                   (filter #(= :published (:post/status %)))
-                   (sort-by :post/published-at #(compare %2 %1)))
-        theme-files (->> (file-seq (io/file "themes" (:site/theme site)))
-                         (filter #(.isFile %)))
-        force-refresh (= "true" (:force-refresh params))]
-    (biff/sh "rm" "-rf" (str dir))
-    (io/make-parents (io/file dir "_"))
-    (spit (io/file dir "_input.edn") (pr-str {:site site :posts posts}))
-    (doseq [f theme-files]
-      (io/copy f (io/file dir (.getName f))))
-    (biff/sh "chmod" "+x" (str (io/file dir "theme")))
-    (some-> (biff/sh "./theme" :dir dir) not-empty log/info)
-    (some->> (biff/catchall (slurp (io/file dir "_files")))
-             str/split-lines
-             (run! (fn [line]
-                     (let [[path url] (str/split line #"\s+")
-                           path (io/file dir (subs path 1))
-                           cached-path (cache-file! {:url url :force force-refresh})]
-                       (io/make-parents path)
-                       ;; TODO prevent malicious user from setting path to
-                       ;; outside working directory
-                       (io/copy cached-path path)))))
-    (->> theme-files
-         (map (fn [f]
-                (io/file dir (subs (str f) (count (str "themes/" (:site/theme site) "/"))))))
-         (concat [(io/file dir "_files")
-                  (io/file dir "_redirects")
-                  (io/file dir "_input.edn")])
-         (run! (fn [f]
-                 (io/delete-file f true))))))
-
-(defn preview [{:keys [biff/db path-params params] :as req}]
-  (let [site (xt/entity db (parse-uuid (:id path-params)))
-        post-last-edited (first (q db
-                                   '{:find (max edited-at)
-                                     :where [[post :post/edited-at edited-at]]}))
+  (let [account (select-keys req [:mailgun/api-key
+                                  :mailgun/domain
+                                  :recaptcha/secret
+                                  :recaptcha/site])
+        docs (for [[doc-type k] [[:post :post/title]
+                                 [:site :site/url]
+                                 [:list :list/address]]
+                   doc (q db
+                          {:find '(pull doc [*])
+                           :where [['doc k]]})]
+               (assoc doc :db/doc-type doc-type))
+        site-id (parse-uuid (:id path-params))
+        site (xt/entity db site-id)
+        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
+        render-opts {:account account
+                     :db (into {} (map (juxt :xt/id identity)) docs)
+                     :site-id site-id}
         theme-last-modified (->> (file-seq (io/file "themes" (:site/theme site)))
                                  (filter #(.isFile %))
                                  (map ring-io/last-modified-date)
                                  (apply max-key inst-ms))
-        h (hash [site post-last-edited theme-last-modified])
-        dir (io/file "storage/previews" (str (:xt/id site)))
-        force-refresh (= "true" (:force-refresh params))
-        _ (when (or force-refresh
-                    (not= (biff/catchall (slurp (io/file dir "_hash"))) (str h)))
-            (generate! (assoc req :dir dir))
-            (spit (io/file dir "_hash") (str h)))
+        _hash (str (hash [docs theme-last-modified]))]
+    (when (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash)
+      (biff/sh "rm" "-rf" (str dir))
+      (io/make-parents dir)
+      (biff/sh "cp" "-r" (str (io/file "themes" (:site/theme site))) (str dir))
+      (spit (io/file dir "input.edn") (pr-str render-opts))
+      (biff/sh "chmod" "+x" (str (io/file dir "render-site")))
+      (some-> (biff/sh "./render-site" :dir dir :env {"PATH" path}) not-empty log/info)
+      (spit (io/file dir "_hash") _hash))))
+
+(defn preview [{:keys [biff/db path-params params] :as req}]
+  (let [site (xt/entity db (parse-uuid (:id path-params)))
+        dir (io/file "storage/previews" (:id path-params))
+        _ (generate! (assoc req :dir dir))
         path (or (:path params) "/")
-        file (when-not (#{"/_redirects"
-                          "/_files"} path)
-               (->> (file-seq (io/file dir))
-                    (filter (fn [file]
-                              (and (.isFile file)
-                                   (= (str/replace (subs (.getPath file) (count (str dir)))
-                                                   #"/index.html$"
-                                                   "/")
-                                      path))))
-                    first))
+        file (->> (file-seq (io/file dir "public"))
+                  (filter (fn [file]
+                            (and (.isFile file)
+                                 (= (str/replace (subs (.getPath file) (count (str dir "/public")))
+                                                 #"/index.html$"
+                                                 "/")
+                                    path))))
+                  first)
         rewrite-url (fn [href]
                       (let [url (uri/join (:site/url site) path href)]
                         (if (str/starts-with? (str url) (:site/url site))
@@ -171,8 +146,6 @@
                                     (fn [[_ href]]
                                       (str "url(" (rewrite-url href) ")")))])]
     (cond
-      force-refresh {:status 303
-                     :headers {"location" (str "/sites/" (:xt/id site) "/preview?path=/")}}
       body {:status 200
             :headers {"content-type" mime}
             :body body}
@@ -248,10 +221,6 @@
      [:a.hover:underline {:href (str "/sites/" id "/preview?path=/")
                           :target "_blank"}
       "Preview"]
-     ui/interpunct
-     [:a.hover:underline {:href (str "/sites/" id "/preview?path=/&force-refresh=true")
-                          :target "_blank"}
-      "Force refresh"]
      ui/interpunct
      (biff/form
        {:method "POST"
