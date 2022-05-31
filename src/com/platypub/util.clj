@@ -13,15 +13,21 @@
   [(remove pred coll)
    (filter pred coll)])
 
-(defn sha1-hex [file]
+(defn sha-hex [file algo]
   (with-open [f (java.io.FileInputStream. file)]
     (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance "SHA-1") ]
+          md (java.security.MessageDigest/getInstance algo) ]
       (loop [nread (.read f buffer)]
         (if (pos? nread)
           (do (.update md buffer 0 nread)
               (recur (.read f buffer)))
-          (format "%040x" (BigInteger. 1 (.digest md)) 16))))))
+          (apply str (map #(format "%02x" (bit-and % 0xff)) (.digest md))))))))
+
+(defn sha1-hex [file]
+  (sha-hex file "SHA-1"))
+
+(defn sha256-hex [file]
+  (sha-hex file "SHA-256"))
 
 (defn hmac-sha1-base64 [secret s]
   (-> (mac/hash s {:key secret :alg :hmac+sha1})
