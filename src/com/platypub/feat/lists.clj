@@ -18,6 +18,7 @@
   (let [{:keys [id
                 title
                 theme
+                tags
                 reply-to]} params
         address (:list/address (xt/entity db (parse-uuid id)))]
     (mailgun/update! req address {:name title})
@@ -27,7 +28,11 @@
         :xt/id (parse-uuid id)
         :list/title title
         :list/theme theme
-        :list/reply-to reply-to}])
+        :list/reply-to reply-to
+        :list/tags (->> (str/split tags #"\s+")
+                        (remove empty?)
+                        distinct
+                        vec)}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
@@ -73,6 +78,8 @@
           (ui/text-input {:id "reply-to" :label "Reply To" :value (:list/reply-to lst)})
           [:.h-3]
           (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
+          [:.h-3]
+          (ui/text-input {:id "tags" :label "Tags" :value (str/join " " (:list/tags lst))})
           [:.h-3]
           (ui/text-input {:id "address" :label "Address" :value (:list/address lst) :disabled true})
           [:.h-4]
