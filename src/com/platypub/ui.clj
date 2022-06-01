@@ -1,5 +1,6 @@
 (ns com.platypub.ui
   (:require [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [com.biffweb :as biff]))
 
 (def interpunct " · ")
@@ -26,8 +27,10 @@
     body))
 
 (def hamburger-icon
-  [:div.md:hidden.cursor-pointer
-   {:_ "on click toggle .hidden on #dropdown"}
+  [:div.md:hidden.cursor-pointer.p-4
+   {:_ "on click toggle .hidden on #body
+        on click toggle .hidden on #dropdown
+        on click toggle .hidden on #prefs"}
    (for [_ (range 3)]
      [:div.bg-white
       {:class "h-[4px] w-[30px] my-[6px]"}])])
@@ -43,69 +46,103 @@
     :label "Newsletters"
     :href "/newsletters"}])
 
-(defn menu [current email layout]
-  (let [classes '[md:w-64
-                  bg-stone-900
-                  text-white
-                  fixed
-                  h-screen
-                  flex
-                  flex-col]
-        dropdown '[hidden w-full]
-        sidebar '[invisible md:visible]
-        classes (vec (concat classes
-                             (if (= layout :dropdown) dropdown sidebar)))]
-    
-  [:div {:class classes
-         :id layout}
-   [:.h-3]
-   [:.text-xl.mx-6 "Platypub"]
-   [:.h-6]
-   (for [{:keys [name label href]} nav-options]
-     [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
-                                               '[text-white
-                                                 bg-stone-800]
-                                               '[text-gray-400
-                                                 hover:bg-stone-800])
-                                      :href href}
-      label])
-   [:.flex-grow]
-   [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
-   [:.px-6.text-sm email]
-   [:.px-6.text-sm
-    (biff/form
-     {:action "/auth/signout"
-      :class "inline"}
-     [:button.text-amber-600.hover:underline {:type "submit"}
-      "sign out"])]
-   [:.h-3]]))
-
-(defn nav-page [{:keys [current email] :as opts} & body]
+(defn nav-page [{:keys [current email]} & body]
   (base
    {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]}
+   (list
+    [:div.invisible.hidden.md:block.md:visible
+     [:div {:class '[w-64
+                     bg-stone-900
+                     text-white
+                     fixed
+                     h-screen
+                     flex
+                     flex-col]}
+      [:.h-3]
+      [:.text-xl.mx-6 "Platypub"]
+      [:.h-6]
+      (for [{:keys [name label href]} nav-options]
+        [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
+                                                  '[text-white
+                                                    bg-stone-800]
+                                                  '[text-gray-400
+                                                    hover:bg-stone-800])
+                                         :href href}
+         label])
+      [:.flex-grow]
+      [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
+      [:.px-6.text-sm email]
+      [:.px-6.text-sm
+       (biff/form
+        {:action "/auth/signout"
+         :class "inline"}
+        [:button.text-amber-600.hover:underline {:type "submit"}
+         "sign out"])]
+      [:.h-3]]
+     [:div {:class '[p-3
+                     ml-64
+                     bg-gray-100
+                     dark:bg-stone-800
+                     dark:text-gray-50
+                     min-h-screen]}
+      body]]
 
-   [:div {:class '[bg-stone-900
-                   text-gray-100
-                   flex
-                   justify-between
-                   md:hidden]}
-    [:a {:href "#"
-         :class '[block
-                  text-xl
-                  mx-3
-                  p-3
-                  text-white
-                  fold-bold]} "Platypub"]
-    [:.p-4 hamburger-icon]]
-   (menu current email :dropdown)
-   (menu current email :sidebar)
-   [:.p-3.md:ml-64.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.min-h-screen body]))
+    [:div.visible.md:invisible.flex.flex-col.h-screen.bg-stone-900.text-gray-100
+     [:div {:class '[bg-stone-900
+                     text-gray-100
+                     flex
+                     grow-0
+                     justify-between]}
+      [:a {:href "#"
+           :class '[block
+                    text-xl
+                    mx-3
+                    p-3
+                    text-white]} "Platypub"]
+      hamburger-icon]
+     [:div#dropdown {:class '[hidden
+                              bg-stone-900
+                              text-white
+                              flex
+                              flex-col
+                              grow-0]}
+      (for [{:keys [name label href]} nav-options]
+        [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
+                                                  '[text-white
+                                                    bg-stone-800]
+                                                  '[text-gray-400
+                                                    hover:bg-stone-800])
+                                         :href href}
+         label])]
+     [:.flex-grow]
+     [:div#prefs {:class '[hidden
+                           bg-stone-900
+                           text-gray-100
+                           flex
+                           flex-col
+                           grow-0
+                           justify-between]}
+      [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
+      [:.px-6.text-sm email]
+      [:.px-6.text-sm
+       (biff/form
+        {:action "/auth/signout"
+         :class "inline"}
+        [:button.text-amber-600.hover:underline {:type "submit"}
+         "sign out"])]
+      [:.h-3]]
+     [:div#body {:class '[p-3
+                          bg-gray-100
+                          dark:bg-stone-800
+                          dark:text-gray-50
+                          min-h-screen]}
+      body]])))
 
 (defn page [opts & body]
   (base
-    opts
-    [:.p-3.mx-auto.max-w-screen-sm.w-full
-     body]))
+   opts
+   [:.p-3.mx-auto.max-w-screen-sm.w-full
+    body]))
 
 (defn text-input [{:keys [id label element]
                    :or {element :input}
