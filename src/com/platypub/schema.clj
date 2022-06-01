@@ -87,10 +87,12 @@
    :list/title :string
    :list/theme :string
    :list/reply-to :string
+   :list/tags [:sequential :string]
    :list (doc {:id :list/id
                :required [:list/address
                           :list/title
                           :list/theme
-                          :list/reply-to]})})
+                          :list/reply-to]
+               :optional [:list/tags]})})
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})
