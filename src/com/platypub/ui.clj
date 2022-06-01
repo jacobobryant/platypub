@@ -29,7 +29,7 @@
 (def hamburger-icon
   [:div.md:hidden.cursor-pointer.p-4
    {:_ "on click toggle .hidden on #body
-        on click toggle .hidden on #dropdown
+        on click toggle .hidden on #menu-items
         on click toggle .hidden on #prefs"}
    (for [_ (range 3)]
      [:div.bg-white
@@ -50,6 +50,9 @@
   (base
    {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]}
    (list
+    
+    ;;; Sidebar
+
     [:div.invisible.hidden.md:block.md:visible
      [:div {:class '[w-64
                      bg-stone-900
@@ -79,19 +82,23 @@
         [:button.text-amber-600.hover:underline {:type "submit"}
          "sign out"])]
       [:.h-3]]
-     [:div {:class '[p-3
-                     ml-64
+     [:div {:class '[ml-64
+                     p-3
                      bg-gray-100
                      dark:bg-stone-800
                      dark:text-gray-50
                      min-h-screen]}
       body]]
+    
+    ;;; Dropdown
 
-    [:div.visible.md:invisible.flex.flex-col.h-screen.bg-stone-900.text-gray-100
-     [:div {:class '[bg-stone-900
-                     text-gray-100
-                     flex
-                     grow-0
+    [:div.visible.md:invisible
+     {:class '[flex
+               flex-col
+               h-screen
+               bg-stone-900
+               text-gray-100]}
+     [:div {:class '[flex
                      justify-between]}
       [:a {:href "#"
            :class '[block
@@ -100,28 +107,18 @@
                     p-3
                     text-white]} "Platypub"]
       hamburger-icon]
-     [:div#dropdown {:class '[hidden
-                              bg-stone-900
-                              text-white
-                              flex
-                              flex-col
-                              grow-0]}
+     [:div#menu-items.hidden.flex.flex-col
       (for [{:keys [name label href]} nav-options]
-        [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
-                                                  '[text-white
-                                                    bg-stone-800]
-                                                  '[text-gray-400
-                                                    hover:bg-stone-800])
-                                         :href href}
+        [:a.block.p-3.mx-3.rounded.mb-1
+         {:class (if (= name current)
+                   '[text-white
+                     bg-stone-800]
+                   '[text-gray-400
+                     hover:bg-stone-800])
+          :href href}
          label])]
      [:.flex-grow]
-     [:div#prefs {:class '[hidden
-                           bg-stone-900
-                           text-gray-100
-                           flex
-                           flex-col
-                           grow-0
-                           justify-between]}
+     [:div#prefs.hidden
       [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
       [:.px-6.text-sm email]
       [:.px-6.text-sm
@@ -131,12 +128,13 @@
         [:button.text-amber-600.hover:underline {:type "submit"}
          "sign out"])]
       [:.h-3]]
-     [:div#body {:class '[p-3
-                          bg-gray-100
-                          dark:bg-stone-800
-                          dark:text-gray-50
-                          min-h-screen]}
-      body]])))
+      [:div#body {:class '[p-3
+                           text-black
+                           bg-gray-100
+                           dark:bg-stone-800
+                           dark:text-gray-50
+                           min-h-screen]}
+       body]])))
 
 (defn page [opts & body]
   (base
