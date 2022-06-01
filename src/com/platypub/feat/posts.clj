@@ -131,7 +131,7 @@
 (defn preview [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
   (let [post (xt/entity db (parse-uuid post-id))
         lst (xt/entity db (parse-uuid list-id))
-        theme (str "themes/" (:list/theme lst) "/theme")
+        theme (str "themes/" (:list/theme lst) "/render-email")
         _ (biff/sh "chmod" "+x" theme)
         {:keys [html]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
         html (biff/sh "npx" "juice"
@@ -151,7 +151,7 @@
 (defn send! [{:keys [biff/db params] {:keys [list-id post-id send-test test-address]} :params :as req}]
   (let [post (xt/entity db (parse-uuid post-id))
         lst (xt/entity db (parse-uuid list-id))
-        theme (str "themes/" (:list/theme lst) "/theme")
+        theme (str "themes/" (:list/theme lst) "/render-email")
         _ (biff/sh "chmod" "+x" theme)
         {:keys [html text subject]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
         text (or text (some-> html html->md))

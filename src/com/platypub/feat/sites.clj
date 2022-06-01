@@ -80,7 +80,7 @@
       (download url path))
     path))
 
-(defn generate! [{:keys [biff/db path-params params dir] :as req}]
+(defn export* [{:keys [biff/db path-params] :as req}]
   (let [account (select-keys req [:mailgun/api-key
                                   :mailgun/domain
                                   :recaptcha/secret
@@ -93,20 +93,30 @@
                            :where [['doc k]]})]
                (assoc doc :db/doc-type doc-type))
         site-id (parse-uuid (:id path-params))
-        site (xt/entity db site-id)
-        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
         render-opts {:account account
                      :db (into {} (map (juxt :xt/id identity)) docs)
-                     :site-id site-id}
-        theme-last-modified (->> (file-seq (io/file "themes" (:site/theme site)))
+                     :site-id site-id}]
+    render-opts))
+
+(defn export [req]
+  {:status 200
+   :headers {"content-type" "application/edn"
+             "content-disposition" "attachment; filename=\"input.edn\""}
+   :body (pr-str (export* req))})
+
+(defn generate! [{:keys [biff/db path-params params dir] :as req}]
+  (let [render-opts (export* req)
+        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
+        {:keys [site/theme]} (xt/entity db (:site-id render-opts))
+        theme-last-modified (->> (file-seq (io/file "themes" theme))
                                  (filter #(.isFile %))
                                  (map ring-io/last-modified-date)
                                  (apply max-key inst-ms))
-        _hash (str (hash [docs theme-last-modified]))]
+        _hash (str (hash [render-opts theme-last-modified]))]
     (when (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash)
       (biff/sh "rm" "-rf" (str dir))
       (io/make-parents dir)
-      (biff/sh "cp" "-r" (str (io/file "themes" (:site/theme site))) (str dir))
+      (biff/sh "cp" "-r" (str (io/file "themes" theme)) (str dir))
       (spit (io/file dir "input.edn") (pr-str render-opts))
       (biff/sh "chmod" "+x" (str (io/file dir "render-site")))
       (some-> (biff/sh "./render-site" :dir dir :env {"PATH" path}) not-empty log/info)
@@ -226,7 +236,11 @@
        {:method "POST"
         :action (str "/sites/" id "/publish")
         :class "inline-block"}
-       [:button.hover:underline {:type "submit"} "Publish"])]]])
+       [:button.hover:underline {:type "submit"} "Publish"])
+     ui/interpunct
+     [:a.hover:underline {:href (str "/sites/" id "/export")
+                          :target "_blank"}
+      "Export"]]]])
 
 (defn sites-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
@@ -253,4 +267,5 @@
                   :post edit-site}]
              ["/delete" {:post delete-site}]
              ["/publish" {:post publish}]
-             ["/preview" {:get preview}]]]})
+             ["/preview" {:get preview}]
+             ["/export" {:get export}]]]})
