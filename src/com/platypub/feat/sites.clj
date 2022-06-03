@@ -80,32 +80,16 @@
       (download url path))
     path))
 
-(defn export* [{:keys [biff/db path-params] :as req}]
-  (let [account (select-keys req [:mailgun/api-key
-                                  :mailgun/domain
-                                  :recaptcha/secret
-                                  :recaptcha/site])
-        docs (for [[doc-type k] [[:post :post/title]
-                                 [:site :site/url]
-                                 [:list :list/address]]
-                   doc (q db
-                          {:find '(pull doc [*])
-                           :where [['doc k]]})]
-               (assoc doc :db/doc-type doc-type))
-        site-id (parse-uuid (:id path-params))
-        render-opts {:account account
-                     :db (into {} (map (juxt :xt/id identity)) docs)
-                     :site-id site-id}]
-    render-opts))
-
-(defn export [req]
+(defn export [{:keys [path-params] :as req}]
   {:status 200
    :headers {"content-type" "application/edn"
              "content-disposition" "attachment; filename=\"input.edn\""}
-   :body (pr-str (export* req))})
+   :body (pr-str (assoc (util/get-render-opts req)
+                        :site-id (parse-uuid (:id path-params))))})
 
 (defn generate! [{:keys [biff/db path-params params dir] :as req}]
-  (let [render-opts (export* req)
+  (let [render-opts (assoc (util/get-render-opts req)
+                           :site-id (parse-uuid (:id path-params)))
         path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
         {:keys [site/theme]} (xt/entity db (:site-id render-opts))
         theme-last-modified (->> (file-seq (io/file "themes" theme))

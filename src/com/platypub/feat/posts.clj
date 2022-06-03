@@ -1,5 +1,6 @@
 (ns com.platypub.feat.posts
-  (:require [com.biffweb :as biff :refer [q]]
+  (:require [cheshire.core :as cheshire]
+            [com.biffweb :as biff :refer [q]]
             [com.platypub.mailgun :as mailgun]
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
@@ -128,19 +129,32 @@
            "Preview"]
           [:button.btn.flex-1 {:type "submit"} "Send"]])])))
 
-(defn preview [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
-  (let [post (xt/entity db (parse-uuid post-id))
+(defn render-email [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
+  (let [render-opts (assoc (util/get-render-opts req)
+                           :list-id (parse-uuid list-id)
+                           :post-id (parse-uuid post-id))
+        post (xt/entity db (parse-uuid post-id))
         lst (xt/entity db (parse-uuid list-id))
-        theme (str "themes/" (:list/theme lst) "/render-email")
-        _ (biff/sh "chmod" "+x" theme)
-        {:keys [html]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
-        html (biff/sh "npx" "juice"
-                      "--web-resources-images" "false"
-                      "/dev/stdin" "/dev/stdout"
-                      :in html)]
-    {:status 200
-     :headers {"content-type" "text/html"}
-     :body html}))
+        dir (str "themes/" (:list/theme lst))
+        _ (biff/sh "chmod" "+x" "./render-email" :dir dir)
+        msg (merge {:subject (:post/title post)}
+                   (edn/read-string (biff/sh "./render-email"
+                                             :in (pr-str render-opts)
+                                             :dir dir))
+                   {:to (:list/address lst)
+                    :from (str (:list/title lst) " <doreply@m.platypub.com>")
+                    :h:Reply-To (:list/reply-to lst)})]
+    (cond-> msg
+      (nil? (:text msg)) (assoc :text (html->md (:html msg)))
+      true (assoc :html (biff/sh "npx" "juice"
+                                 "--web-resources-images" "false"
+                                 "/dev/stdin" "/dev/stdout"
+                                 :in (:html msg))))))
+
+(defn preview [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
+  {:status 200
+   :headers {"content-type" "text/html"}
+   :body (:html (render-email req))})
 
 (defn html->md [html]
   (-> (.convert (CopyDown.) html)
@@ -148,27 +162,10 @@
       (str/replace "(" "( ")
       (str/replace ")" " )")))
 
-(defn send! [{:keys [biff/db params] {:keys [list-id post-id send-test test-address]} :params :as req}]
-  (let [post (xt/entity db (parse-uuid post-id))
-        lst (xt/entity db (parse-uuid list-id))
-        theme (str "themes/" (:list/theme lst) "/render-email")
-        _ (biff/sh "chmod" "+x" theme)
-        {:keys [html text subject]} (edn/read-string (biff/sh theme :in (pr-str {:post post})))
-        text (or text (some-> html html->md))
-        html (when html
-               (biff/sh "npx" "juice"
-                        "--web-resources-images" "false"
-                        "/dev/stdin" "/dev/stdout"
-                        :in html))
-        to (if send-test
-             test-address
-             (:list/address lst))]
-    (mailgun/send! req {:to to
-                        :from (str (:list/title lst) " <doreply@m.platypub.com>")
-                        :h:Reply-To (:list/reply-to lst)
-                        :subject (or subject (:post/title post))
-                        :html html
-                        :text text}))
+(defn send! [{:keys [biff/db params] {:keys [send-test test-address]} :params :as req}]
+  (mailgun/send! req (merge (render-email req)
+                            (when send-test
+                              {:to test-address})))
   {:status 303
    :headers {"location" "send?sent=true"}})
 

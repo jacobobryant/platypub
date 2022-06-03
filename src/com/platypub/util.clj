@@ -3,7 +3,7 @@
             [clj-http.client :as http]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [com.biffweb :as biff]
+            [com.biffweb :as biff :refer [q]]
             [lambdaisland.uri :as uri]
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
@@ -103,3 +103,18 @@
              "last-modified" (ring-time/format-date (ring-io/last-modified-date file))
              "content-type" (mime/ext-mime-type (.getName file))}
    :body file})
+
+(defn get-render-opts [{:keys [biff/db] :as sys}]
+  (let [account (select-keys sys [:mailgun/api-key
+                                  :mailgun/domain
+                                  :recaptcha/secret
+                                  :recaptcha/site])
+        docs (for [[doc-type k] [[:post :post/title]
+                                 [:site :site/url]
+                                 [:list :list/address]]
+                   doc (q db
+                          {:find '(pull doc [*])
+                           :where [['doc k]]})]
+               (assoc doc :db/doc-type doc-type))]
+    {:account account
+     :db (into {} (map (juxt :xt/id identity)) docs)}))

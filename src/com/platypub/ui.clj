@@ -53,7 +53,7 @@
     
     ;;; Sidebar
 
-    [:div.invisible.hidden.md:block.md:visible
+    [:div.hidden.md:block
      [:div {:class '[w-64
                      bg-stone-900
                      text-white
@@ -92,7 +92,7 @@
     
     ;;; Dropdown
 
-    [:div.visible.md:invisible
+    [:div.md:hidden
      {:class '[flex
                flex-col
                h-screen
