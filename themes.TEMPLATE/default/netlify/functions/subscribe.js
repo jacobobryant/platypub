@@ -58,6 +58,7 @@ exports.handler = async function (event, context) {
       await send_welcome(email);
       await add_to_list(email, vars);
     } catch (e) {
+      console.log(e.stack);
       error = 'unknown';
     }
   }

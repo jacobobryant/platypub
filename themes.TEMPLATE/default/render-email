@@ -78,7 +78,7 @@
       [:hr]
       (space 8)
       [:div.footer
-       (:list/address lst) ". "
+       (:list/mailing-address lst) ". "
        [:a {:href "%mailing_list_unsubscribe_url%"} "Unsubscribe."]])]])
 
 (defn main [opts]
