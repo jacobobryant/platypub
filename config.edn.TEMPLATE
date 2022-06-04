@@ -35,7 +35,11 @@
         :s3/access-key "..."
         :s3/secret-key "..."
         :mailgun/api-key "..."
-        :mailgun/domain "..."}
+        :mailgun/domain "..."
+        ;; Used for stopping bot form submissions on generated websites.
+        ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
+        :recaptcha/secret ""
+        :recaptcha/site ""}
  :dev {:merge [:prod]
        ;; See com.platypub.feat.worker
        ;; :com.platypub/enable-worker false

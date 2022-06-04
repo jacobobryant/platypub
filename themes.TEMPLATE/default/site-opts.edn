@@ -1,0 +1,14 @@
+;; I've included some of the values I'm using for https://blog.thesample.ai/ as an example.
+{;; I recommend using your own colors. You can pick a few that look good together from here: https://tailwindcss.com/docs/customizing-colors
+ :site/primary "#343a40"
+ :site/accent "#009b50"
+ :site/accent-dark "#008a3f"
+ :site/tertiary "#e5e7eb"
+ :site/logo "" ;; "https://cdn.findka.com/misc/the-sample-logo-320.png"
+ :site/author-uri "https://example.com"
+ :site/author-image "https://cdn.cnn.com/cnnnext/dam/assets/190517103414-01-grumpy-cat-file-restricted.jpg"
+ :site/author-name "Author Name"
+ :site/cloudflare-token "" ;; You can get a token for free from here: https://www.cloudflare.com/web-analytics/
+ :site/logo-url nil ;; you can set this if you want the logo to link to somewhere other than the current site
+ :site/forum-url "https://forum.thesample.ai/" ;; this is commented out in the theme currently
+ }

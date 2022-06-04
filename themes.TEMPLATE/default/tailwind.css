@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  p {
+    @apply mb-4;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  ul, ol {
+    margin-bottom: 1rem;
+    padding-left: 2.5rem;
+  }
+
+  blockquote {
+    margin: 1.25em 0;
+    padding: 0 1em;
+    color: #6a737d;
+    border-left: .25em solid #dfe2e5;
+  }
+
+  code, kbd, pre, samp {
+    font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace
+  }
+
+  .post-content a {
+    @apply text-blue-600 hover:underline;
+  }
+
+  .post-content img {
+    @apply my-5;
+    box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.3);
+  }
+
+  .post-content li {
+    @apply mt-2;
+  }
+
+  .post-content h1 {
+    @apply font-bold leading-tight text-gray-900 text-4xl;
+  }
+
+  .post-content h2 {
+    @apply font-bold leading-tight text-gray-900 text-3xl mt-5 mb-3;
+  }
+
+  .post-content h3 {
+    @apply font-bold leading-tight text-gray-900 text-2xl mt-5 mb-3;
+  }
+}
+
+.grecaptcha-badge { visibility: hidden; }

@@ -129,6 +129,12 @@
            "Preview"]
           [:button.btn.flex-1 {:type "submit"} "Send"]])])))
 
+(defn html->md [html]
+  (-> (.convert (CopyDown.) html)
+      ;; Helps email clients render links correctly.
+      (str/replace "(" "( ")
+      (str/replace ")" " )")))
+
 (defn render-email [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
   (let [render-opts (assoc (util/get-render-opts req)
                            :list-id (parse-uuid list-id)
@@ -155,12 +161,6 @@
   {:status 200
    :headers {"content-type" "text/html"}
    :body (:html (render-email req))})
-
-(defn html->md [html]
-  (-> (.convert (CopyDown.) html)
-      ;; Helps email clients render links correctly.
-      (str/replace "(" "( ")
-      (str/replace ")" " )")))
 
 (defn send! [{:keys [biff/db params] {:keys [send-test test-address]} :params :as req}]
   (mailgun/send! req (merge (render-email req)

@@ -1,8 +1,0 @@
-#!/usr/bin/env bb
-;; vim: ft=clojure
-(require '[hiccup2.core :refer [html]])
-
-(defn main [{:keys [site posts] :as opts}]
-  (spit "index.html" (str (html [:h1 "Welcome to " (:site/title site)]))))
-
-(main (edn/read-string (slurp "_input.edn")))

@@ -1,0 +1,7 @@
+.netlify
+assets
+netlify/functions/config.json
+node_modules
+public
+input.edn
+tailwind.config.js

@@ -23,8 +23,7 @@ Quickstart](https://github.com/babashka/babashka#quickstart). For Tailwind,
 after running `./task install-tailwind` above, you could do `sudo cp
 bin/tailwindcss /usr/local/bin/`.
 
-
-Then add credentials for Netlify, S3, and Mailgun to your config. See the
+Then add credentials for Netlify, S3, Mailgun, and Recaptcha to your config. See the
 comments in `config.edn`.
 
 Finally, run `./task dev` to start the application
@@ -33,46 +32,44 @@ Finally, run `./task dev` to start the application
 upgrade to Clojure 1.11.1. However I _think_ this shouldn't be a problem
 because I added `org.clojure/clojure {:mvn/version "1.11.1"}` to `deps.edn`.)
 
-After signing in, you can create blog posts and deploy/preview the site. There is a
-default theme at `com.platypub.themes.default` which is currently empty. You can edit that
-file, save, then click `Preview`, and your changes will be shown immediately.
+After signing in, you can create blog posts and deploy/preview the site. You
+can also preview and send newsletters. See `themes/default/README.md` for
+information about modifying the theme.
 
-You can create a new site and deploy it to a subdomain from Netlify. You can
-add a custom domain to your site from within Netlify.
+Some tasks must be done from within Netlify/Mailgun instead of Platypub. e.g.
+you'll need to go to Mailgun to see your current subscriber list, and you'll
+need to go to Netlify to set a custom domain.
 
 ## TODO
 
-Core functionality:
+ - Allow themes to specify custom configuration that they
+ need. See note about `list-opts.edn` and `site-opts.edn` in `themes/default/README.md`.
+ - Support multiple users (i.e. add a user key to sites, posts, and lists). Also
+ - Landing page
+ - Tons of UX work
 
- - Add support for newsletters via Mailgun
- - Create a fully-featured default theme
- - Update the data model to support multiple users
- - Figure out some kind of sandbox for themes so that a managed instance of
-   Platypub can safely run custom themes from users. Hopefully this is
-   workable. If in-JVM sandboxing doesn't work, maybe run an external process
-   (e.g. Babashka) and sandbox that somehow? Use Docker if we absolutely have
-   to? Decide how themes should be packaged and shared.
+### Going forward: evolutionary stages
 
-Additional stuff:
+Stage 1: Platypub can be used locally by a single user. (Current stage)
 
- - Lots of various UI improvements, for example:
-   - Make TinyMCE's color scheme match Platypub's in dark mode
-   - Add tooltips etc as needed
-   - Make `com.platypub.ui/image` support uploading images (currently I upload
-     images in TinyMCE then copy the URL)
- - Make a simple landing page
- - (Bonus points) add some kind of editor within Platypub so you can edit
-   themes from there
-    - great way to get people hooked on Clojure
- - Schedule newsletters and/or posts
- - Import posts from a CSV or something
- - Integrate with Stripe so that anyone who wants to can provide Platypub as a
-   managed service and at a minimum cover hosting costs
-    - And if someone wants to try to build a business off of Platypub that
-      would be awesome
- - And of course, documentation
+Stage 2: Platypub can be ran as a managed web service and used by multiple users, without
+custom themes. Users must supply their own API keys for Mailgun, Netlify, and Recaptcha. And
+maybe S3.
 
-## Commands
+Stage 3: Like stage 2, but with custom themes. Need to be able to run themes in
+a sandbox, ideally with https://www.cloudflare.com/lp/workers-for-platforms/.
+I'll apply for access once we're ready, though I'm guessing they only care
+about enterprise at this point. If needed we could hopefully use AWS Lambda
+without much too much trouble, though I'm inclined to just wait until
+Cloudflare opens up access. (Probably everyone who uses Platypub will be self-hosting/running it
+locally for a while anyway.)
+
+Stage 4: Like stage 3, but users don't have to bring their own API keys.
+
+Stage 5: Theme development can be done from within Platypub. Platypub becomes
+good at sucking people into Clojure/programming in general.
+
+## Relevant commands
 
 ### `./task dev`
 
@@ -86,6 +83,9 @@ Connect your editor to nrepl port 7888. Whenever you save a file, Biff will:
 ### `./task clean`
 
 Deletes generated files.
+
+## Commands that technically work since this is a Biff app but are nevertheless irrelevant since
+## you're probably running this locally
 
 ### `./task deploy`
 

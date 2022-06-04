@@ -46,7 +46,7 @@
         :list/address address
         :list/title ""
         :list/reply-to ""
-        :list/theme "default-email"}])
+        :list/theme "default"}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
