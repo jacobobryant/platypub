@@ -1,4 +1,0 @@
-;; Might want to change this to something else, though I
-;; wouldn't necessarily care if one of your subscribers ended
-;; up sending a letter to my own virtual address.
-{:list/mailing-address "138 E 12300 S, Unit #654, Draper, UT 84020"}

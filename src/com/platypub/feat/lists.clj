@@ -19,7 +19,8 @@
                 title
                 theme
                 tags
-                reply-to]} params
+                reply-to
+                mailing-address]} params
         address (:list/address (xt/entity db (parse-uuid id)))]
     (mailgun/update! req address {:name title})
     (biff/submit-tx req
@@ -32,7 +33,8 @@
         :list/tags (->> (str/split tags #"\s+")
                         (remove empty?)
                         distinct
-                        vec)}])
+                        vec)
+        :list/mailing-address mailing-address}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
@@ -46,7 +48,8 @@
         :list/address address
         :list/title ""
         :list/reply-to ""
-        :list/theme "default"}])
+        :list/theme "default"
+        :list/mailing-address ""}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
@@ -73,15 +76,17 @@
            :action (str "/newsletters/" list-id)
            :hidden {:id list-id}
            :class '[flex flex-col flex-grow]}
+          (ui/text-input {:id "address" :label "Mailgun address" :value (:list/address lst) :disabled true})
+          [:.h-3]
           (ui/text-input {:id "title" :label "Title" :value (:list/title lst)})
           [:.h-3]
           (ui/text-input {:id "reply-to" :label "Reply To" :value (:list/reply-to lst)})
           [:.h-3]
-          (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
-          [:.h-3]
           (ui/text-input {:id "tags" :label "Tags" :value (str/join " " (:list/tags lst))})
           [:.h-3]
-          (ui/text-input {:id "address" :label "Address" :value (:list/address lst) :disabled true})
+          (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
+          [:.h-3]
+          (ui/text-input {:id "mailing-address" :label "Mailing address" :value (:list/mailing-address lst)})
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]

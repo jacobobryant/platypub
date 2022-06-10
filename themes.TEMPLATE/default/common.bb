@@ -223,10 +223,7 @@
                                           ((set (:list/tags lst)) (:site/tag site)))))
                            first)
                       site))
-        post (get db post-id)
-        lst (merge lst
-                   (when (fs/exists? "list-opts.edn")
-                     (edn/read-string (slurp "list-opts.edn"))))]
+        post (get db post-id)]
     (assoc opts
            :site site
            :list lst
