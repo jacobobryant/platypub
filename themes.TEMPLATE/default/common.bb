@@ -70,8 +70,10 @@
       [:meta {:content title :property "og:title"}]
       [:meta {:content description :property "og:description"}]
       (when image
-        [:meta {:content image :property "og:image"}])
-      [:meta {:content "summary" :name "twitter:card"}]
+        (list
+          [:meta {:content "summary_large_image" :name "twitter:card"}]
+          [:meta {:content image :name "twitter:image"}]
+          [:meta {:content image :property "og:image"}]))
       [:meta {:content (str url path) :property "og:url"}]
       [:link {:ref "canonical" :href (str url path)}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
