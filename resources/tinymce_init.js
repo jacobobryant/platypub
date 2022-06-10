@@ -43,6 +43,7 @@ tinymce.init({ selector: '#content',
   plugins: 'code autosave lists anchor link autolink codesample emoticons fullscreen nonbreaking preview wordcount image autoresize',
   //toolbar: 'code',
   images_upload_handler: image_upload_handler,
+  toolbar_sticky: true,
   menu: {
     file: { title: 'File', items: 'restoredraft' },
     edit: { title: 'Edit', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
