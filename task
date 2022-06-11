@@ -11,14 +11,6 @@ trench () {
   server trench -p 7888 -e "$@"
 }
 
-install-tailwind () {
-  echo Downloading the latest version of Tailwind CSS...
-  curl -LO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-$TAILWIND_BUILD
-  mkdir -p bin
-  mv tailwindcss-$TAILWIND_BUILD bin/tailwindcss
-  chmod +x bin/tailwindcss
-}
-
 run () {
   mkdir -p target/resources
   clj "$@" \
@@ -27,9 +19,6 @@ run () {
 }
 
 dev () {
-  if ! [ -x bin/tailwindcss ]; then
-    install-tailwind
-  fi
   echo 7888 > .nrepl-port
   BIFF_ENV=dev run
 }

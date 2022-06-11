@@ -125,7 +125,7 @@
      [:link {:rel "self" :href feed-url :type "application/atom+xml"}]
      [:link {:href url}]
      (for [{:post/keys [title slug published-at html] :as post} (take 10 posts)
-           :let [url (str url "/p/" slug)
+           :let [url (str url "/p/" slug "/")
                  author (author (assoc opts :post post))]]
        [:entry
         [:title {:type "html"} title]
@@ -165,10 +165,10 @@
 (defn tailwind! [opts]
   (when (fs/exists? "tailwind.config.js.TEMPLATE")
     (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE")
-                                              {:primary (doto (custom-key opts :com.platypub/primary-color) prn)
+                                              {:primary (custom-key opts :com.platypub/primary-color)
                                                :accent (custom-key opts :com.platypub/accent-color)
                                                :tertiary (custom-key opts :com.platypub/tertiary-color)})))
-  (-> (shell/sh "tailwindcss"
+  (-> (shell/sh "npx" "tailwindcss"
                 "-c" "tailwind.config.js"
                 "-i" "tailwind.css"
                 "-o" "public/css/main.css"

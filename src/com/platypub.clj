@@ -56,7 +56,7 @@
                  (log/info "deleting" f)
                  (io/delete-file f))))
     (log/info "Generating CSS...")
-    (biff/sh "bin/tailwindcss"
+    (biff/sh "npx" "tailwindcss"
              "-c" "resources/tailwind.config.js"
              "-i" "resources/tailwind.css"
              "-o" "target/resources/public/css/main.css"

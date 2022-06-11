@@ -13,17 +13,14 @@ Run the following:
 ```
 cp config.edn.TEMPLATE config.edn
 cp config.sh.TEMPLATE config.sh
-cp -r themes.TEMPLATE themes
 npm install
-./task install-tailwind
+# Optional, but speeds up the first website rendering.
+(cd themes/default; npm install)
 ```
 
-You'll also need `bb` and `tailwindcss` on your path. See [Babashka
-Quickstart](https://github.com/babashka/babashka#quickstart). For Tailwind,
-after running `./task install-tailwind` above, you could do `sudo cp
-bin/tailwindcss /usr/local/bin/`.
-
-Then add credentials for Netlify, S3, Mailgun, and Recaptcha to your config. See the
+You'll also need `bb` on your path. See [Babashka
+Quickstart](https://github.com/babashka/babashka#quickstart). Then add
+credentials for Netlify, S3, Mailgun, and Recaptcha to your config. See the
 comments in `config.edn`.
 
 Finally, run `./task dev` to start the application
@@ -40,15 +37,7 @@ Some tasks must be done from within Netlify/Mailgun instead of Platypub. e.g.
 you'll need to go to Mailgun to see your current subscriber list, and you'll
 need to go to Netlify to set a custom domain.
 
-## TODO
-
- - Allow themes to specify custom configuration that they
- need. See note about `list-opts.edn` and `site-opts.edn` in `themes/default/README.md`.
- - Support multiple users (i.e. add a user key to sites, posts, and lists). Also
- - Landing page
- - Tons of UX work
-
-### Going forward: evolutionary stages
+### Roadmap
 
 Stage 1: Platypub can be used locally by a single user. (Current stage)
 
@@ -69,7 +58,7 @@ Stage 4: Like stage 3, but users don't have to bring their own API keys.
 Stage 5: Theme development can be done from within Platypub. Platypub becomes
 good at sucking people into Clojure/programming in general.
 
-## Relevant commands
+## Commands
 
 ### `./task dev`
 
@@ -84,8 +73,8 @@ Connect your editor to nrepl port 7888. Whenever you save a file, Biff will:
 
 Deletes generated files.
 
-## Commands that technically work since this is a Biff app but are nevertheless irrelevant since
-## you're probably running this locally
+<!--
+Uncomment this after we get to stage 2.
 
 ### `./task deploy`
 
@@ -121,3 +110,4 @@ Open an SSH tunnel so you can connect to the server via nREPL.
 Runs `./task logs` and `./task prod-repl`. In addition, whenever you save a
 file, it will be copied to the server (via rsync) and evaluated, after which
 HTML and CSS will be regenerated.
+-->

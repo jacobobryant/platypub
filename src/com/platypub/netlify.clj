@@ -10,8 +10,7 @@
 (defn deploy! [{:keys [api-key site-id dir draft]}]
   (when (.exists (io/file dir "netlify/functions"))
     (println "Preparing functions...")
-    (biff/sh "npm" "install" :dir dir)
-    (biff/sh "zip-it-and-ship-it" "netlify/functions" "functions-dist" :dir dir))
+    (biff/sh "npx" "zip-it-and-ship-it" "netlify/functions" "functions-dist" :dir dir))
   (let [path->file (->> (file-seq (io/file dir "public"))
                         (filter #(.isFile %))
                         (map (fn [f]

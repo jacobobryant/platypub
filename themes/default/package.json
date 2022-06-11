@@ -1,28 +1,9 @@
 {
-  "name": "biffweb",
-  "version": "1.0.0",
-  "description": "",
-  "main": "tailwind.config.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jacobobryant/platypub-biffweb-theme.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/jacobobryant/platypub-biffweb-theme/issues"
-  },
-  "homepage": "https://github.com/jacobobryant/platypub-biffweb-theme#readme",
   "dependencies": {
+    "@netlify/zip-it-and-ship-it": "^5.10.1",
+    "@tailwindcss/forms": "^0.5.2",
     "axios": "^0.27.2",
     "busboy": "^1.6.0",
-    "@tailwindcss/forms": "^0.5.2"
-  },
-  "devDependencies": {
     "chokidar-cli": "^3.0.0",
     "tailwindcss": "^3.0.24"
   }

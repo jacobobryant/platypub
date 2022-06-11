@@ -1,11 +1,8 @@
 # Platypub default theme
 
-Must have `bb` and `tailwindcss` on path.
+Must have `bb` on path.
 
 ## Setup
-
-Edit `list-opts.edn` and `site-opts.edn`. Later these fields will be added to
-the Platypub app.
 
 Within Platypub, you'll want to have at least one site, newsletter, and post.
 Tags are used to specify which sites, newsletters, and posts go together. For
@@ -23,12 +20,11 @@ For using this theme as-is, you'll also want to create three additional special 
  - One with `example-site page` for the tags and `about` for the slug. This will
    be linked to from the default site's nav bar.
 
-This theme can use Discourse for hosting blog comments, but for now I've
-commented that code out. (See
-[https://blog.thesample.ai/p/10k-subscriptions/#discourse-comments](https://blog.thesample.ai/p/10k-subscriptions/#discourse-comments)
-for an example.)
-
 ## Theme development
+
+Make your own theme by copying this folder, e.g. `cp -r themes/default
+themes/mytheme`. Then go to your site and newsletter in Platypub and change the
+theme to `mytheme` (or whatever you called the directory).
 
 ### Website
 
