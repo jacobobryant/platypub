@@ -1,0 +1,23 @@
+body {
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 140%;
+}
+
+img {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  border: none;
+  display: block;
+  margin: 10px 0;
+}
+
+hr {
+  border-width: 0.5px;
+}
+
+a {
+  text-decoration: none;
+  color: #0066cc;
+}

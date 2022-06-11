@@ -30,6 +30,14 @@
   ([date]
    (format-date rfc3339 date)))
 
+(defn read-edn-file [path]
+  (when (fs/exists? path)
+    (edn/read-string (slurp path))))
+
+(defn custom-key [opts k]
+  (or (not-empty (get-in opts [:site :site/custom-config k]))
+      (get-in opts [:custom-config k])))
+
 (def emdash [:span (raw-string "&mdash;")])
 
 (def endash [:span (raw-string "&#8211;")])
@@ -55,7 +63,6 @@
                 (or (get opts (keyword "base" k))
                     (get-in opts [:post (keyword "post" k)])
                     (get-in opts [:site (keyword "site" k)])))
-        {:site/keys [cloudflare-token]} site
         title (->> [title (:site/title site)]
                    distinct
                    (str/join " | "))]
@@ -87,11 +94,8 @@
       [:script {:src "https://www.google.com/recaptcha/api.js"
                 :async "async"
                 :defer "defer"}]
-      (when cloudflare-token
-        [:script
-         {:data-cf-beacon (json/generate-string {:token cloudflare-token})
-          :src "https://static.cloudflareinsights.com/beacon.min.js",
-          :defer "defer"}])
+      (when-some [html (custom-key opts :com.platypub/embed-html)]
+        (raw-string html))
       head]
      [:body
       {:style {:position "absolute"
@@ -101,8 +105,17 @@
                :flex-direction "column"}}
       body]]))
 
+(defn author [{:keys [post] {:keys [site/custom-config]} :site :as opts}]
+  {:name (or (:post/author-name post)
+             (custom-key opts :com.platypub/author-name))
+   :url (or (:post/author-uri post)
+            (custom-key opts :com.platypub/author-url))
+   :image (or (:post/author-image post)
+              (custom-key opts :com.platypub/author-image))})
+
 (defn atom-feed* [{{:site/keys [title description image url] :as site} :site
-                   :keys [posts path]}]
+                   :keys [posts path]
+                   :as opts}]
   (let [feed-url (str url path)
         posts (remove #(some (:post/tags %) ["unlisted"]) posts)]
     [:feed {:xmlns "http://www.w3.org/2005/Atom"}
@@ -111,8 +124,9 @@
      [:updated (format-date (:post/published-at (first posts)))]
      [:link {:rel "self" :href feed-url :type "application/atom+xml"}]
      [:link {:href url}]
-     (for [{:post/keys [title slug published-at html author-name author-uri]} (take 10 posts)
-           :let [url (str url "/p/" slug)]]
+     (for [{:post/keys [title slug published-at html] :as post} (take 10 posts)
+           :let [url (str url "/p/" slug)
+                 author (author (assoc opts :post post))]]
        [:entry
         [:title {:type "html"} title]
         [:id (url-encode url)]
@@ -120,29 +134,23 @@
         [:content {:type "html"} html]
         [:link {:href url}]
         [:author
-         [:name (or author-name (:site/author-name site))]
-         [:uri (or author-uri (:site/author-uri site))]]])]))
+         [:name (:name author)]
+         [:uri (:url author)]]])]))
 
-(defn embed-discourse [{:keys [forum-url post-url]}]
-  (list
-    [:div#discourse-comments]
-    [:script {:type "text/javascript"}
-     (raw-string
-       "DiscourseEmbed = { discourseUrl: '" forum-url "',"
-       "                   discourseEmbedUrl: '" post-url "' };"
-       "(function() { "
-       "  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true; "
-       "  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js'; "
-       "  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d); "
-       "})();")]))
-
-(defn author [{:keys [post site]}]
-  {:name (or (:post/author-name post)
-             (:site/author-name site))
-   :url (or (:post/author-uri post)
-            (:site/author-uri site))
-   :image (or (:post/author-image post)
-              (:site/author-image site))})
+(defn embed-discourse [{:keys [site base/path] :as opts}]
+  (when-some [forum-url (custom-key opts :com.platypub/discourse-url)]
+    (list
+      [:div.text-xl.font-bold.mb-3 "Comments"]
+      [:div#discourse-comments.mb-5]
+      [:script {:type "text/javascript"}
+       (raw-string
+         "DiscourseEmbed = { discourseUrl: '" forum-url "',"
+         "                   discourseEmbedUrl: '" (str (:site/url site) path) "' };"
+         "(function() { "
+         "  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true; "
+         "  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js'; "
+         "  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d); "
+         "})();")])))
 
 (defn render! [path doctype hiccup]
   (let [path (str "public" (str/replace path #"/$" "/index.html"))]
@@ -154,9 +162,12 @@
            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
            (atom-feed* (assoc opts :path "/feed.xml"))))
 
-(defn tailwind! [site]
+(defn tailwind! [opts]
   (when (fs/exists? "tailwind.config.js.TEMPLATE")
-    (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE") site)))
+    (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE")
+                                              {:primary (doto (custom-key opts :com.platypub/primary-color) prn)
+                                               :accent (custom-key opts :com.platypub/accent-color)
+                                               :tertiary (custom-key opts :com.platypub/tertiary-color)})))
   (-> (shell/sh "tailwindcss"
                 "-c" "tailwind.config.js"
                 "-i" "tailwind.css"
@@ -189,9 +200,10 @@
                (page (assoc opts :base/path path)))))
 
 (defn derive-opts [{:keys [db site-id list-id post-id account] :as opts}]
-  (let [site (merge (get db site-id)
-                    (when (fs/exists? "site-opts.edn")
-                      (edn/read-string (slurp "site-opts.edn"))))
+  (let [site (get db site-id)
+        custom-defaults (->> (read-edn-file "custom-schema.edn")
+                             (map (juxt :key :default))
+                             (into {}))
         posts (->> (vals db)
                    (map #(update % :post/tags set))
                    (filter (fn [post]
@@ -214,7 +226,6 @@
                              (and (= :list (:db/doc-type lst))
                                   ((:list/tags lst) (:site/tag site)))))
                    first))
-        ;_ (prn lst)
         site (if site-id
                site
                (merge (->> (vals db)
@@ -230,7 +241,8 @@
            :post post
            :posts posts
            :welcome welcome
-           :pages pages)))
+           :pages pages
+           :custom-defaults custom-defaults)))
 
 (defn netlify-fn-config! [{:keys [db site-id site welcome account] lst :list :as opts}]
   (spit "netlify/functions/config.json"
@@ -258,6 +270,7 @@
               (-> path
                   (str/replace #"^public" "")
                   (str/replace #"index.html$" ""))))
-       (remove exclude)
+       (remove (fn [path]
+                 (some #(re-matches % path) exclude)))
        (str/join "\n")
        (spit "public/sitemap.txt")))

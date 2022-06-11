@@ -1,4 +1,4 @@
-# Platypub theme for biffweb.com
+# Platypub default theme
 
 Must have `bb` and `tailwindcss` on path.
 

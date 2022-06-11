@@ -6,7 +6,8 @@
 /storage/
 /tailwindcss
 /target
-/themes
+/themes/*
+!/themes/default/
 .calva/
 .clj-kondo/
 .lsp/

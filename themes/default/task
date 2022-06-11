@@ -10,7 +10,7 @@ dev () {
       -i 'tailwind.config.js' \
       -i 'node_modules' \
       -c 'rm -rf public && ./render-site' &
-  npx netlify dev -d public
+  netlify dev -d public
 }
 
 "$@"

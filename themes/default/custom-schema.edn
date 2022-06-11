@@ -1,0 +1,27 @@
+[{:label "Primary color"
+  :default "#343a40"
+  :key :com.platypub/primary-color}
+ {:label "Accent color"
+  :default "#009b50"
+  :key :com.platypub/accent-color}
+ {:label "Tertiary color"
+  :default "#e5e7eb"
+  :key :com.platypub/tertiary-color}
+ {:label "Logo image URL"
+  :description "Suggested dimensions: 320x60 px"
+  :key :com.platypub/logo-image}
+ {:label "Logo destination URL"
+  :description "Where should people go when they click on the logo?"
+  :default "/"
+  :key :com.platypub/logo-url}
+ {:label "Author name"
+  :key :com.platypub/author-name}
+ {:label "Author URL"
+  :key :com.platypub/author-url}
+ {:label "Author image URL"
+  :key :com.platypub/author-image}
+ {:label "Discourse forum URL"
+  :key :com.platypub/discourse-url}
+ {:label "Embed HTML"
+  :description "This snippet will be injected into the head of every page. Useful for analytics."
+  :key :com.platypub/embed-html}]
