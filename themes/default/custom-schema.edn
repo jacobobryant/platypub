@@ -21,6 +21,7 @@
  {:label "Author image URL"
   :key :com.platypub/author-image}
  {:label "Discourse forum URL"
+  :description "Optional. If you set up a Discourse forum, you can use it to embed comments on your blog posts."
   :key :com.platypub/discourse-url}
  {:label "Embed HTML"
   :description "This snippet will be injected into the head of every page. Useful for analytics."

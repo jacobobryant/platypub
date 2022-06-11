@@ -14,15 +14,15 @@
   (apply
     biff/base-html
     (-> opts
-        (merge #:base{:title "My Application"
+        (merge #:base{:title "Platypub"
                       :lang "en-US"
                       :icon "/img/glider.png"
-                      :description "My Application Description"
+                      :description ""
                       :image "https://clojure.org/images/clojure-logo-120b.png"})
         (update :base/head (fn [head]
                              (concat [[:link {:rel "stylesheet" :href (css-path)}]
-                                      [:script {:src "https://unpkg.com/htmx.org@1.6.1"}]
-                                      [:script {:src "https://unpkg.com/hyperscript.org@0.9.3"}]]
+                                      [:script {:src "https://unpkg.com/htmx.org@1.7.0"}]
+                                      [:script {:src "https://unpkg.com/hyperscript.org@0.9.5"}]]
                                      head))))
     body))
 

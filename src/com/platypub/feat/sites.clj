@@ -48,7 +48,7 @@
     {:status 303
      :headers {"location" (str "/sites/" id)}}))
 
-(defn new-site [req]
+(defn new-site [{:keys [session] :as req}]
   (let [id (random-uuid)
         {:keys [ssl_url
                 name
@@ -56,6 +56,7 @@
     (biff/submit-tx req
       [{:db/doc-type :site
         :xt/id id
+        :site/user (:uid session)
         :site/url ssl_url
         :site/title name
         :site/description ""
@@ -74,22 +75,6 @@
       :db/op :delete}])
   {:status 303
    :headers {"location" "/sites"}})
-
-(defn download [uri file]
-  (io/make-parents file)
-  ;; I'm using http/get instead of io/input-stream to prevent a malicious user
-  ;; from passing in a path to a local file. Inspecting uri might be another
-  ;; option?
-  (with-open [in (:body (http/get uri {:as :stream}))
-              out (io/output-stream file)]
-    (io/copy in out)))
-
-(defn cache-file! [{:keys [url force]}]
-  (let [path (io/file "storage/cache/" (str (java.util.UUID/nameUUIDFromBytes (.getBytes url))))]
-    (when (or force (not (.exists path)))
-      (log/info "Downloading" url)
-      (download url path))
-    path))
 
 (defn export [{:keys [path-params] :as req}]
   {:status 200
@@ -251,7 +236,9 @@
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         sites (q db
                  '{:find (pull site [*])
-                   :where [[site :site/title]]})]
+                   :in [user]
+                   :where [[site :site/user user]]}
+                 (:uid session))]
     (ui/nav-page
       {:current :sites
        :email email}

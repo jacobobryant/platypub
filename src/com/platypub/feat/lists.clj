@@ -22,7 +22,7 @@
                 reply-to
                 mailing-address]} params
         address (:list/address (xt/entity db (parse-uuid id)))]
-    (mailgun/update! req address {:name title})
+    (mailgun/update! req address {:name (or (not-empty title) "no title")})
     (biff/submit-tx req
       [{:db/doc-type :list
         :db/op :update
@@ -38,13 +38,14 @@
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
-(defn new-list [{:keys [mailgun/domain] :as req}]
+(defn new-list [{:keys [mailgun/domain session] :as req}]
   (let [id (random-uuid)
         address (str id "@" domain)]
     (mailgun/create! req address)
     (biff/submit-tx req
       [{:db/doc-type :list
         :xt/id id
+        :list/user (:uid session)
         :list/address address
         :list/title ""
         :list/reply-to ""
@@ -105,7 +106,9 @@
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         lists (q db
                  '{:find (pull list [*])
-                   :where [[list :list/address]]})]
+                   :in [user]
+                   :where [[list :list/user user]]}
+                 (:uid session))]
     (ui/nav-page
       {:current :newsletters
        :email email}

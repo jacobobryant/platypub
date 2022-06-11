@@ -12,15 +12,11 @@
 (def schema
   {:user/id :uuid
    :user/email :string
-   :user/foo :string
-   :user/bar :string
-   :user [:map {:closed true}
-          [:xt/id :user/id]
-          :user/email
-          [:user/foo {:optional true}]
-          [:user/bar {:optional true}]]
+   :user (doc {:id :user/id
+               :required [:user/email]})
 
    :post/id :uuid
+   :post/user :user/id
    :post/title :string
    :post/html :string
    :post/published-at inst?
@@ -28,42 +24,35 @@
    :post/slug :string
    :post/description :string
    :post/tags [:sequential :string]
-   :post/authors [:sequential :author/id]
    :post/canonical :string
    :post/image :string
    :post/status [:enum :draft :published]
    :post (doc {:id :post/id
-               :required [:post/title
+               :required [:post/user
+                          :post/title
                           :post/html
                           :post/published-at
                           :post/edited-at
                           :post/slug
                           :post/description
                           :post/tags
-                          :post/authors
                           :post/canonical
                           :post/image
                           :post/status]})
 
-   :author/id :uuid
-   :author/name :string
-   :author/image :string
-   :author/url :string
-   :author (doc {:id :author/id
-                 :required [:author/name
-                            :author/image
-                            :author/url]})
-
    :image/id :uuid
+   :image/user :user/id
    :image/url :string
    :image/filename :string
    :image/uploaded-at inst?
    :image (doc {:id :image/id
-                :required [:image/url
+                :required [:image/user
+                           :image/url
                            :image/filename
                            :image/uploaded-at]})
 
    :site/id :uuid
+   :site/user :user/id
    :site/url :string
    :site/title :string
    :site/description :string
@@ -74,7 +63,8 @@
    :site/netlify-id :string
    :site/custom-config map?
    :site (doc {:id :site/id
-               :required [:site/url
+               :required [:site/user
+                          :site/url
                           :site/title
                           :site/description
                           :site/image
@@ -85,6 +75,7 @@
                :optional [:site/custom-config]})
 
    :list/id :uuid
+   :list/user :user/id
    :list/address :string
    :list/title :string
    :list/theme :string
@@ -92,7 +83,8 @@
    :list/tags [:sequential :string]
    :list/mailing-address :string
    :list (doc {:id :list/id
-               :required [:list/address
+               :required [:list/user
+                          :list/address
                           :list/title
                           :list/theme
                           :list/reply-to]

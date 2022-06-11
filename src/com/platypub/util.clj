@@ -9,6 +9,8 @@
             [ring.util.mime-type :as mime]
             [ring.util.time :as ring-time]))
 
+(defmacro else->> [& forms] `(->> ~@(reverse forms)))
+
 (defn split-by [pred coll]
   [(remove pred coll)
    (filter pred coll)])
@@ -104,17 +106,19 @@
              "content-type" (mime/ext-mime-type (.getName file))}
    :body file})
 
-(defn get-render-opts [{:keys [biff/db] :as sys}]
+(defn get-render-opts [{:keys [biff/db session] :as sys}]
   (let [account (select-keys sys [:mailgun/api-key
                                   :mailgun/domain
                                   :recaptcha/secret
                                   :recaptcha/site])
-        docs (for [[doc-type k] [[:post :post/title]
-                                 [:site :site/url]
-                                 [:list :list/address]]
+        docs (for [[doc-type k] [[:post :post/user]
+                                 [:site :site/user]
+                                 [:list :list/user]]
                    doc (q db
                           {:find '(pull doc [*])
-                           :where [['doc k]]})]
+                           :in '[user]
+                           :where [['doc k 'user]]}
+                          (:uid session))]
                (assoc doc :db/doc-type doc-type))]
     {:account account
      :db (into {} (map (juxt :xt/id identity)) docs)}))

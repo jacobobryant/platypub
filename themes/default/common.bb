@@ -106,12 +106,9 @@
       body]]))
 
 (defn author [{:keys [post] {:keys [site/custom-config]} :site :as opts}]
-  {:name (or (:post/author-name post)
-             (custom-key opts :com.platypub/author-name))
-   :url (or (:post/author-uri post)
-            (custom-key opts :com.platypub/author-url))
-   :image (or (:post/author-image post)
-              (custom-key opts :com.platypub/author-image))})
+  {:name (custom-key opts :com.platypub/author-name)
+   :url (custom-key opts :com.platypub/author-url)
+   :image (custom-key opts :com.platypub/author-image)})
 
 (defn atom-feed* [{{:site/keys [title description image url] :as site} :site
                    :keys [posts path]
@@ -126,7 +123,7 @@
      [:link {:href url}]
      (for [{:post/keys [title slug published-at html] :as post} (take 10 posts)
            :let [url (str url "/p/" slug "/")
-                 author (author (assoc opts :post post))]]
+                 author (author opts)]]
        [:entry
         [:title {:type "html"} title]
         [:id (url-encode url)]

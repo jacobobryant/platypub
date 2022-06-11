@@ -45,11 +45,13 @@
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
-(defn new-post [req]
+
+(defn new-post [{:keys [session] :as req}]
   (let [id (random-uuid)]
     (biff/submit-tx req
       [{:db/doc-type :post
         :xt/id id
+        :post/user (:uid session)
         :post/html ""
         :post/published-at :db/now
         :post/slug ""
@@ -59,8 +61,7 @@
         :post/description ""
         :post/image ""
         :post/canonical ""
-        :post/edited-at :db/now
-        :post/authors []}])
+        :post/edited-at :db/now}])
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
@@ -77,7 +78,9 @@
         post (xt/entity db post-id)
         lists (q db
                  '{:find (pull list [*])
-                   :where [[list :list/address]]})]
+                   :in [user]
+                   :where [[list :list/user user]]}
+                 (:uid session))]
     (ui/nav-page
       {:current :posts
        :email email}
@@ -277,7 +280,9 @@
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         posts (q db
                  '{:find (pull post [*])
-                   :where [[post :post/html]]})
+                   :in [user]
+                   :where [[post :post/user user]]}
+                 (:uid session))
         [drafts published] (util/split-by #(= :published (:post/status %)) posts)]
     (ui/nav-page
       {:current :posts
@@ -299,7 +304,7 @@
            (sort-by :post/published-at #(compare %2 %1))
            (map post-list-item)))))
 
-(defn upload-image [{:keys [s3/cdn] :as req}]
+(defn upload-image [{:keys [session s3/cdn] :as req}]
   (let [image-id (random-uuid)
         file-info (get-in req [:multipart-params "file"])
         url (str cdn "/" image-id)]
@@ -311,6 +316,7 @@
     (biff/submit-tx req
       [{:db/doc-type :image
         :xt/id image-id
+        :image/user (:uid session)
         :image/url url
         :image/filename (:filename file-info)
         :image/uploaded-at :db/now}])
