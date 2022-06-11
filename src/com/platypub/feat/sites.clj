@@ -14,7 +14,7 @@
             [ring.util.mime-type :as mime]
             [lambdaisland.uri :as uri]))
 
-(defn edit-site [{:keys [params] :as req}]
+(defn edit-site [{:keys [biff/db params] :as req}]
   (let [{:keys [id
                 url
                 title
@@ -22,18 +22,29 @@
                 image
                 tag
                 theme
-                redirects]} params]
+                redirects]} params
+        custom-schema (when-some [t (:site/theme (xt/entity db (parse-uuid id)))]
+                        (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))
+        custom-config (->> custom-schema
+                           (map (fn [{k :key}]
+                                  ;; If k is namespaced, then in params it'll
+                                  ;; be a string instead of a keyword.
+                                  [k (or (get params (subs (str k) 1))
+                                         (get params k)
+                                         "")]))
+                           (into {}))]
     (biff/submit-tx req
-      [{:db/doc-type :site
-        :db/op :update
-        :xt/id (parse-uuid id)
-        :site/title title
-        :site/url url
-        :site/description description
-        :site/image image
-        :site/tag tag
-        :site/theme theme
-        :site/redirects redirects}])
+      [(into {:db/doc-type :site
+              :db/op :update
+              :xt/id (parse-uuid id)
+              :site/title title
+              :site/url url
+              :site/description description
+              :site/image image
+              :site/tag tag
+              :site/theme theme
+              :site/redirects redirects
+              :site/custom-config custom-config})])
     {:status 303
      :headers {"location" (str "/sites/" id)}}))
 
@@ -162,7 +173,9 @@
 (defn edit-site-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         site-id (parse-uuid (:id path-params))
-        site (xt/entity db site-id)]
+        site (xt/entity db site-id)
+        custom-schema (when-some [t (:site/theme site)]
+                        (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))]
     (ui/nav-page
       {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
        :current :sites
@@ -174,6 +187,8 @@
            :action (str "/sites/" site-id)
            :hidden {:id site-id}
            :class '[flex flex-col flex-grow]}
+          (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
+          [:.h-3]
           (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
           [:.h-3]
           (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
@@ -184,11 +199,15 @@
           [:.h-3]
           (ui/text-input {:id "tag" :label "Tag" :value (:site/tag site)})
           [:.h-3]
-          (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
-          [:.h-3]
           (ui/textarea {:id "redirects" :label "Redirects" :value (:site/redirects site)})
           [:.h-3]
-          (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
+          (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
+          (for [{:keys [label description default key]} custom-schema]
+            [:.mt-3
+             (ui/text-input {:id (subs (str key) 1)
+                             :label label
+                             :description description
+                             :value (get-in site [:site/custom-config key] default)})])
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]

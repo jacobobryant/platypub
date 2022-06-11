@@ -72,6 +72,7 @@
    :site/theme :string
    :site/redirects :string
    :site/netlify-id :string
+   :site/custom-config map?
    :site (doc {:id :site/id
                :required [:site/url
                           :site/title
@@ -80,7 +81,8 @@
                           :site/tag
                           :site/theme
                           :site/redirects
-                          :site/netlify-id]})
+                          :site/netlify-id]
+               :optional [:site/custom-config]})
 
    :list/id :uuid
    :list/address :string

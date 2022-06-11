@@ -142,7 +142,7 @@
    [:.p-3.mx-auto.max-w-screen-sm.w-full
     body]))
 
-(defn text-input [{:keys [id label element]
+(defn text-input [{:keys [id label description element]
                    :or {element :input}
                    :as opts}]
   (list
@@ -159,7 +159,9 @@
                               dark:border-stone-600
                               dark:disabled:text-stone-400]
                      :name id}
-                    (dissoc opts :label))]))
+                    (dissoc opts :label :description))]
+    (when description
+      [:.text-sm.text-gray-600.dark:text-gray-400 description])))
 
 (defn textarea [opts]
   (text-input (assoc opts :element :textarea)))
