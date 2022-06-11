@@ -1,4 +1,4 @@
-# Platypub (work in progress, see TODO)
+# Platypub
 
 See [Platypub: plans for building a blogging platform with Biff](https://biffweb.com/p/platypub-plans/).
 
