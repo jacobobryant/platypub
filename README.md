@@ -6,6 +6,9 @@ In a nutshell, Platypub is an attempt to take the experience of writing your
 own static site generator in Clojure, and factor out all the incidental parts
 into a web service.
 
+Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
+[biffweb.com](https://biffweb.com) and [blog.thesample.ai](https://blog.thesample.ai/).
+
 ## Getting started
 
 Run the following:
@@ -23,21 +26,18 @@ Quickstart](https://github.com/babashka/babashka#quickstart). Then add
 credentials for Netlify, S3, Mailgun, and Recaptcha to your config. See the
 comments in `config.edn`.
 
-Finally, run `./task dev` to start the application
+Finally, run `./task dev` to start the application. Once you've signed in, you can create a site, a newsletter,
+and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
 
 (If you get an error about `parse-uuid` not being defined, it means you need to
 upgrade to Clojure 1.11.1. However I _think_ this shouldn't be a problem
 because I added `org.clojure/clojure {:mvn/version "1.11.1"}` to `deps.edn`.)
 
-After signing in, you can create blog posts and deploy/preview the site. You
-can also preview and send newsletters. See `themes/default/README.md` for
-information about modifying the theme.
-
 Some tasks must be done from within Netlify/Mailgun instead of Platypub. e.g.
 you'll need to go to Mailgun to see your current subscriber list, and you'll
 need to go to Netlify to set a custom domain.
 
-### Roadmap
+## Roadmap
 
 Stage 1: Platypub can be used locally by a single user. (Current stage)
 
