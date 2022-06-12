@@ -1,6 +1,5 @@
 (require '[hiccup2.core :as hiccup])
 (require '[hiccup.util :refer [raw-string]])
-(require '[babashka.curl :as curl])
 (require '[babashka.fs :as fs])
 (require '[selmer.parser :as selmer])
 
@@ -134,20 +133,18 @@
          [:name (:name author)]
          [:uri (:url author)]]])]))
 
-(defn embed-discourse [{:keys [site base/path] :as opts}]
-  (when-some [forum-url (custom-key opts :com.platypub/discourse-url)]
-    (list
-      [:div.text-xl.font-bold.mb-3 "Comments"]
-      [:div#discourse-comments.mb-5]
-      [:script {:type "text/javascript"}
-       (raw-string
-         "DiscourseEmbed = { discourseUrl: '" forum-url "',"
-         "                   discourseEmbedUrl: '" (str (:site/url site) path) "' };"
-         "(function() { "
-         "  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true; "
-         "  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js'; "
-         "  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d); "
-         "})();")])))
+(defn embed-discourse [{:keys [forum-url page-url]}]
+  (list
+    [:div#discourse-comments]
+    [:script {:type "text/javascript"}
+     (raw-string
+       "DiscourseEmbed = { discourseUrl: '" forum-url "',"
+       "                   discourseEmbedUrl: '" page-url "' };"
+       "(function() { "
+       "  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true; "
+       "  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js'; "
+       "  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d); "
+       "})();")]))
 
 (defn render! [path doctype hiccup]
   (let [path (str "public" (str/replace path #"/$" "/index.html"))]
@@ -178,7 +175,7 @@
        (filter #(.isFile %))
        (run! #(io/copy % (doto (io/file "public" (subs (.getPath %) (count "assets/"))) io/make-parents)))))
 
-(defn posts! [opts render-post posts]
+(defn posts! [{:keys [posts] :as opts} render-post]
   (doseq [post posts
           :let [path (str "/p/" (:post/slug post) "/")]]
     (render! path

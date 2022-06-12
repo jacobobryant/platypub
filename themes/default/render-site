@@ -148,7 +148,12 @@
        [:div.h-5]
        [:div.post-content (raw-string (:post/html post))]
        [:div.h-5]
-       (embed-discourse opts)]
+       (when-some [forum-url (custom-key opts :com.platypub/discourse-url)]
+         (list
+           [:div.text-xl.font-bold.mb-3 "Comments"]
+           (embed-discourse {:forum-url forum-url
+                             :page-url (str (:site/url site) path)})
+           [:div.h-5]))]
       (subscribe-form opts)
       [:div.bg-primary
        [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.text-white.opacity-75
@@ -219,7 +224,7 @@
     [:div.mx-auto.border.border-black
      {:style "width:1202px;height:620px"}
      [:div.flex.flex-col.justify-center.h-full.p-12
-      [:div [:img {:src "/images/the-sample-black.png"
+      [:div [:img {:src "/images/card-logo.png"
              :alt "Logo"
              :style {:max-height "60px"}}]]
       [:div {:class "h-[1.5rem]"}]
@@ -229,7 +234,7 @@
       [:div {:class "h-[2.5rem]"}]
       (byline (assoc opts :byline/card true))]]))
 
-(defn cards! [opts posts]
+(defn cards! [{:keys [posts] :as opts}]
   ;; In Firefox, you can inspect element -> screenshot node, then use as the
   ;; post image (for social media previews).
   (doseq [post posts
@@ -238,18 +243,17 @@
              "<!DOCTYPE html>"
              (render-card (assoc opts :base/path path :post post)))))
 
-(defn main [{:keys [posts site] :as opts}]
+(defn main [opts]
   (shell/sh "mkdir" "-p" "public")
   (redirects! opts)
   (netlify-fn-config! opts)
   (pages! opts render-page pages)
-  (posts! opts post-page posts)
-  (cards! opts posts)
+  (posts! opts post-page)
+  (cards! opts)
   (atom-feed! opts)
   (assets!)
   (tailwind! opts)
-  (sitemap! {:exclude #{#"/subscribed/"
-                        #".*/card/"}}))
+  (sitemap! {:exclude [#"/subscribed/" #".*/card/"]}))
 
 (time (main (derive-opts (edn/read-string (slurp "input.edn")))))
 nil
