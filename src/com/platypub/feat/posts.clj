@@ -287,9 +287,12 @@
     (ui/nav-page
       {:current :posts
        :email email}
+     [:div.flex
       (biff/form
-        {:action "/app/posts"}
-        [:button.btn {:type "submit"} "New post"])
+       {:action "/app/posts"}
+       [:button.btn {:type "submit"} "New post"])
+      [:.flex-grow]
+      [:a.link.m-3.md:hidden {:href "/sites"} "Sites"]]
       [:.h-6]
       (when (not-empty drafts)
         (list
