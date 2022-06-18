@@ -7,6 +7,7 @@
             [com.platypub.feat.sites :as sites]
             [com.platypub.schema :refer [malli-opts]]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [clojure.test :as test]
             [clojure.tools.logging :as log]
@@ -56,11 +57,14 @@
                  (log/info "deleting" f)
                  (io/delete-file f))))
     (log/info "Generating CSS...")
-    (biff/sh "npx" "tailwindcss"
-             "-c" "resources/tailwind.config.js"
-             "-i" "resources/tailwind.css"
-             "-o" "target/resources/public/css/main.css"
-             "--minify")
+    ;; Normally I'd use biff/sh which throws an exception + prints stderr when
+    ;; the command fails, but tailwind returns status 0 even if there's an
+    ;; error 😡
+    (print (:err (shell/sh "npx" "tailwindcss"
+                           "-c" "resources/tailwind.config.js"
+                           "-i" "resources/tailwind.css"
+                           "-o" "target/resources/public/css/main.css"
+                           "--minify")))
     (log/info "CSS done")))
 
 (defn on-save [sys]
