@@ -1,10 +1,10 @@
 # Platypub
 
-See [Platypub: plans for building a blogging platform with Biff](https://biffweb.com/p/platypub-plans/).
+See [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/).
 
 In a nutshell, Platypub is an attempt to take the experience of writing your
-own static site generator in Clojure, and factor out all the incidental parts
-into a web service.
+own static site generator in Clojure and factor out all the incidental parts
+(CMS, deployment, mailing lists) into a web service.
 
 Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
 [biffweb.com](https://biffweb.com) and [blog.thesample.ai](https://blog.thesample.ai/).
@@ -17,7 +17,6 @@ Run the following:
 cp config.edn.TEMPLATE config.edn
 cp config.sh.TEMPLATE config.sh
 npm install
-# Optional, but speeds up the first website rendering.
 (cd themes/default; npm install)
 ```
 
@@ -28,10 +27,6 @@ comments in `config.edn`.
 
 Finally, run `./task dev` to start the application. Once you've signed in, you can create a site, a newsletter,
 and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
-
-(If you get an error about `parse-uuid` not being defined, it means you need to
-upgrade to Clojure 1.11.1. However I _think_ this shouldn't be a problem
-because I added `org.clojure/clojure {:mvn/version "1.11.1"}` to `deps.edn`.)
 
 Some tasks must be done from within Netlify/Mailgun instead of Platypub. e.g.
 you'll need to go to Mailgun to see your current subscriber list, and you'll
