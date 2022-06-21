@@ -71,5 +71,5 @@ tinymce.init({ selector: '#content',
   codesample_global_prismjs: true,
   skin: (darkModeOn ? 'oxide-dark' : 'oxide'),
   content_css: (darkModeOn ? 'dark' : 'default'),
-  content_style: "body {font-size: 18px;}",
+  content_style: "body {font-size: 18px;} img {max-width: 100%;}",
 });
