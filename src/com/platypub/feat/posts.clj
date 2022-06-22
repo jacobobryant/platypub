@@ -287,10 +287,9 @@
     (ui/nav-page
      {:current :posts
       :email email}
-     [:div.flex
-      (biff/form
-       {:action "/app/posts"}
-       [:button.btn {:type "submit"} "New post"])]
+     (biff/form
+      {:action "/app/posts"}
+      [:button.btn {:type "submit"} "New post"])
      [:.h-6]
      (when (not-empty drafts)
        (list
