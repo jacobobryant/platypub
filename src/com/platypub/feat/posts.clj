@@ -151,7 +151,7 @@
                                              :in (pr-str render-opts)
                                              :dir dir))
                    {:to (:list/address lst)
-                    :from (str (:list/title lst) " <doreply@m.platypub.com>")
+                    :from (str (:list/title lst) " <doreply@" (:mailgun/domain req) ">")
                     :h:Reply-To (:list/reply-to lst)})]
     (cond-> msg
       (nil? (:text msg)) (assoc :text (html->md (:html msg)))
