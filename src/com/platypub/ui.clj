@@ -150,7 +150,7 @@
                           dark:bg-stone-800
                           dark:text-gray-50
                           min-h-screen]}
-      [:.flex.mx-3.sm:mx-0.overflow-x-auto.whitespace-nowrap
+      [:.flex.flex-wrap
        (pills {:options nav-options
                :active current})
        [:.flex-grow]
