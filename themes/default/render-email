@@ -18,10 +18,12 @@
        [:td body]]]]]])
 
 (defn post-url [{:keys [post site] :as opts}]
-  (str (:site/url site) "/p/" (:post/slug post) "/"))
+  (when (not-empty (:post/slug post))
+    (str (:site/url site) "/p/" (:post/slug post) "/")))
 
 (defn comments-url [opts]
-  (str (post-url opts) "#discourse-comments"))
+  (when (not-empty post-url opts)
+    (str (post-url opts) "#discourse-comments")))
 
 (defn byline [{:keys [post site] :as opts}]
   (let [author (author opts)]
@@ -76,10 +78,13 @@
     (centered
       [:div {:style {:margin "5px 0"}}
        [:a {:href (:site/url site)} (:list/title lst)]]
-      [:a {:href (post-url opts)} [:h1.title {:style {:font-size "2.75rem"
-                                                      :margin "0"
-                                                      :color "black"}}
-                                   (:post/title post)]]
+      (let [title [:h1.title {:style {:font-size "2.75rem"
+                                      :margin "0"
+                                      :color "black"}}
+                   (:post/title post)]]
+        (if (-> opts :post :post/slug not-empty)
+          [:a {:href (post-url opts)} title]
+          title))
       (space 5)
       (byline opts)
       (space 10)
