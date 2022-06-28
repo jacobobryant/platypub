@@ -22,7 +22,7 @@
     (str (:site/url site) "/p/" (:post/slug post) "/")))
 
 (defn comments-url [opts]
-  (when (not-empty post-url opts)
+  (when (not-empty (post-url opts))
     (str (post-url opts) "#discourse-comments")))
 
 (defn byline [{:keys [post site] :as opts}]
@@ -76,9 +76,9 @@
     [:meta {:name "viewport" :content "width=device-width,initial-scale=1"}]]
    [:body
     (centered
-      [:div {:style {:margin "5px 0"}}
+      [:div {:style {:margin "10px 0"}}
        [:a {:href (:site/url site)} (:list/title lst)]]
-      (let [title [:h1.title {:style {:font-size "2.75rem"
+      (let [title [:h1.title {:style {:font-size "2.25rem"
                                       :margin "0"
                                       :color "black"}}
                    (:post/title post)]]
