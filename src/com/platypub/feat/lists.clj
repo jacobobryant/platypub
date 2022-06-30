@@ -62,6 +62,45 @@
   {:status 303
    :headers {"location" "/newsletters"}})
 
+(defn list-subscriber-item [{:keys [address joined-at]}]
+  (let [joined-at (some-> joined-at
+                          java.time.Instant/parse
+                          java.util.Date/from
+                          (util/format-date "yyyy-MM-dd"))]
+    [:tr
+     [:td.pr-3 address]
+     [:td joined-at]]))
+
+(defn subscriber-record [item]
+  (let [{:keys [address vars]} item
+        {:keys [href joinedAt]} vars]
+    {:address address :joined-at joinedAt :href href}))
+
+(defn subscribers [{:keys [biff/db path-params params session] :as req}]
+  (let [{:user/keys [email]} (xt/entity db (:uid session))
+        newsletter-id (parse-uuid (:id path-params))
+        newsletter (xt/entity db newsletter-id)
+        items (->> (mailgun/get-list-members req (:list/address newsletter) params)
+                   :body
+                   :items
+                   (map subscriber-record)
+                   set
+                   (sort #(compare (:joined-at %2) (:joined-at %1))))]
+    (ui/nav-page
+     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+      :current :newsletters
+      :email email}
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+      [:div [:a.link.text-lg {:href (str "/newsletters/" newsletter-id)}
+             (or (not-empty (str/trim (:list/title newsletter))) "[No title]")]]
+      [:div.text-sm [:span.mr-3 "mailgun address"] (:list/address newsletter)]
+      [:div.pt-4.pb-3 "Subscribers: " biff/nbsp (count items)]
+      [:table
+       [:thead.text-sm
+        [:tr [:th.text-left "email address"] [:th "joined"]]]
+       [:tbody
+        (map list-subscriber-item items)]]])))
+
 (defn edit-list-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         list-id (parse-uuid (:id path-params))
@@ -99,8 +138,11 @@
         [:.h-6]]])))
 
 (defn list-list-item [{:keys [list/title xt/id]}]
-  [:.mb-4 [:a.link.block.text-lg {:href (str "/newsletters/" id)}
-           (or (not-empty (str/trim title)) "[No title]")]])
+  [:.mb-4
+   [:div [:a.link.block.text-lg {:href (str "/newsletters/" id)}
+          (or (not-empty (str/trim title)) "[No title]")]]
+   [:.text-sm.text-stone-600.dark:text-stone-300
+    [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]]])
 
 (defn lists-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
@@ -127,4 +169,5 @@
             ["/newsletters/:id"
              ["" {:get edit-list-page
                   :post edit-list}]
-             ["/delete" {:post delete-list}]]]})
+             ["/delete" {:post delete-list}]
+             ["/subscribers" {:get subscribers}]]]})
