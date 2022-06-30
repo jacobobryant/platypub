@@ -142,8 +142,7 @@
    [:div [:a.link.block.text-lg {:href (str "/newsletters/" id)}
           (or (not-empty (str/trim title)) "[No title]")]]
    [:.text-sm.text-stone-600.dark:text-stone-300
-    [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")
-                         :target "_blank"} "Subscribers"]]])
+    [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]]])
 
 (defn lists-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
