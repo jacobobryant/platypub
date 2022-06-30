@@ -8,7 +8,7 @@ img {
   max-width: 100%;
   width: auto;
   height: auto;
-  border: none;
+  border: 1px solid #eee;
   display: block;
   margin: 10px 0;
 }
@@ -20,4 +20,15 @@ hr {
 a {
   text-decoration: none;
   color: #0066cc;
+}
+
+p, li {
+  line-height: 140%;
+}
+
+blockquote {
+  margin: 1.25em 0;
+  padding: 0 1em;
+  color: #6a737d;
+  border-left: .25em solid #dfe2e5;
 }

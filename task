@@ -2,24 +2,25 @@
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 source config.sh
+PORT=${PORT:-7888}
 
 server () {
   ssh root@$SERVER "$@"
 }
 
 trench () {
-  server trench -p 7888 -e "$@"
+  server trench -p $PORT -e "$@"
 }
 
 run () {
   mkdir -p target/resources
   clj "$@" \
     -J-XX:-OmitStackTraceInFastThrow \
-    -M -m $MAIN_NS --port 7888 --middleware '[cider.nrepl/cider-middleware]'
+    -M -m $MAIN_NS --port $PORT --middleware '[cider.nrepl/cider-middleware]'
 }
 
 dev () {
-  echo 7888 > .nrepl-port
+  echo $PORT > .nrepl-port
   npm install
   for dir in themes/*; do
     if [ -f "$dir"/package.json ]; then
@@ -78,9 +79,9 @@ logs () {
 }
 
 prod-repl () {
-  echo Connect to nrepl port 7888
-  echo 7888 > .nrepl-port
-  ssh -NL 7888:localhost:7888 root@$SERVER
+  echo Connect to nrepl port $PORT
+  echo $PORT > .nrepl-port
+  ssh -NL $PORT:localhost:$PORT root@$SERVER
 }
 
 prod-dev () {
