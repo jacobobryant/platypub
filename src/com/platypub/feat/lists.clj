@@ -79,11 +79,11 @@
      :href href
      :referrer referrer}))
 
-(defn subscribers [{:keys [biff/db path-params session] :as req}]
+(defn subscribers [{:keys [biff/db path-params params session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         newsletter-id (parse-uuid (:id path-params))
         newsletter (xt/entity db newsletter-id)
-        items (->> (mailgun/get-list-members req (:list/address newsletter))
+        items (->> (mailgun/get-list-members req (:list/address newsletter) params)
                    :body
                    :items
                    (map subscriber-record)
