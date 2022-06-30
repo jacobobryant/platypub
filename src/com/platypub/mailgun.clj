@@ -29,10 +29,11 @@
             {:basic-auth ["api" api-key]
              :as :json}))
 
-(defn get-list-members [{:keys [mailgun/api-key]} address]
+(defn get-list-members [{:keys [mailgun/api-key]} address params]
   (http/get (str base-url "/lists/" address "/members/pages")
             {:basic-auth ["api" api-key]
-             :query-params {:limit 1000}
+             :query-params (merge {:subscribed true
+                                   :limit 1000} params)
              :as :json}))
 
 (defn add-sub! [{:keys [mailgun/api-key]} address params]
