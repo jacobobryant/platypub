@@ -96,11 +96,11 @@
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:div [:a.link.text-lg {:href (str "/newsletters/" newsletter-id)}
              (or (not-empty (str/trim (:list/title newsletter))) "[No title]")]]
-      [:div.text-sm [:span.mr-3 "mailgun address"] (:list/address newsletter)]
+      [:div.text-sm [:span.mr-3 "Mailgun address"] (:list/address newsletter)]
       [:div.pt-4.pb-3 "Subscribers: " biff/nbsp (count items)]
       [:table
        [:thead.text-sm
-        [:tr [:th.text-left "email address"] [:th "joined"]]]
+        [:tr [:th.text-left "Email address"] [:th "Joined"]]]
        [:tbody
         (map list-subscriber-item items)]]])))
 
