@@ -53,6 +53,14 @@ Stage 4: Like stage 3, but users don't have to bring their own API keys.
 Stage 5: Theme development can be done from within Platypub. Platypub becomes
 good at sucking people into Clojure/programming in general.
 
+## Deployment
+
+You don't need to deploy Platypub to use it. You can run it locally, since any sites you create
+will be hosted externally on Netlify anyway. However if you'd like to deploy it for convenience,
+uncomment the `:com.platypub/allowed-users` and `:com.platypub/enable-email-sigin` config keys first.
+
+See [the Biff docs](https://biffweb.com/docs/#production) for deployment instructions.
+
 ## Commands
 
 ### `./task dev`
@@ -67,9 +75,6 @@ Connect your editor to nrepl port 7888. Whenever you save a file, Biff will:
 ### `./task clean`
 
 Deletes generated files.
-
-<!--
-Uncomment this after we get to stage 2.
 
 ### `./task deploy`
 
@@ -105,4 +110,3 @@ Open an SSH tunnel so you can connect to the server via nREPL.
 Runs `./task logs` and `./task prod-repl`. In addition, whenever you save a
 file, it will be copied to the server (via rsync) and evaluated, after which
 HTML and CSS will be regenerated.
--->
