@@ -14,6 +14,12 @@ trench () {
 
 run () {
   mkdir -p target/resources
+  npm install
+  for dir in themes/*; do
+    if [ -f "$dir"/package.json ]; then
+      (cd "$dir" && npm install)
+    fi
+  done
   clj "$@" \
     -J-XX:-OmitStackTraceInFastThrow \
     -M -m $MAIN_NS --port $PORT --middleware '[cider.nrepl/cider-middleware]'
@@ -21,12 +27,6 @@ run () {
 
 dev () {
   echo $PORT > .nrepl-port
-  npm install
-  for dir in themes/*; do
-    if [ -f "$dir"/package.json ]; then
-      (cd "$dir" && npm install)
-    fi
-  done
   BIFF_ENV=dev run
 }
 
@@ -42,14 +42,16 @@ post-receive () {
 
 deploy () {
   chmod 600 config.*
-  rsync -a config.* app@$SERVER:
-  time git push $DEPLOY_TO $DEPLOY_FROM
+  rsync -a --exclude node_modules config.* themes app@$SERVER:
+  time git push --force $DEPLOY_TO $DEPLOY_FROM
 }
 
 soft-deploy () {
   chmod 600 config.*
   rsync -a --info=name1 --delete \
+    --exclude node_modules \
     config.* \
+    themes \
     deps.edn \
     task \
     src \

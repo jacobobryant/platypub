@@ -122,3 +122,6 @@
                (assoc doc :db/doc-type doc-type))]
     {:account account
      :db (into {} (map (juxt :xt/id identity)) docs)}))
+
+(defn enable-recaptcha? [sys]
+  (every? sys [:recaptcha/secret :com.platypub/enable-email-signin]))

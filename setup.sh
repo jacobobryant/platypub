@@ -128,5 +128,6 @@ ufw allow "Nginx Full"
 certbot --nginx
 
 # App dependencies
-# If you need to install additional packages for your app, you can do it here.
-# apt-get -y install ...
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+apt-get -y install nodejs
+bash < <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install)
