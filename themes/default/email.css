@@ -15,6 +15,8 @@ img {
 
 hr {
   border-width: 0.5px;
+  margin: 32px 0;
+  border-color: #a3a3a3;
 }
 
 a {
@@ -23,7 +25,11 @@ a {
 }
 
 p, li {
-  line-height: 140%;
+  line-height: 155%;
+}
+
+li {
+  margin-bottom: 12px;
 }
 
 blockquote {

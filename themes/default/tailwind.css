@@ -55,6 +55,10 @@
   .post-content h3 {
     @apply font-bold leading-tight text-gray-900 text-2xl mt-5 mb-3;
   }
+
+  .post-content hr {
+    @apply my-8 border-neutral-400;
+  }
 }
 
 .grecaptcha-badge { visibility: hidden; }
