@@ -233,7 +233,7 @@
                           :target "_blank"}
       "Export"]]]])
 
-(defn sites-page [{:keys [session biff/db] :as req}]
+(defn sites-page [{:keys [session biff/db netlify/api-key] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         sites (q db
                  '{:find (pull site [*])
@@ -245,7 +245,10 @@
        :email email}
       (biff/form
         {:action "/sites"}
-        [:button.btn {:type "submit"} "New site"])
+        (when (nil? api-key)
+          [:p "You need to enter a Netlify API key"])
+        [:button.btn {:type "submit"
+                      :disabled (nil? api-key)} "New site"])
       [:.h-6]
       (->> sites
            (sort-by :site/title)

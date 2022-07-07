@@ -15,7 +15,7 @@
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
         ;; You'll need to create a Netlify account to deploy websites.
-        :netlify/api-key "..."
+        :netlify/api-key nil
         ;; You can leave this as "no-api-key". You'll get a warning banner in
         ;; the CMS telling you to register. It's free, so might as well. They
         ;; just want you to register so they can try to get you hooked on the
@@ -32,7 +32,7 @@
         :s3/cdn "https://platypub.sfo3.cdn.digitaloceanspaces.com"
         :s3/access-key "..."
         :s3/secret-key "..."
-        :mailgun/api-key "..."
+        :mailgun/api-key nil
         :mailgun/domain "..."
         ;; Used for stopping bot form submissions on generated websites.
         ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
