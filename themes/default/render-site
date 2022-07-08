@@ -17,13 +17,10 @@
      [:div.bg-white
       {:class "h-[4px] w-[30px] my-[6px]"}])])
 
-(defn nav-options [opts]
-  (concat [["Home" "/"]
-           ["Archive" "/archive/"]]
-          (when-some [url (custom-key opts :com.platypub/discourse-url)]
-            [["Forum" url]])
-          (when (some #(= "about" (:post/slug %)) (:pages opts))
-            [["About" "/about/"]])))
+(defn parse-nav-links [opts]
+  (->> (custom-key opts :com.platypub/nav-links)
+       str/split-lines
+       (map #(str/split % #"\s+" 2))))
 
 (defn navbar [{:keys [site navbar/max-w] :as opts}]
   (list
@@ -32,13 +29,13 @@
       {:class (or max-w "max-w-screen-md")}
       (logo opts)
       [:div.flex-grow]
-      (for [[label href] (nav-options opts)]
+      (for [[href label] (parse-nav-links opts)]
         [:a.hover:underline.hidden.sm:block
          {:href href}
          label])
       hamburger-icon]]
     [:div#nav-menu.bg-primary.px-5.py-2.text-white.text-lg.hidden.transition-all.ease-in-out.sm:hidden
-     (for [[label href] (nav-options opts)]
+     (for [[href label] (parse-nav-links opts)]
        [:div.my-2 [:a.hover:underline.text-lg {:href href} label]])]))
 
 (defn byline [{:keys [post site byline/card] :as opts}]

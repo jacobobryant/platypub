@@ -25,4 +25,8 @@
   :key :com.platypub/discourse-url}
  {:label "Embed HTML"
   :description "This snippet will be injected into the head of every page. Useful for analytics."
-  :key :com.platypub/embed-html}]
+  :key :com.platypub/embed-html}
+ {:label "Navigation links"
+  :default "/ Home\n/archive/ Archive\n/about/ About"
+  :key :com.platypub/nav-links
+  :type :textarea}]

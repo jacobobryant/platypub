@@ -35,7 +35,7 @@
 
 (defn custom-key [opts k]
   (or (not-empty (get-in opts [:site :site/custom-config k]))
-      (get-in opts [:custom-config k])))
+      (get-in opts [:custom-defaults k])))
 
 (def emdash [:span (raw-string "&mdash;")])
 

@@ -190,12 +190,15 @@
           (ui/textarea {:id "redirects" :label "Redirects" :value (:site/redirects site)})
           [:.h-3]
           (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
-          (for [{:keys [label description default key]} custom-schema]
+          (for [{:keys [label description default key type]} custom-schema]
             [:.mt-3
-             (ui/text-input {:id (subs (str key) 1)
-                             :label label
-                             :description description
-                             :value (get-in site [:site/custom-config key] default)})])
+             ((case type
+                :textarea ui/textarea
+                ui/text-input)
+              {:id (subs (str key) 1)
+               :label label
+               :description description
+               :value (get-in site [:site/custom-config key] default)})])
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]
