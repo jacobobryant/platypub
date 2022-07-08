@@ -1,36 +1,29 @@
 # Platypub
 
-See [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/).
-
-In a nutshell, Platypub is an attempt to take the experience of writing your
-own static site generator in Clojure and factor out all the incidental parts
-(CMS, deployment, mailing lists) into a web service.
+Platypub is a publishing platform that's meant to give you the same amount of control as you would get from a static site generator,
+while providing the same level of convenience as WordPress, Ghost, Substack etc. See [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/).
 
 Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
 [biffweb.com](https://biffweb.com) and [blog.thesample.ai](https://blog.thesample.ai/).
 
 ## Getting started
 
+Prerequisites:
+ - JDK 11 or higher
+ - [clj](https://clojure.org/guides/getting_started)
+ - [Babashka](https://github.com/babashka/babashka#quickstart) (`bb` should be on your path)
+ - (Optional) API keys for Netlify, S3, Mailgun, and Recaptcha (see `config.edn`). You can run Platypub without these, but
+ most of the features won't be available.
+
 Run the following:
 
 ```
 cp config.edn.TEMPLATE config.edn
 cp config.sh.TEMPLATE config.sh
-npm install
-(cd themes/default; npm install)
 ```
-
-You'll also need `bb` on your path. See [Babashka
-Quickstart](https://github.com/babashka/babashka#quickstart). Then add
-credentials for Netlify, S3, Mailgun, and Recaptcha to your config. See the
-comments in `config.edn`.
-
-Finally, run `./task dev` to start the application. Once you've signed in, you can create a site, a newsletter,
+Then you can start Platypub with `./task dev`. After you see a `System started` message, the app will be running on `localhost:8080`.
+Once you've signed in, you can create a site, a newsletter,
 and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
-
-Some tasks must be done from within Netlify/Mailgun instead of Platypub. e.g.
-you'll need to go to Mailgun to see your current subscriber list, and you'll
-need to go to Netlify to set a custom domain.
 
 ## Roadmap
 
