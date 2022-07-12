@@ -14,11 +14,11 @@
 
 (defn title->slug [title]
   (-> title
-    str/lower-case
-    (str/replace #"[/|]" "-")
-    ; RFC 3986 reserved or unsafe characters in url
-    (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
-    (str/replace #"\s+" "-")))
+      str/lower-case
+      ; RFC 3986 reserved or unsafe characters in url
+      (str/replace #"[/|]" "-")
+      (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
+      (str/replace #"\s+" "-")))
 
 (defn edit-post [{:keys [params] :as req}]
   (let [{:keys [id
