@@ -14,9 +14,11 @@
 
 (defn title->slug [title]
   (-> title
-      str/lower-case
-      (str/replace #"\s+" "-")
-      (str/replace #"['\"?]" "")))
+    str/lower-case
+    (str/replace #"[/|]" "-")
+    ; RFC 3986 reserved or unsafe characters in url
+    (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
+    (str/replace #"\s+" "-")))
 
 (defn edit-post [{:keys [params] :as req}]
   (let [{:keys [id
@@ -30,24 +32,24 @@
                 draft
                 title]} params]
     (biff/submit-tx req
-                    [{:db/doc-type :post
-                      :db/op :update
-                      :xt/id (parse-uuid id)
-                      :post/title title
-                      :post/html html
-                      :post/published-at (edn/read-string published)
-                      :post/slug (or (not-empty slug) (title->slug title))
-                      :post/status (if (= draft "on")
-                                     :draft
-                                     :published)
-                      :post/tags (->> (str/split tags #"\s+")
-                                      (remove empty?)
-                                      distinct
-                                      vec)
-                      :post/description description
-                      :post/image image
-                      :post/canonical canonical
-                      :post/edited-at :db/now}])
+      [{:db/doc-type :post
+        :db/op :update
+        :xt/id (parse-uuid id)
+        :post/title title
+        :post/html html
+        :post/published-at (edn/read-string published)
+        :post/slug (or (not-empty slug) (title->slug title))
+        :post/status (if (= draft "on")
+                       :draft
+                       :published)
+        :post/tags (->> (str/split tags #"\s+")
+                        (remove empty?)
+                        distinct
+                        vec)
+        :post/description description
+        :post/image image
+        :post/canonical canonical
+        :post/edited-at :db/now}])
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
