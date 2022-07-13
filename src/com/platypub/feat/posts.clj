@@ -282,14 +282,14 @@
        [:.w-6]
        [:.h-3]])))
 
-(defn post-list-item [db {:keys [post/edited-at
-                                 post/published-at
-                                 post/html
-                                 post/title
-                                 post/status
-                                 post/tags
-                                 post/sites
-                                 xt/id]}]
+(defn post-list-item [{:keys [post/edited-at
+                              post/published-at
+                              post/html
+                              post/title
+                              post/status
+                              post/tags
+                              post/sites
+                              xt/id]}]
   [:.mb-4
    [:a.link.block {:href (str "/app/posts/" id)}
     (or (not-empty (str/trim title)) "[No title]")]
@@ -299,7 +299,7 @@
       (str "published " (biff/format-date published-at "dd MMM yyyy, H:mm aa")))
     (when (not-empty sites)
       ui/interpunct)
-    (:site/title (xt/entity db (first sites)))
+    (-> sites first :site/title)
     (when (not-empty (remove empty? tags))
       ui/interpunct)
     (str/join ", " tags)]])
@@ -307,7 +307,7 @@
 (defn app [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         posts (q db
-                 '{:find (pull post [*])
+                 '{:find (pull post [* {:post/sites [*]}])
                    :in [user]
                    :where [[post :post/user user]]}
                  (:uid session))
@@ -324,13 +324,13 @@
         [:.text-lg.my-2 "Drafts"]
         (->> drafts
              (sort-by :post/edited-by #(compare %2 %1))
-             (map #(post-list-item db %)))
+             (map post-list-item))
         [:.h-2]))
      (when (not-empty published)
        [:.text-lg.my-2 "Published"])
      (->> published
           (sort-by :post/published-at #(compare %2 %1))
-          (map #(post-list-item db %))))))
+          (map post-list-item)))))
 
 (defn upload-image [{:keys [session s3/cdn] :as req}]
   (let [image-id (random-uuid)
