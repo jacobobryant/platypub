@@ -30,7 +30,8 @@
                 image
                 canonical
                 draft
-                title]} params]
+                title
+                site-id]} params]
     (biff/submit-tx req
       [{:db/doc-type :post
         :db/op :update
@@ -49,6 +50,7 @@
         :post/description description
         :post/image image
         :post/canonical canonical
+        :post/sites (vector (parse-uuid site-id))
         :post/edited-at :db/now}])
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
@@ -182,11 +184,17 @@
 
 (defn edit-post-page [{:keys [path-params
                               biff/db
+                              session
                               tinycloud/api-key]
                        :or {api-key "no-api-key"}
                        :as req}]
   (let [post-id (parse-uuid (:id path-params))
-        post (xt/entity db post-id)]
+        post (xt/entity db post-id)
+        sites (q db
+                 '{:find (pull site [*])
+                   :in [user]
+                   :where [[site :site/user user]]}
+                 (:uid session))]
     (ui/base
       {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
                    [:script {:referrerpolicy "origin",
@@ -247,6 +255,14 @@
                           :label "Last saved"
                           :disabled true
                           :value (pr-str (:post/edited-at post))})
+          [:h-3]
+          (ui/select {:id "sites"
+                      :name "site-id"
+                      :label "Site"
+                      :default (str (first (:post/sites post)))
+                      :options (for [site (sort-by :site/title sites)]
+                                 {:label (or (not-empty (:site/title site)) "[No title]")
+                                  :value (str (:xt/id site))})})
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]
