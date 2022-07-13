@@ -27,6 +27,7 @@
    :post/canonical :string
    :post/image :string
    :post/status [:enum :draft :published]
+   :post/sites [:vector :site/id]
    :post (doc {:id :post/id
                :required [:post/user
                           :post/title
@@ -38,7 +39,8 @@
                           :post/tags
                           :post/canonical
                           :post/image
-                          :post/status]})
+                          :post/status]
+               :optional [:post/sites]})
 
    :image/id :uuid
    :image/user :user/id
