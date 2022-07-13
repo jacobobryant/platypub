@@ -203,7 +203,8 @@
                    (filter (fn [post]
                              (and (= :post (:db/doc-type post))
                                   (= :published (:post/status post))
-                                  ((:post/tags post) (:site/tag site)))))
+                                  (or ((set (:post/sites post)) site-id)
+                                      ((:post/tags post) (:site/tag site))))))
                    (sort-by :post/published-at #(compare %2 %1)))
         welcome (->> posts
                      (filter #((:post/tags %) "welcome"))
