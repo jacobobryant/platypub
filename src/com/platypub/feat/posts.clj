@@ -255,7 +255,7 @@
                           :label "Last saved"
                           :disabled true
                           :value (pr-str (:post/edited-at post))})
-          [:h-3]
+          [:.h-3]
           (ui/select {:id "sites"
                       :name "site-id"
                       :label "Site"
