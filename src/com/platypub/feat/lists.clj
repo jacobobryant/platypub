@@ -147,7 +147,7 @@
    [:.text-sm.text-stone-600.dark:text-stone-300
     [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]]])
 
-(defn lists-page [{:keys [session biff/db mailgun/api-key] :as req}]
+(defn lists-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         lists (q db
                  '{:find (pull list [*])
@@ -159,10 +159,10 @@
        :email email}
       (biff/form
         {:action "/newsletters"}
-        (when (nil? api-key)
+        (when (nil? (util/get-secret req :mailgun/api-key))
           [:p "You need to enter a Mailgun API key"])
         [:button.btn {:type "submit"
-                      :disabled (nil? api-key)} "New newsletter"])
+                      :disabled (nil? (util/get-secret req :mailgun/api-key))} "New newsletter"])
       [:.h-6]
       (->> lists
            (sort-by :list/title)

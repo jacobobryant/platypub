@@ -1,52 +1,69 @@
 (ns com.platypub.mailgun
   (:require [clj-http.client :as http]
-            [cheshire.core :as cheshire]))
+            [cheshire.core :as cheshire]
+            [com.platypub.util :as util]))
 
 (def base-url "https://api.mailgun.net/v3")
 
-(defn create! [{:keys [mailgun/api-key mailgun/domain]} address]
-  (http/post (str base-url "/lists")
-             {:basic-auth ["api" api-key]
-              :form-params {:address address
-                            :reply_preference "sender"}}))
+(defn mailgun [sys method endpoint params]
+  (http/request (merge {:method method
+                        :url (str base-url endpoint)
+                        :basic-auth ["api" (util/get-secret sys :mailgun/api-key)]}
+                       params)))
 
-(defn delete! [{:keys [mailgun/api-key]} address]
-  (http/delete (str base-url "/lists/" address)
-               {:basic-auth ["api" api-key]}))
+(defn create! [sys address]
+  (mailgun sys
+           :post
+           "/lists"
+           {:form-params {:address address
+                          :reply_preference "sender"}}))
 
-(defn update! [{:keys [mailgun/api-key]} address params]
-  (http/put (str base-url "/lists/" address)
-            {:basic-auth ["api" api-key]
-             :form-params params}))
+(defn delete! [sys address]
+  (mailgun sys
+           :delete
+           (str "/lists/" address)
+           {}))
 
-(defn get-one [{:keys [mailgun/api-key]} address]
-  (http/get (str base-url "/lists/" address)
-            {:basic-auth ["api" api-key]
-             :as :json}))
+(defn update! [sys address params]
+  (mailgun sys
+           :put
+           (str "/lists/" address)
+           {:form-params params}))
 
-(defn get-lists [{:keys [mailgun/api-key]}]
-  (http/get (str base-url "/lists/pages")
-            {:basic-auth ["api" api-key]
-             :as :json}))
+(defn get-one [sys address]
+  (mailgun sys
+           :get
+           (str "/lists/" address)
+           {:as :json}))
 
-(defn get-list-members [{:keys [mailgun/api-key]} address params]
-  (http/get (str base-url "/lists/" address "/members/pages")
-            {:basic-auth ["api" api-key]
-             :query-params (merge {:subscribed true
-                                   :limit 1000} params)
-             :as :json}))
+(defn get-lists [sys]
+  (mailgun sys
+           :get
+           "/lists/pages"
+           {:as :json}))
 
-(defn add-sub! [{:keys [mailgun/api-key]} address params]
-  (http/post (str base-url "/lists/" address "/members")
-             {:basic-auth ["api" api-key]
-              :form-params (merge {:upsert true} params)}))
+(defn get-list-members [sys address params]
+  (mailgun sys
+           :get
+           (str "/lists/" address "/members/pages")
+           {:query-params (merge {:subscribed true
+                                  :limit 1000} params)
+            :as :json}))
 
-(defn bulk-import! [{:keys [mailgun/api-key]} address members]
-  (http/post (str base-url "/lists/" address "/members.json")
-             {:basic-auth ["api" api-key]
-              :form-params {:members (cheshire/generate-string members)}}))
+(defn add-sub! [sys address params]
+  (mailgun sys
+           :post
+           (str "/lists/" address "/members")
+           {:form-params (merge {:upsert true} params)}))
 
-(defn send! [{:keys [mailgun/api-key mailgun/domain]} params]
-  (http/post (str base-url "/" domain "/messages")
-             {:basic-auth ["api" api-key]
-              :form-params params}))
+(defn bulk-import! [sys address members]
+  (mailgun sys
+           :post
+           (str "/lists/" address "/members.json")
+           {:form-params {:members (cheshire/generate-string members)}}))
+
+(defn send! [{:keys [mailgun/domain] :as sys} params]
+  (mailgun sys
+           :post
+           (str "/" domain "/messages")
+           {:form-params params}))

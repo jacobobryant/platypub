@@ -12,13 +12,14 @@ Prerequisites:
  - JDK 11 or higher
  - [clj](https://clojure.org/guides/getting_started)
  - [Babashka](https://github.com/babashka/babashka#quickstart) (`bb` should be on your path)
- - (Optional) API keys for Netlify, S3, Mailgun, and Recaptcha (see `config.edn`). You can run Platypub without these, but
+ - (Optional) API keys for Netlify, S3, Mailgun, and Recaptcha (see `config.edn` and `secrets.edn`). You can run Platypub without these, but
  most of the features won't be available.
 
 Run the following:
 
 ```
 cp config.edn.TEMPLATE config.edn
+cp secrets.edn.TEMPLATE secrets.edn
 cp config.sh.TEMPLATE config.sh
 ```
 Then you can start Platypub with `./task dev`. After you see a `System started` message, the app will be running on `localhost:8080`.

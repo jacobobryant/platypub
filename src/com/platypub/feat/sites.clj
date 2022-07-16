@@ -151,7 +151,7 @@
   (let [site (xt/entity db (parse-uuid (:id path-params)))
         dir (io/file "storage/deploys" (str (random-uuid)))]
     (generate! (assoc req :dir dir))
-    (netlify/deploy! {:api-key (:netlify/api-key req)
+    (netlify/deploy! {:api-key (util/get-secret req :netlify/api-key)
                       :site-id (:site/netlify-id site)
                       :dir (str dir)})
     (biff/sh "rm" "-rf" (str dir))
@@ -236,7 +236,7 @@
                           :target "_blank"}
       "Export"]]]])
 
-(defn sites-page [{:keys [session biff/db netlify/api-key] :as req}]
+(defn sites-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         sites (q db
                  '{:find (pull site [*])
@@ -248,10 +248,10 @@
        :email email}
       (biff/form
         {:action "/sites"}
-        (when (nil? api-key)
+        (when (nil? (util/get-secret req :netlify/api-key))
           [:p "You need to enter a Netlify API key"])
         [:button.btn {:type "submit"
-                      :disabled (nil? api-key)} "New site"])
+                      :disabled (nil? (util/get-secret req :netlify/api-key))} "New site"])
       [:.h-6]
       (->> sites
            (sort-by :site/title)

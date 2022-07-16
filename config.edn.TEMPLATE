@@ -14,13 +14,6 @@
         :biff/base-url "https://example.com"
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
-        ;; You'll need to create a Netlify account to deploy websites.
-        :netlify/api-key nil
-        ;; You can leave this as "no-api-key". You'll get a warning banner in
-        ;; the CMS telling you to register. It's free, so might as well. They
-        ;; just want you to register so they can try to get you hooked on the
-        ;; premium plugins etc, which you get access to for 30 days.
-        :tinycloud/api-key "no-api-key"
         ;; S3 is used for hosting images that you upload in the CMS. It's
         ;; intended that site themes can either copy the images to Netlify or
         ;; just link to S3.
@@ -31,12 +24,9 @@
         :s3/bucket "platypub"
         :s3/cdn "https://platypub.sfo3.cdn.digitaloceanspaces.com"
         :s3/access-key "..."
-        :s3/secret-key "..."
-        :mailgun/api-key nil
         :mailgun/domain "..."
         ;; Used for stopping bot form submissions on generated websites.
         ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
-        :recaptcha/secret ""
         :recaptcha/site ""}
  :dev {:merge [:prod]
        :com.platypub/enable-hawk true

@@ -1,6 +1,7 @@
 (ns com.platypub.util
   (:require [buddy.core.mac :as mac]
             [clj-http.client :as http]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [com.biffweb :as biff :refer [q]]
@@ -8,6 +9,18 @@
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
             [ring.util.time :as ring-time]))
+
+(defn slurp-config [path]
+  (when (.exists (io/file path))
+    (let [env (keyword (or (System/getenv "BIFF_ENV") "prod"))
+          env->config (edn/read-string (slurp path))
+          config-keys (concat (get-in env->config [env :merge]) [env])
+          config (apply merge (map env->config config-keys))]
+      config)))
+
+(defn get-secret [sys k]
+  (or (get sys k)
+      (get (slurp-config "secrets.edn") k)))
 
 (defmacro else->> [& forms] `(->> ~@(reverse forms)))
 
@@ -58,8 +71,8 @@
 
 (defn s3 [{:keys [s3/base-url
                   s3/bucket
-                  s3/access-key
-                  s3/secret-key]}
+                  s3/access-key]
+           :as sys}
           {:keys [method
                   key
                   file
@@ -82,7 +95,7 @@
                              (str k ":" v "\n")))
                       (apply str))
         string-to-sign (str method "\n" md5 "\n" content-type "\n" date "\n" headers' path)
-        signature (hmac-sha1-base64 secret-key string-to-sign)
+        signature (hmac-sha1-base64 (get-secret sys :s3/secret-key) string-to-sign)
         auth (str "AWS " access-key ":" signature)]
     (http/request {:method method
                    :url (str base-url path)
@@ -107,10 +120,10 @@
    :body file})
 
 (defn get-render-opts [{:keys [biff/db session] :as sys}]
-  (let [account (select-keys sys [:mailgun/api-key
-                                  :mailgun/domain
-                                  :recaptcha/secret
-                                  :recaptcha/site])
+  (let [account (-> sys
+                    (select-keys [:mailgun/domain :recaptcha/site])
+                    (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
+                    (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
         docs (for [[doc-type k] [[:post :post/user]
                                  [:site :site/user]
                                  [:list :list/user]]
@@ -124,4 +137,5 @@
      :db (into {} (map (juxt :xt/id identity)) docs)}))
 
 (defn enable-recaptcha? [sys]
-  (every? sys [:recaptcha/secret :com.platypub/enable-email-signin]))
+  (and (some? (:com.platypub/enable-email-signin sys))
+       (some? (get-secret sys :recaptcha/secret))))

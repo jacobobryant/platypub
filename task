@@ -41,16 +41,17 @@ post-receive () {
 }
 
 deploy () {
-  chmod 600 config.*
-  rsync -a --exclude node_modules config.* themes app@$SERVER:
+  chmod 600 config.* secrets.edn
+  rsync -a --exclude node_modules config.* secrets.edn themes app@$SERVER:
   time git push --force $DEPLOY_TO $DEPLOY_FROM
 }
 
 soft-deploy () {
-  chmod 600 config.*
+  chmod 600 config.* secrets.edn
   rsync -a --info=name1 --delete \
     --exclude node_modules \
     config.* \
+    secrets.edn \
     themes \
     deps.edn \
     task \

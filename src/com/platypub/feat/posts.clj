@@ -184,9 +184,7 @@
 
 (defn edit-post-page [{:keys [path-params
                               biff/db
-                              session
-                              tinycloud/api-key]
-                       :or {api-key "no-api-key"}
+                              session]
                        :as req}]
   (let [post-id (parse-uuid (:id path-params))
         post (xt/entity db post-id)
@@ -198,7 +196,9 @@
     (ui/base
       {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
                    [:script {:referrerpolicy "origin",
-                             :src (str "https://cdn.tiny.cloud/1/" api-key "/tinymce/6/tinymce.min.js")}]
+                             :src (str "https://cdn.tiny.cloud/1/"
+                                       (or (util/get-secret req :tinycloud/api-key) "no-api-key")
+                                       "/tinymce/6/tinymce.min.js")}]
                    [:script (biff/unsafe (slurp (io/resource "tinymce_init.js")))]
                    [:link {:rel "stylesheet" :href "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/themes/prism-okaidia.min.css"}]
                    [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]

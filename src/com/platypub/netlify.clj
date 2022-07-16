@@ -58,12 +58,12 @@
     (println "Done.")
     response))
 
-(defn create! [{:keys [netlify/api-key]}]
+(defn create! [sys]
   (http/post (str base-url "/sites")
-             {:oauth-token api-key
+             {:oauth-token (util/get-secret sys :netlify/api-key)
               :as :json}))
 
-(defn delete! [{:keys [netlify/api-key]} {:keys [site-id]}]
+(defn delete! [sys {:keys [site-id]}]
   (http/delete (str base-url "/sites/" site-id)
-               {:oauth-token api-key
+               {:oauth-token (util/get-secret sys :netlify/api-key)
                 :as :json}))

@@ -8,13 +8,13 @@
             [xtdb.api :as xt]))
 
 ;; You can enable recaptcha to prevent bot signups.
-(defn human? [{:keys [recaptcha/secret params] :as sys}]
+(defn human? [{:keys [params] :as sys}]
   (if-not (util/enable-recaptcha? sys)
     true
     (let [{:keys [success score]}
           (:body
             (http/post "https://www.google.com/recaptcha/api/siteverify"
-                       {:form-params {:secret secret
+                       {:form-params {:secret (util/get-secret sys :recaptcha/secret)
                                       :response (:g-recaptcha-response params)}
                         :as :json}))]
       (and success (<= 0.5 (or score 1))))))
@@ -36,10 +36,8 @@
             [:p "If you did not request this link, you can ignore this email."]])})
 
 (defn send-token [{:keys [biff/base-url
-                          mailgun/api-key
                           com.platypub/enable-email-signin
                           com.platypub/allowed-users
-                          biff/jwt-secret
                           anti-forgery-token
                           params] :as req}]
   (let [email (biff/normalize-email (:email params))
@@ -48,7 +46,7 @@
                  :email email
                  :state (biff/sha256 anti-forgery-token)
                  :exp-in (* 60 60)}
-                jwt-secret)
+                (util/get-secret req :biff/jwt-secret))
         url (str base-url "/auth/verify/" token)
         send-link! (fn []
                      (and (human? req)
@@ -56,7 +54,7 @@
                               (contains? allowed-users email))
                           (email-valid? req email)
                           (mailgun/send! req (signin-template req {:to email :url url}))))]
-    (if-not (and api-key enable-email-signin)
+    (if-not (and enable-email-signin (util/get-secret req :mailgun/api-key))
       (do
         (println (str "Click here to sign in as " email ": " url))
         {:headers {"location" "/auth/sent/"}
@@ -67,11 +65,11 @@
                               "/auth/fail/")}})))
 
 (defn verify-token [{:keys [biff.xtdb/node
-                            biff/jwt-secret
                             path-params
                             session
                             anti-forgery-token] :as req}]
-  (let [{:keys [intent email state]} (biff/jwt-decrypt (:token path-params) jwt-secret)
+  (let [{:keys [intent email state]} (biff/jwt-decrypt (:token path-params)
+                                                       (util/get-secret req :biff/jwt-secret))
         success (and (= intent "signin")
                      (= state (biff/sha256 anti-forgery-token)))
         get-user-id #(biff/lookup-id (xt/db node) :user/email email)
