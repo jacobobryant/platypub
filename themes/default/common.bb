@@ -208,7 +208,7 @@
                    (sort-by :post/published-at #(compare %2 %1)))
         welcome (->> posts
                      (filter #((:post/tags %) "welcome"))
-                     first)
+                      first)
         pages (->> posts
                    (filter #((:post/tags %) "page")))
         posts (->> posts
@@ -219,7 +219,8 @@
                    (map #(update % :list/tags set))
                    (filter (fn [lst]
                              (and (= :list (:db/doc-type lst))
-                                  ((:list/tags lst) (:site/tag site)))))
+                                  (or ((set (:list/sites lst)) site-id) 
+                                      ((:list/tags lst) (:site/tag site))))))
                    first))
         site (if site-id
                site
