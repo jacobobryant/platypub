@@ -20,7 +20,8 @@
                 theme
                 tags
                 reply-to
-                mailing-address]} params
+                mailing-address
+                site-id]} params
         address (:list/address (xt/entity db (parse-uuid id)))]
     (mailgun/update! req address {:name (or (not-empty title) "no title")})
     (biff/submit-tx req
@@ -34,7 +35,8 @@
                         (remove empty?)
                         distinct
                         vec)
-        :list/mailing-address mailing-address}])
+        :list/mailing-address mailing-address
+        :list/sites (vector (parse-uuid site-id))}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
 
@@ -107,7 +109,12 @@
 (defn edit-list-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         list-id (parse-uuid (:id path-params))
-        lst (xt/entity db list-id)]
+        lst (xt/entity db list-id)
+        sites (q db
+                '{:find (pull site [*])
+                  :in [user]
+                  :where [[site :site/user user]]}
+                 (:uid session))]
     (ui/nav-page
       {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
        :current :newsletters
@@ -130,6 +137,14 @@
           (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
           [:.h-3]
           (ui/text-input {:id "mailing-address" :label "Mailing address" :value (:list/mailing-address lst)})
+          [:.h-3]
+          (ui/select {:id "sites"
+                      :name "site-id"
+                      :label "Site"
+                      :default (str (first (:list/sites lst)))
+                      :options (for [site (sort-by :site/title sites)]
+                                 {:label (or (not-empty (:site/title site)) "[No title]")
+                                  :value (str (:xt/id site))})})
           [:.h-4]
           [:button.btn.w-full {:type "submit"} "Save"])
         [:.h-3]
