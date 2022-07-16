@@ -155,17 +155,20 @@
           [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
         [:.h-6]]])))
 
-(defn list-list-item [{:keys [list/title xt/id]}]
+(defn list-list-item [{:keys [list/title list/sites xt/id]}]
   [:.mb-4
    [:div [:a.link.block.text-lg {:href (str "/newsletters/" id)}
           (or (not-empty (str/trim title)) "[No title]")]]
    [:.text-sm.text-stone-600.dark:text-stone-300
-    [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]]])
+    [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]
+    (when (not-empty sites)
+      ui/interpunct)
+    (-> sites first :site/title)]])
 
 (defn lists-page [{:keys [session biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         lists (q db
-                 '{:find (pull list [*])
+                 '{:find (pull list [* {:list/sites [*]}])
                    :in [user]
                    :where [[list :list/user user]]}
                  (:uid session))]
