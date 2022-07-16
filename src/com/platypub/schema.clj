@@ -84,6 +84,7 @@
    :list/reply-to :string
    :list/tags [:sequential :string]
    :list/mailing-address :string
+   :list/sites [:vector :site/id]
    :list (doc {:id :list/id
                :required [:list/user
                           :list/address
@@ -91,6 +92,7 @@
                           :list/theme
                           :list/reply-to]
                :optional [:list/tags
-                          :list/mailing-address]})})
+                          :list/mailing-address
+                          :list/sites]})})
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})
