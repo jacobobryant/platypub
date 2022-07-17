@@ -30,6 +30,12 @@ dev () {
   BIFF_ENV=dev run
 }
 
+format () {
+  echo '{submit-tx [[:inner 0]]}' > cljfmt-indentation.edn
+  clojure -Sdeps '{:deps {cljfmt {:mvn/version "0.8.2"}}}' -M -m cljfmt.main fix --indents cljfmt-indentation.edn
+  rm cljfmt-indentation.edn
+}
+
 clean () {
   rm -rf target
 }
