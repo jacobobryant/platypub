@@ -66,6 +66,10 @@ Connect your editor to nrepl port 7888. Whenever you save a file, Biff will:
  - Regenerate static HTML and CSS files
  - Run tests
 
+### `./task format`
+
+Format the code with cljfmt
+
 ### `./task clean`
 
 Deletes generated files.
