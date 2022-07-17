@@ -28,13 +28,13 @@
         fn->sha256 (update-vals fn->file util/sha256-hex)
         {:keys [id required required_functions]
          :as response} (:body
-                         (http/post (str base-url "/sites/" site-id "/deploys")
-                                    {:oauth-token api-key
-                                     :content-type :json
-                                     :form-params {:files path->sha1
-                                                   :functions fn->sha256
-                                                   :draft draft}
-                                     :as :json}))
+                        (http/post (str base-url "/sites/" site-id "/deploys")
+                                   {:oauth-token api-key
+                                    :content-type :json
+                                    :form-params {:files path->sha1
+                                                  :functions fn->sha256
+                                                  :draft draft}
+                                    :as :json}))
         required (set required)
         required-fn (set required_functions)]
     (println "Uploading" (count required) "files and" (count required-fn) "functions")

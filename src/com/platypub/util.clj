@@ -31,7 +31,7 @@
 (defn sha-hex [file algo]
   (with-open [f (java.io.FileInputStream. file)]
     (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance algo) ]
+          md (java.security.MessageDigest/getInstance algo)]
       (loop [nread (.read f buffer)]
         (if (pos? nread)
           (do (.update md buffer 0 nread)
@@ -51,7 +51,7 @@
 (defn md5-base64 [file]
   (with-open [f (java.io.FileInputStream. file)]
     (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance "MD5") ]
+          md (java.security.MessageDigest/getInstance "MD5")]
       (loop [nread (.read f buffer)]
         (if (pos? nread)
           (do (.update md buffer 0 nread)

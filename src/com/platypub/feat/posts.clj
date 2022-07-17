@@ -55,7 +55,6 @@
     {:status 303
      :headers {"location" (str "/app/posts/" id)}}))
 
-
 (defn new-post [{:keys [session] :as req}]
   (let [id (random-uuid)]
     (biff/submit-tx req
@@ -92,55 +91,55 @@
                    :where [[list :list/user user]]}
                  (:uid session))]
     (ui/nav-page
-      {:current :posts
-       :email email}
-      (when (= "true" (:sent params))
-        [:div
-         {:class '[bg-stone-200
-                   dark:bg-stone-900
-                   p-3
-                   text-center
-                   border-l-8
-                   border-green-700]
-          :_ "on load wait 5s then remove me"}
-         "Message sent"])
-      [:.flex
-       (biff/form
-         {:id "send"
-          :action (str "/app/posts/" post-id "/send")
-          :hidden {:post-id post-id}
-          :class '[flex
-                   flex-col
-                   flex-grow
-                   max-w-lg
-                   w-full]}
-         [:.text-lg.my-2 "Send newsletter"]
-         (ui/text-input {:id "post"
-                         :label "Post"
-                         :value (:post/title post)
-                         :disabled true})
-         [:.h-3]
-         (ui/select {:label "Newsletter"
-                     :id "list"
-                     :name "list-id"
-                     :options (for [lst (sort-by :list/title lists)]
-                                {:label (or (not-empty (:list/title lst)) "[No title]")
-                                 :value (str (:xt/id lst))})})
-         [:.h-3]
-         [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
-         [:.flex.gap-3
-          (ui/text-input {:id "test-address"})
-          [:button.btn-secondary {:type "submit" :name "send-test" :value "true"}
-           "Send"]]
-         [:.h-6]
-         [:.flex.gap-3
-          [:button.btn-secondary.flex-1
-           {:type "submit"
-            :formmethod "get"
-            :formaction "preview"
-            :formtarget "_blank"}
-           "Preview"]
-          [:button.btn.flex-1 {:type "submit"} "Send"]])])))
+     {:current :posts
+      :email email}
+     (when (= "true" (:sent params))
+       [:div
+        {:class '[bg-stone-200
+                  dark:bg-stone-900
+                  p-3
+                  text-center
+                  border-l-8
+                  border-green-700]
+         :_ "on load wait 5s then remove me"}
+        "Message sent"])
+     [:.flex
+      (biff/form
+       {:id "send"
+        :action (str "/app/posts/" post-id "/send")
+        :hidden {:post-id post-id}
+        :class '[flex
+                 flex-col
+                 flex-grow
+                 max-w-lg
+                 w-full]}
+       [:.text-lg.my-2 "Send newsletter"]
+       (ui/text-input {:id "post"
+                       :label "Post"
+                       :value (:post/title post)
+                       :disabled true})
+       [:.h-3]
+       (ui/select {:label "Newsletter"
+                   :id "list"
+                   :name "list-id"
+                   :options (for [lst (sort-by :list/title lists)]
+                              {:label (or (not-empty (:list/title lst)) "[No title]")
+                               :value (str (:xt/id lst))})})
+       [:.h-3]
+       [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
+       [:.flex.gap-3
+        (ui/text-input {:id "test-address"})
+        [:button.btn-secondary {:type "submit" :name "send-test" :value "true"}
+         "Send"]]
+       [:.h-6]
+       [:.flex.gap-3
+        [:button.btn-secondary.flex-1
+         {:type "submit"
+          :formmethod "get"
+          :formaction "preview"
+          :formtarget "_blank"}
+         "Preview"]
+        [:button.btn.flex-1 {:type "submit"} "Send"]])])))
 
 (defn html->md [html]
   (-> (.convert (CopyDown.) html)
@@ -194,93 +193,93 @@
                    :where [[site :site/user user]]}
                  (:uid session))]
     (ui/base
-      {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
-                   [:script {:referrerpolicy "origin",
-                             :src (str "https://cdn.tiny.cloud/1/"
-                                       (or (util/get-secret req :tinycloud/api-key) "no-api-key")
-                                       "/tinymce/6/tinymce.min.js")}]
-                   [:script (biff/unsafe (slurp (io/resource "tinymce_init.js")))]
-                   [:link {:rel "stylesheet" :href "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/themes/prism-okaidia.min.css"}]
-                   [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
-                   [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
-                                       "autoloader/prism-autoloader.min.js")}]]}
-      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
-       [:.md:w-80.mx-3
-        [:.flex.justify-between
-         [:.my-3 [:a.link {:href "/app"} "< Home"]]
-         [:.my-3 [:a.link {:href (str "/app/posts/" post-id "/send")} "Send"]]]
-        (biff/form
-          {:id "edit"
-           :action (str "/app/posts/" post-id)
-           :hidden {:id post-id}
-           :class '[flex flex-col flex-grow]}
-          (ui/text-input {:id "title"
-                          :label "Title"
-                          :value (:post/title post)})
-          [:.h-3]
-          (ui/text-input {:id "slug"
-                          :label "Slug"
-                          :value (:post/slug post)})
-          [:.h-3]
-          (ui/checkbox {:id "draft"
-                        :label "Draft"
-                        :checked (not= :published (:post/status post))})
-          [:.h-3]
-          (ui/text-input {:id "published"
-                          :label "Publish date"
-                          :value (pr-str (:post/published-at post))})
-          [:.h-3]
-          (ui/text-input {:id "tags"
-                          :label "Tags"
-                          :value (str/join " " (:post/tags post))})
-          [:.h-3]
-          (ui/textarea {:id "description"
-                        :label "Description"
-                        :value (:post/description post)})
-          [:.h-3]
-          (ui/text-input {:id "image"
-                          :label "Image"
-                          :value (:post/image post)})
-          (when-some [url (not-empty (:post/image post))]
-            [:.mt-3.flex.justify-center
-             [:img {:src url
-                    :style {:max-height "10rem"}}]])
-          [:.h-3]
-          (ui/text-input {:id "canonical"
-                          :label "Canonical URL"
-                          :value (:post/canonical post)})
-          [:.h-3]
-          (ui/text-input {:id "edited"
-                          :name nil
-                          :label "Last saved"
-                          :disabled true
-                          :value (pr-str (:post/edited-at post))})
-          [:.h-3]
-          (ui/select {:id "sites"
-                      :name "site-id"
-                      :label "Site"
-                      :default (str (first (:post/sites post)))
-                      :options (for [site (sort-by :site/title sites)]
-                                 {:label (or (not-empty (:site/title site)) "[No title]")
-                                  :value (str (:xt/id site))})})
-          [:.h-4]
-          [:button.btn.w-full {:type "submit"} "Save"])
+     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]
+                  [:script {:referrerpolicy "origin",
+                            :src (str "https://cdn.tiny.cloud/1/"
+                                      (or (util/get-secret req :tinycloud/api-key) "no-api-key")
+                                      "/tinymce/6/tinymce.min.js")}]
+                  [:script (biff/unsafe (slurp (io/resource "tinymce_init.js")))]
+                  [:link {:rel "stylesheet" :href "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/themes/prism-okaidia.min.css"}]
+                  [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
+                  [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
+                                      "autoloader/prism-autoloader.min.js")}]]}
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
+      [:.md:w-80.mx-3
+       [:.flex.justify-between
+        [:.my-3 [:a.link {:href "/app"} "< Home"]]
+        [:.my-3 [:a.link {:href (str "/app/posts/" post-id "/send")} "Send"]]]
+       (biff/form
+        {:id "edit"
+         :action (str "/app/posts/" post-id)
+         :hidden {:id post-id}
+         :class '[flex flex-col flex-grow]}
+        (ui/text-input {:id "title"
+                        :label "Title"
+                        :value (:post/title post)})
         [:.h-3]
-        [:.flex.justify-between
-         (biff/form
-           {:onSubmit "return confirm('Delete post?')"
-            :method "POST"
-            :action (str "/app/posts/" (:xt/id post) "/delete")}
-           [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])]
-        [:.h-6]]
-       [:.max-w-screen-md.mx-auto.w-full
-        [:textarea#content
-         {:form "edit"
-          :type "text"
-          :name "html"
-          :value (:post/html post)}]]
-       [:.w-6]
-       [:.h-3]])))
+        (ui/text-input {:id "slug"
+                        :label "Slug"
+                        :value (:post/slug post)})
+        [:.h-3]
+        (ui/checkbox {:id "draft"
+                      :label "Draft"
+                      :checked (not= :published (:post/status post))})
+        [:.h-3]
+        (ui/text-input {:id "published"
+                        :label "Publish date"
+                        :value (pr-str (:post/published-at post))})
+        [:.h-3]
+        (ui/text-input {:id "tags"
+                        :label "Tags"
+                        :value (str/join " " (:post/tags post))})
+        [:.h-3]
+        (ui/textarea {:id "description"
+                      :label "Description"
+                      :value (:post/description post)})
+        [:.h-3]
+        (ui/text-input {:id "image"
+                        :label "Image"
+                        :value (:post/image post)})
+        (when-some [url (not-empty (:post/image post))]
+          [:.mt-3.flex.justify-center
+           [:img {:src url
+                  :style {:max-height "10rem"}}]])
+        [:.h-3]
+        (ui/text-input {:id "canonical"
+                        :label "Canonical URL"
+                        :value (:post/canonical post)})
+        [:.h-3]
+        (ui/text-input {:id "edited"
+                        :name nil
+                        :label "Last saved"
+                        :disabled true
+                        :value (pr-str (:post/edited-at post))})
+        [:.h-3]
+        (ui/select {:id "sites"
+                    :name "site-id"
+                    :label "Site"
+                    :default (str (first (:post/sites post)))
+                    :options (for [site (sort-by :site/title sites)]
+                               {:label (or (not-empty (:site/title site)) "[No title]")
+                                :value (str (:xt/id site))})})
+        [:.h-4]
+        [:button.btn.w-full {:type "submit"} "Save"])
+       [:.h-3]
+       [:.flex.justify-between
+        (biff/form
+         {:onSubmit "return confirm('Delete post?')"
+          :method "POST"
+          :action (str "/app/posts/" (:xt/id post) "/delete")}
+         [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])]
+       [:.h-6]]
+      [:.max-w-screen-md.mx-auto.w-full
+       [:textarea#content
+        {:form "edit"
+         :type "text"
+         :name "html"
+         :value (:post/html post)}]]
+      [:.w-6]
+      [:.h-3]])))
 
 (defn post-list-item [{:keys [post/edited-at
                               post/published-at

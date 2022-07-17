@@ -111,49 +111,49 @@
         list-id (parse-uuid (:id path-params))
         lst (xt/entity db list-id)
         sites (q db
-                '{:find (pull site [*])
-                  :in [user]
-                  :where [[site :site/user user]]}
+                 '{:find (pull site [*])
+                   :in [user]
+                   :where [[site :site/user user]]}
                  (:uid session))]
     (ui/nav-page
-      {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-       :current :newsletters
-       :email email}
-      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
-       [:.max-w-screen-sm
-        (biff/form
-          {:id "edit"
-           :action (str "/newsletters/" list-id)
-           :hidden {:id list-id}
-           :class '[flex flex-col flex-grow]}
-          (ui/text-input {:id "address" :label "Mailgun address" :value (:list/address lst) :disabled true})
-          [:.h-3]
-          (ui/text-input {:id "title" :label "Title" :value (:list/title lst)})
-          [:.h-3]
-          (ui/text-input {:id "reply-to" :label "Reply To" :value (:list/reply-to lst)})
-          [:.h-3]
-          (ui/text-input {:id "tags" :label "Tags" :value (str/join " " (:list/tags lst))})
-          [:.h-3]
-          (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
-          [:.h-3]
-          (ui/text-input {:id "mailing-address" :label "Mailing address" :value (:list/mailing-address lst)})
-          [:.h-3]
-          (ui/select {:id "sites"
-                      :name "site-id"
-                      :label "Site"
-                      :default (str (first (:list/sites lst)))
-                      :options (for [site (sort-by :site/title sites)]
-                                 {:label (or (not-empty (:site/title site)) "[No title]")
-                                  :value (str (:xt/id site))})})
-          [:.h-4]
-          [:button.btn.w-full {:type "submit"} "Save"])
+     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+      :current :newsletters
+      :email email}
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+      [:.max-w-screen-sm
+       (biff/form
+        {:id "edit"
+         :action (str "/newsletters/" list-id)
+         :hidden {:id list-id}
+         :class '[flex flex-col flex-grow]}
+        (ui/text-input {:id "address" :label "Mailgun address" :value (:list/address lst) :disabled true})
         [:.h-3]
-        (biff/form
-          {:onSubmit "return confirm('Delete newsletter?')"
-           :method "POST"
-           :action (str "/newsletters/" (:xt/id lst) "/delete")}
-          [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
-        [:.h-6]]])))
+        (ui/text-input {:id "title" :label "Title" :value (:list/title lst)})
+        [:.h-3]
+        (ui/text-input {:id "reply-to" :label "Reply To" :value (:list/reply-to lst)})
+        [:.h-3]
+        (ui/text-input {:id "tags" :label "Tags" :value (str/join " " (:list/tags lst))})
+        [:.h-3]
+        (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
+        [:.h-3]
+        (ui/text-input {:id "mailing-address" :label "Mailing address" :value (:list/mailing-address lst)})
+        [:.h-3]
+        (ui/select {:id "sites"
+                    :name "site-id"
+                    :label "Site"
+                    :default (str (first (:list/sites lst)))
+                    :options (for [site (sort-by :site/title sites)]
+                               {:label (or (not-empty (:site/title site)) "[No title]")
+                                :value (str (:xt/id site))})})
+        [:.h-4]
+        [:button.btn.w-full {:type "submit"} "Save"])
+       [:.h-3]
+       (biff/form
+        {:onSubmit "return confirm('Delete newsletter?')"
+         :method "POST"
+         :action (str "/newsletters/" (:xt/id lst) "/delete")}
+        [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+       [:.h-6]]])))
 
 (defn list-list-item [{:keys [list/title list/sites xt/id]}]
   [:.mb-4
@@ -173,18 +173,18 @@
                    :where [[list :list/user user]]}
                  (:uid session))]
     (ui/nav-page
-      {:current :newsletters
-       :email email}
-      (biff/form
-        {:action "/newsletters"}
-        (when (nil? (util/get-secret req :mailgun/api-key))
-          [:p "You need to enter a Mailgun API key"])
-        [:button.btn {:type "submit"
-                      :disabled (nil? (util/get-secret req :mailgun/api-key))} "New newsletter"])
-      [:.h-6]
-      (->> lists
-           (sort-by :list/title)
-           (map list-list-item)))))
+     {:current :newsletters
+      :email email}
+     (biff/form
+      {:action "/newsletters"}
+      (when (nil? (util/get-secret req :mailgun/api-key))
+        [:p "You need to enter a Mailgun API key"])
+      [:button.btn {:type "submit"
+                    :disabled (nil? (util/get-secret req :mailgun/api-key))} "New newsletter"])
+     [:.h-6]
+     (->> lists
+          (sort-by :list/title)
+          (map list-list-item)))))
 
 (def features
   {:routes ["" {:middleware [util/wrap-signed-in]}

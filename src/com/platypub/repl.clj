@@ -28,9 +28,6 @@
   ;; fix-print makes sure stdout keeps going to the terminal.
   (biff/fix-print (biff/refresh))
 
-  (let [{:keys [biff/db netlify/api-key] :as sys} (get-sys)]
-    )
+  (let [{:keys [biff/db netlify/api-key] :as sys} (get-sys)])
 
-  (sort (keys @biff/system))
-
-  )
+  (sort (keys @biff/system)))

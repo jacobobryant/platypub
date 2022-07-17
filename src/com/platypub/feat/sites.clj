@@ -165,49 +165,49 @@
         custom-schema (when-some [t (:site/theme site)]
                         (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))]
     (ui/nav-page
-      {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-       :current :sites
-       :email email}
-      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
-       [:.max-w-screen-sm
-        (biff/form
-          {:id "edit"
-           :action (str "/sites/" site-id)
-           :hidden {:id site-id}
-           :class '[flex flex-col flex-grow]}
-          (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
-          [:.h-3]
-          (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
-          [:.h-3]
-          (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
-          [:.h-3]
-          (ui/textarea {:id "description" :label "Description" :value (:site/description site)})
-          [:.h-3]
-          (ui/image {:id "image" :label "Image" :value (:site/image site)})
-          [:.h-3]
-          (ui/text-input {:id "tag" :label "Tag" :value (:site/tag site)})
-          [:.h-3]
-          (ui/textarea {:id "redirects" :label "Redirects" :value (:site/redirects site)})
-          [:.h-3]
-          (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
-          (for [{:keys [label description default key type]} custom-schema]
-            [:.mt-3
-             ((case type
-                :textarea ui/textarea
-                ui/text-input)
-              {:id (subs (str key) 1)
-               :label label
-               :description description
-               :value (get-in site [:site/custom-config key] default)})])
-          [:.h-4]
-          [:button.btn.w-full {:type "submit"} "Save"])
+     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+      :current :sites
+      :email email}
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+      [:.max-w-screen-sm
+       (biff/form
+        {:id "edit"
+         :action (str "/sites/" site-id)
+         :hidden {:id site-id}
+         :class '[flex flex-col flex-grow]}
+        (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
         [:.h-3]
-        (biff/form
-          {:onSubmit "return confirm('Delete site?')"
-           :method "POST"
-           :action (str "/sites/" (:xt/id site) "/delete")}
-          [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
-        [:.h-6]]])))
+        (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
+        [:.h-3]
+        (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
+        [:.h-3]
+        (ui/textarea {:id "description" :label "Description" :value (:site/description site)})
+        [:.h-3]
+        (ui/image {:id "image" :label "Image" :value (:site/image site)})
+        [:.h-3]
+        (ui/text-input {:id "tag" :label "Tag" :value (:site/tag site)})
+        [:.h-3]
+        (ui/textarea {:id "redirects" :label "Redirects" :value (:site/redirects site)})
+        [:.h-3]
+        (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
+        (for [{:keys [label description default key type]} custom-schema]
+          [:.mt-3
+           ((case type
+              :textarea ui/textarea
+              ui/text-input)
+            {:id (subs (str key) 1)
+             :label label
+             :description description
+             :value (get-in site [:site/custom-config key] default)})])
+        [:.h-4]
+        [:button.btn.w-full {:type "submit"} "Save"])
+       [:.h-3]
+       (biff/form
+        {:onSubmit "return confirm('Delete site?')"
+         :method "POST"
+         :action (str "/sites/" (:xt/id site) "/delete")}
+        [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+       [:.h-6]]])))
 
 (defn site-list-item [{:keys [site/title
                               site/image
@@ -227,10 +227,10 @@
       "Preview"]
      ui/interpunct
      (biff/form
-       {:method "POST"
-        :action (str "/sites/" id "/publish")
-        :class "inline-block"}
-       [:button.hover:underline {:type "submit"} "Publish"])
+      {:method "POST"
+       :action (str "/sites/" id "/publish")
+       :class "inline-block"}
+      [:button.hover:underline {:type "submit"} "Publish"])
      ui/interpunct
      [:a.hover:underline {:href (str "/sites/" id "/export")
                           :target "_blank"}
@@ -244,18 +244,18 @@
                    :where [[site :site/user user]]}
                  (:uid session))]
     (ui/nav-page
-      {:current :sites
-       :email email}
-      (biff/form
-        {:action "/sites"}
-        (when (nil? (util/get-secret req :netlify/api-key))
-          [:p "You need to enter a Netlify API key"])
-        [:button.btn {:type "submit"
-                      :disabled (nil? (util/get-secret req :netlify/api-key))} "New site"])
-      [:.h-6]
-      (->> sites
-           (sort-by :site/title)
-           (map site-list-item)))))
+     {:current :sites
+      :email email}
+     (biff/form
+      {:action "/sites"}
+      (when (nil? (util/get-secret req :netlify/api-key))
+        [:p "You need to enter a Netlify API key"])
+      [:button.btn {:type "submit"
+                    :disabled (nil? (util/get-secret req :netlify/api-key))} "New site"])
+     [:.h-6]
+     (->> sites
+          (sort-by :site/title)
+          (map site-list-item)))))
 
 (def features
   {:routes ["" {:middleware [util/wrap-signed-in]}

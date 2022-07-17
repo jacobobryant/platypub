@@ -13,10 +13,10 @@
     true
     (let [{:keys [success score]}
           (:body
-            (http/post "https://www.google.com/recaptcha/api/siteverify"
-                       {:form-params {:secret (util/get-secret sys :recaptcha/secret)
-                                      :response (:g-recaptcha-response params)}
-                        :as :json}))]
+           (http/post "https://www.google.com/recaptcha/api/siteverify"
+                      {:form-params {:secret (util/get-secret sys :recaptcha/secret)
+                                     :response (:g-recaptcha-response params)}
+                       :as :json}))]
       (and success (<= 0.5 (or score 1))))))
 
 ;; You can call out to an email verification API here to block spammy/high risk
@@ -30,10 +30,10 @@
    :to to
    :subject "Sign in to Platypub"
    :html (rum/render-static-markup
-           [:div
-            [:p "We received a request to sign in to Platypub using this email address."]
-            [:p [:a {:href url :target "_blank"} "Click here to sign in."]]
-            [:p "If you did not request this link, you can ignore this email."]])})
+          [:div
+           [:p "We received a request to sign in to Platypub using this email address."]
+           [:p [:a {:href url :target "_blank"} "Click here to sign in."]]
+           [:p "If you did not request this link, you can ignore this email."]])})
 
 (defn send-token [{:keys [biff/base-url
                           com.platypub/enable-email-signin
@@ -42,11 +42,11 @@
                           params] :as req}]
   (let [email (biff/normalize-email (:email params))
         token (biff/jwt-encrypt
-                {:intent "signin"
-                 :email email
-                 :state (biff/sha256 anti-forgery-token)
-                 :exp-in (* 60 60)}
-                (util/get-secret req :biff/jwt-secret))
+               {:intent "signin"
+                :email email
+                :state (biff/sha256 anti-forgery-token)
+                :exp-in (* 60 60)}
+               (util/get-secret req :biff/jwt-secret))
         url (str base-url "/auth/verify/" token)
         send-link! (fn []
                      (and (human? req)
@@ -93,22 +93,22 @@
 
 (def signin-sent
   (ui/page
-    {}
-    [:div
-     "The sign-in link was printed to the console. If you add an API "
-     "key for Mailgun and set " [:code ":com.platypub/enable-email-signin true"]
-     ", the link will be emailed to you instead."]))
+   {}
+   [:div
+    "The sign-in link was printed to the console. If you add an API "
+    "key for Mailgun and set " [:code ":com.platypub/enable-email-signin true"]
+    ", the link will be emailed to you instead."]))
 
 (def signin-fail
   (ui/page
-    {}
-    [:div
-     "Your sign-in request failed. There are several possible reasons:"]
-    [:ul
-     [:li "You opened the sign-in link on a different device or browser than the one you requested it on."]
-     [:li "We're not sure you're a human."]
-     [:li "We think your email address is invalid or high risk."]
-     [:li "We tried to email the link to you, but there was an unexpected error."]]))
+   {}
+   [:div
+    "Your sign-in request failed. There are several possible reasons:"]
+   [:ul
+    [:li "You opened the sign-in link on a different device or browser than the one you requested it on."]
+    [:li "We're not sure you're a human."]
+    [:li "We think your email address is invalid or high risk."]
+    [:li "We tried to email the link to you, but there was an unexpected error."]]))
 
 (def features
   {:routes [["/auth/send"          {:post send-token}]
