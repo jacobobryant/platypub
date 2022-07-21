@@ -89,7 +89,8 @@
                  '{:find (pull list [*])
                    :in [user]
                    :where [[list :list/user user]]}
-                 (:uid session))]
+                 (:uid session))
+        list-id (:list-id params)]
     (ui/nav-page
      {:current :posts
       :email email}
@@ -122,6 +123,7 @@
        (ui/select {:label "Newsletter"
                    :id "list"
                    :name "list-id"
+                   :default list-id
                    :options (for [lst (sort-by :list/title lists)]
                               {:label (or (not-empty (:list/title lst)) "[No title]")
                                :value (str (:xt/id lst))})})
@@ -174,12 +176,12 @@
    :headers {"content-type" "text/html"}
    :body (:html (render-email req))})
 
-(defn send! [{:keys [biff/db params] {:keys [send-test test-address]} :params :as req}]
+(defn send! [{:keys [biff/db params] {:keys [send-test test-address list-id]} :params :as req}]
   (mailgun/send! req (merge (render-email req)
                             (when send-test
                               {:to test-address})))
   {:status 303
-   :headers {"location" "send?sent=true"}})
+   :headers {"location" (str "send?sent=true&list-id=" list-id)}})
 
 (defn edit-post-page [{:keys [path-params
                               biff/db
