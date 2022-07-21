@@ -81,6 +81,12 @@
   {:status 303
    :headers {"location" "/app"}})
 
+(defn recipient-count [sys list]
+  (->> (mailgun/get-list-members sys (:list/address list) {})
+       :body
+       :items
+       count))
+
 (defn send-page [{:keys [biff/db session path-params params] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         post-id (parse-uuid (:id path-params))
@@ -106,7 +112,8 @@
         "Message sent"])
      [:.flex
       (biff/form
-       {:id "send"
+       {:onSubmit "return confirm('Send newsletter?')"
+        :id "send"
         :action (str "/app/posts/" post-id "/send")
         :hidden {:post-id post-id}
         :class '[flex
@@ -125,7 +132,8 @@
                    :name "list-id"
                    :default list-id
                    :options (for [lst (sort-by :list/title lists)]
-                              {:label (or (not-empty (:list/title lst)) "[No title]")
+                              {:label (str (or (not-empty (:list/title lst)) "[No title]")
+                                           " (" (recipient-count req lst) " subscribers)")
                                :value (str (:xt/id lst))})})
        [:.h-3]
        [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
