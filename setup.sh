@@ -102,6 +102,7 @@ server {
     server_name _;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
     root /home/app/target/resources/public;
+    client_max_body_size 10M;
     location / {
         try_files \$uri \$uri/index.html @resources;
     }
