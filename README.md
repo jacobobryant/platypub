@@ -1,9 +1,10 @@
 # Platypub
 
-Platypub is a publishing platform that's meant to give you the same amount of control as you would get from a static site generator,
-while providing the same level of convenience as WordPress, Ghost, Substack etc. See [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/).
+An in-depth, real-world example project made with [Biff](https://biffweb.com/). Platypub is a publishing platform that's meant to give you the same amount of control as you would get from a static site generator,
+while providing the same level of convenience as WordPress, Ghost, Substack etc. In addition to scratching my own itch, Platypub is
+intended to help people learn Biff by providing a fun opportunity to hack on an open-source application. See the [list of good first issues](https://github.com/jacobobryant/platypub/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) if you'd like to start contributing.
 
-Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
+See also [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/). Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
 [biffweb.com](https://biffweb.com) and [blog.thesample.ai](https://blog.thesample.ai/).
 
 ## Getting started
