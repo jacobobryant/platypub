@@ -88,7 +88,7 @@
       (space 5)
       (byline opts)
       (space 10)
-      (raw-string (:post/html post))
+      [:div.post-content (raw-string (:post/html post))]
       (space 15)
       (when (custom-key opts :com.platypub/discourse-url)
         (list

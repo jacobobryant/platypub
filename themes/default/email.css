@@ -24,6 +24,11 @@ a {
   color: #0066cc;
 }
 
+.post-content a {
+  text-decoration: underline;
+  color: inherit;
+}
+
 p, li {
   line-height: 155%;
 }
