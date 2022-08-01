@@ -15,6 +15,13 @@
    :user (doc {:id :user/id
                :required [:user/email]})
 
+   :item/id :uuid
+   ;; todo only allow additional keys if they start with a certain prefix
+   :item [:map
+          [:xt/id :item/id]
+          [:item/user :user/id]
+          [:item/sites [:set :site/id]]]
+
    :post/id :uuid
    :post/user :user/id
    :post/title :string
