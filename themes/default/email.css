@@ -37,9 +37,6 @@ li {
   margin-bottom: 12px;
 }
 
-blockquote {
-  margin: 1.25em 0;
-  padding: 0 1em;
-  color: #6a737d;
-  border-left: .25em solid #dfe2e5;
+.post-content .webonly {
+  display: none;
 }

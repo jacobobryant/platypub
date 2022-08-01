@@ -59,6 +59,10 @@
   .post-content hr {
     @apply my-8 border-neutral-400;
   }
+
+  .post-content .emailonly {
+    @apply hidden;
+  }
 }
 
 .grecaptcha-badge { visibility: hidden; }
