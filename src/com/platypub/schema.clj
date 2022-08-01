@@ -15,32 +15,21 @@
    :user (doc {:id :user/id
                :required [:user/email]})
 
-   :post/id :uuid
-   :post/user :user/id
-   :post/title :string
-   :post/html :string
-   :post/published-at inst?
-   :post/edited-at inst?
-   :post/slug :string
-   :post/description :string
-   :post/tags [:sequential :string]
-   :post/canonical :string
-   :post/image :string
-   :post/status [:enum :draft :published]
-   :post/sites [:vector :site/id]
-   :post (doc {:id :post/id
-               :required [:post/user
-                          :post/title
-                          :post/html
-                          :post/published-at
-                          :post/edited-at
-                          :post/slug
-                          :post/description
-                          :post/tags
-                          :post/canonical
-                          :post/image
-                          :post/status]
-               :optional [:post/sites]})
+   :site/id :uuid
+   :site [:map
+          [:xt/id :site/id]
+          [:site/user :user/id]
+          [:site/netlify-id :string]
+          [:site/url :string]
+          [:site/title :string]
+          [:site/theme :string]]
+
+   :item/id :uuid
+   ;; todo only allow additional keys if they start with a certain prefix
+   :item [:map
+          [:xt/id :item/id]
+          [:item/user :user/id]
+          [:item/sites [:set :site/id]]]
 
    :image/id :uuid
    :image/user :user/id
@@ -52,29 +41,6 @@
                            :image/url
                            :image/filename
                            :image/uploaded-at]})
-
-   :site/id :uuid
-   :site/user :user/id
-   :site/url :string
-   :site/title :string
-   :site/description :string
-   :site/image :string
-   :site/tag :string
-   :site/theme :string
-   :site/redirects :string
-   :site/netlify-id :string
-   :site/custom-config map?
-   :site (doc {:id :site/id
-               :required [:site/user
-                          :site/url
-                          :site/title
-                          :site/description
-                          :site/image
-                          :site/tag
-                          :site/theme
-                          :site/redirects
-                          :site/netlify-id]
-               :optional [:site/custom-config]})
 
    :list/id :uuid
    :list/user :user/id

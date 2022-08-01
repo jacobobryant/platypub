@@ -8,7 +8,61 @@
             [lambdaisland.uri :as uri]
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
-            [ring.util.time :as ring-time]))
+            [ring.util.time :as ring-time]
+            [xtdb.api :as xt]))
+
+(defn add-prefix [prefix k]
+  (keyword (str prefix (namespace k)) (name k)))
+
+(defn join [sep xs]
+  (rest (mapcat vector (repeat sep) xs)))
+
+;; fix bug in select-ns-as
+
+(defn ns-parts [nspace]
+  (if (empty? (str nspace))
+    []
+    (str/split (str nspace) #"\.")))
+
+(defn select-ns [m nspace]
+  (let [parts (ns-parts nspace)]
+    (->> (keys m)
+         (filter (fn [k]
+                   (= parts (take (count parts) (ns-parts (namespace k))))))
+         (select-keys m))))
+
+(defn select-ns-as [m ns-from ns-to]
+  (->> (select-ns m ns-from)
+       (map (fn [[k v]]
+              (let [new-ns-parts (->> (ns-parts (namespace k))
+                                      (drop (count (ns-parts ns-from)))
+                                      (concat (ns-parts ns-to)))]
+                [(if (empty? new-ns-parts)
+                   (keyword (name k))
+                   (keyword (str/join "." new-ns-parts) (name k)))
+                 v])))
+       (into {})))
+
+;;;;
+
+(defn dissoc-ns [m nspace]
+  (let [parts (ns-parts nspace)]
+    (->> (keys m)
+         (remove (fn [k]
+                   (= parts (take (count parts) (ns-parts (namespace k))))))
+         (select-keys m))))
+
+(defn rename-ns [m ns-from ns-to]
+  (merge (dissoc-ns m ns-from)
+         (select-ns-as m ns-from ns-to)))
+
+(defn make-url [& args]
+  (let [[args query] (if (map? (last args))
+                       [(butlast args) (last args)]
+                       [args {}])]
+    (str (apply uri/assoc-query
+                (str/replace (str "/" (str/join "/" args)) #"/+" "/")
+                (apply concat query)))))
 
 (defn slurp-config [path]
   (when (.exists (io/file path))
@@ -78,7 +132,7 @@
                   file
                   headers]}]
   ;; See https://docs.aws.amazon.com/AmazonS3/latest/userguide/RESTAuthentication.html
-  ;; We should upgrade to v4 at some point.
+  ;; We should upgrade to v4 at some point, maybe.
   (let [date (format-date (java.util.Date.) "EEE, dd MMM yyyy HH:mm:ss Z")
         path (str "/" bucket "/" key)
         md5 (some-> file md5-base64)
@@ -105,12 +159,20 @@
                                    headers)
                    :body (some-> file file->bytes)})))
 
-(defn wrap-signed-in [handler]
-  (fn [{:keys [session] :as req}]
-    (if (some? (:uid session))
-      (handler req)
-      {:status 303
-       :headers {"location" "/"}})))
+(defn q-sites [db user]
+  (->> (q db
+          '{:find (pull site [*])
+            :in [user]
+            :where [[site :site/user user]]}
+          (:xt/id user))
+       (map (fn [site]
+              (merge site
+                     (select-ns-as
+                      (biff/catchall
+                       (edn/read-string
+                        (slurp (str "themes/" (:site/theme site) "/config.edn"))))
+                      nil
+                      'site.config))))))
 
 (defn serve-static-file [file]
   {:status 200
@@ -119,23 +181,99 @@
              "content-type" (mime/ext-mime-type (.getName file))}
    :body file})
 
-(defn get-render-opts [{:keys [biff/db session] :as sys}]
-  (let [account (-> sys
-                    (select-keys [:mailgun/domain :recaptcha/site])
-                    (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
-                    (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
-        docs (for [[doc-type k] [[:post :post/user]
-                                 [:site :site/user]
-                                 [:list :list/user]]
-                   doc (q db
-                          {:find '(pull doc [*])
-                           :in '[user]
-                           :where [['doc k 'user]]}
-                          (:uid session))]
-               (assoc doc :db/doc-type doc-type))]
-    {:account account
-     :db (into {} (map (juxt :xt/id identity)) docs)}))
+(defn q-items [db user site item-spec]
+  (q db
+     {:find '(pull item [*])
+      :in '[user site]
+      :where (->> (:query item-spec)
+                  (map (fn [x]
+                         (let [[k & rst] (if (keyword? x)
+                                           [x]
+                                           x)
+                               k (keyword (str "item.custom." (namespace k)) (name k))]
+                           (into ['item k] rst))))
+                  (into '[[item :item/user user]
+                          [item :item/sites site]]))}
+     (:xt/id user)
+     (:xt/id site)))
+
+(defn get-render-opts [{:keys [biff/db user site item] :as sys}]
+  (let [defaults (->> site
+                      :site.config/fields
+                      (map (fn [[k v]]
+                             [k (:default v)]))
+                      (into {}))
+        site' (-> site
+                  (dissoc-ns 'site.config)
+                  (rename-ns 'site.custom nil))
+        site' (reduce (fn [m k]
+                        (if (contains? m k)
+                          m
+                          (assoc m k (defaults k))))
+                      site'
+                      (:site.config/site-fields site))]
+    (into {:account (-> sys
+                        (select-keys [:mailgun/domain :recaptcha/site])
+                        (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
+                        (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
+           :site site'
+           :lists (q db
+                     '{:find (pull lst [*])
+                       :in [user site]
+                       :where [[lst :list/user user]
+                               [lst :list/sites site]]}
+                     (:xt/id user)
+                     (:xt/id site))
+           :item (rename-ns item 'item.custom nil)}
+          (for [item-spec (:site.config/items site)]
+            [(:key item-spec)
+             (->> (q-items db user site item-spec)
+                  (map #(rename-ns % 'item.custom nil)))]))))
 
 (defn enable-recaptcha? [sys]
   (and (some? (:com.platypub/enable-email-signin sys))
        (some? (get-secret sys :recaptcha/secret))))
+
+(defn last-edited [db id]
+  (:xtdb.api/valid-time (first (xt/entity-history db id :desc))))
+
+(defn order-by-fn [order-by-spec]
+  (let [order-by-spec (for [[k dir] order-by-spec]
+                        [(add-prefix "item.custom." k) dir])]
+    (fn [a b]
+      (or (->> order-by-spec
+               (map (fn [[k direction]]
+                      (cond-> (compare (k a) (k b))
+                        (= direction :desc) (* -1))))
+               (remove zero?)
+               first)
+          0))))
+
+(defn match? [spec item]
+  (if (= :not (first spec))
+    (not (match? (second spec) item))
+    (every? (fn [[k v]]
+              (= (get item (add-prefix "item.custom." k)) v))
+            spec)))
+
+(defn something? [x]
+  (if (or (coll? x) (string? x))
+    (boolean (not-empty x))
+    (some? x)))
+
+(defn params->custom-fields [{:keys [site item-spec params]}]
+  (let [[prefix ks] (if item-spec
+                      ["item.custom." (:fields item-spec)]
+                      ["site.custom." (:site.config/site-fields site)])]
+    (for [k ks
+          :let [value (get params (keyword (name k)))
+                {:keys [type default]} (get-in site [:site.config/fields k])]]
+      [(add-prefix prefix k)
+       (case type
+         :instant (edn/read-string value)
+         :boolean (= value "on")
+         :tags (->> (str/split value #"\s+")
+                    (remove empty?)
+                    distinct
+                    vec)
+         value)])))

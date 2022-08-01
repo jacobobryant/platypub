@@ -33,10 +33,6 @@
   (when (fs/exists? path)
     (edn/read-string (slurp path))))
 
-(defn custom-key [opts k]
-  (or (not-empty (get-in opts [:site :site/custom-config k]))
-      (get-in opts [:custom-defaults k])))
-
 (def emdash [:span (raw-string "&mdash;")])
 
 (def endash [:span (raw-string "&#8211;")])
@@ -60,9 +56,10 @@
          image
          url] (for [k ["title" "description" "image" "url"]]
                 (or (get opts (keyword "base" k))
-                    (get-in opts [:post (keyword "post" k)])
-                    (get-in opts [:site (keyword "site" k)])))
-        title (->> [title (:site/title site)]
+                    (get-in opts [:post (keyword k)])
+                    (get-in opts [:page (keyword k)])
+                    (get-in opts [:site (keyword k)])))
+        title (->> [title (:title site)]
                    distinct
                    (str/join " | "))]
     [:html
@@ -85,7 +82,7 @@
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
       [:meta {:charset "utf-8"}]
       [:link {:href "/feed.xml",
-              :title (str "Feed for " (:site/title site)),
+              :title (str "Feed for " (:title site)),
               :type "application/atom+xml",
               :rel "alternate"}]
       [:link {:rel "stylesheet" :href "/css/main.css"}]
@@ -93,7 +90,7 @@
       [:script {:src "https://www.google.com/recaptcha/api.js"
                 :async "async"
                 :defer "defer"}]
-      (when-some [html (custom-key opts :com.platypub/embed-html)]
+      (when-some [html (:embed-html site)]
         (raw-string html))
       head]
      [:body
@@ -104,34 +101,26 @@
                :flex-direction "column"}}
       body]]))
 
-(defn author [{:keys [post] {:keys [site/custom-config]} :site :as opts}]
-  {:name (custom-key opts :com.platypub/author-name)
-   :url (custom-key opts :com.platypub/author-url)
-   :image (custom-key opts :com.platypub/author-image)})
-
-(defn atom-feed* [{{:site/keys [title description image url] :as site} :site
-                   :keys [posts path]
-                   :as opts}]
-  (let [feed-url (str url path)
-        posts (remove #(some (:post/tags %) ["unlisted"]) posts)]
+(defn atom-feed* [{:keys [posts path site] :as opts}]
+  (let [feed-url (str (:url site) path)
+        posts (remove #(contains? (:tags %) "unlisted") posts)]
     [:feed {:xmlns "http://www.w3.org/2005/Atom"}
-     [:title title]
+     [:title (:title site)]
      [:id (url-encode feed-url)]
-     [:updated (format-date (:post/published-at (first posts)))]
+     [:updated (format-date (:published-at (first posts)))]
      [:link {:rel "self" :href feed-url :type "application/atom+xml"}]
-     [:link {:href url}]
-     (for [{:post/keys [title slug published-at html] :as post} (take 10 posts)
-           :let [url (str url "/p/" slug "/")
-                 author (author opts)]]
+     [:link {:href (:url site)}]
+     (for [post (take 10 posts)
+           :let [url (str (:url site) "/p/" (:slug post) "/")]]
        [:entry
-        [:title {:type "html"} title]
+        [:title {:type "html"} (:title post)]
         [:id (url-encode url)]
-        [:updated (format-date published-at)]
-        [:content {:type "html"} html]
-        [:link {:href url}]
+        [:updated (format-date (:published-at post))]
+        [:content {:type "html"} (:html post)]
+        [:link {:href (:url post)}]
         [:author
-         [:name (:name author)]
-         [:uri (:url author)]]])]))
+         [:name (:author-name site)]
+         [:uri (:author-url site)]]])]))
 
 (defn embed-discourse [{:keys [forum-url page-url]}]
   (list
@@ -156,12 +145,9 @@
            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
            (atom-feed* (assoc opts :path "/feed.xml"))))
 
-(defn tailwind! [opts]
+(defn tailwind! [{:keys [site]}]
   (when (fs/exists? "tailwind.config.js.TEMPLATE")
-    (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE")
-                                              {:primary (custom-key opts :com.platypub/primary-color)
-                                               :accent (custom-key opts :com.platypub/accent-color)
-                                               :tertiary (custom-key opts :com.platypub/tertiary-color)})))
+    (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE") site)))
   (-> (shell/sh "npx" "tailwindcss"
                 "-c" "tailwind.config.js"
                 "-i" "tailwind.css"
@@ -177,85 +163,70 @@
 
 (defn posts! [{:keys [posts] :as opts} render-post]
   (doseq [post posts
-          :let [path (str "/p/" (:post/slug post) "/")]]
+          :let [path (str "/p/" (:slug post) "/")]]
     (render! path
              "<!DOCTYPE html>"
              (render-post (assoc opts :base/path path :post post)))))
 
 (defn pages! [opts render-page pages]
-  (doseq [post (:pages opts)
-          :let [path (str "/" (:post/slug post) "/")]]
+  (doseq [page (:pages opts)
+          :let [path (str/replace (str "/" (:path page) "/")
+                                  #"/+" "/")]]
     (render! path
              "<!DOCTYPE html>"
-             (render-page (assoc opts :base/path path :post post))))
+             (render-page (assoc opts :base/path path :page page))))
   (doseq [[path page] pages]
       (render! path
                "<!DOCTYPE html>"
                (page (assoc opts :base/path path)))))
 
-(defn derive-opts [{:keys [db site-id list-id post-id account] :as opts}]
-  (let [site (get db site-id)
-        custom-defaults (->> (read-edn-file "custom-schema.edn")
-                             (map (juxt :key :default))
-                             (into {}))
-        posts (->> (vals db)
-                   (map #(update % :post/tags set))
-                   (filter (fn [post]
-                             (and (= :post (:db/doc-type post))
-                                  (= :published (:post/status post))
-                                  (or ((set (:post/sites post)) site-id)
-                                      ((:post/tags post) (:site/tag site))))))
-                   (sort-by :post/published-at #(compare %2 %1)))
+(defn without-ns [m]
+  (->> m
+       (map (fn [[k v]]
+              [(keyword (name k)) v]))
+       (into {})))
+
+(defn derive-opts [{:keys [site item lists posts pages] :as opts}]
+  (let [posts (->> posts
+                   (map without-ns)
+                   (remove :draft)
+                   (map #(update % :tags set))
+                   (sort-by :published-at #(compare %2 %1)))
+        pages (->> pages
+                   (map without-ns)
+                   (remove :draft)
+                   (map #(update % :tags set)))
         welcome (->> posts
-                     (filter #((:post/tags %) "welcome"))
-                      first)
-        pages (->> posts
-                   (filter #((:post/tags %) "page")))
+                     (filter #((:tags %) "welcome"))
+                     first)
         posts (->> posts
-                   (remove #(some (:post/tags %) ["welcome" "page"])))
-        lst (if list-id
-              (get db list-id)
-              (->> (vals db)
-                   (map #(update % :list/tags set))
-                   (filter (fn [lst]
-                             (and (= :list (:db/doc-type lst))
-                                  (or ((set (:list/sites lst)) site-id) 
-                                      ((:list/tags lst) (:site/tag site))))))
-                   first))
-        site (if site-id
-               site
-               (merge (->> (vals db)
-                           (filter (fn [site]
-                                     (and (= :site (:db/doc-type site))
-                                          ((set (:list/tags lst)) (:site/tag site)))))
-                           first)
-                      site))
-        post (get db post-id)]
+                   (remove #((:tags %) "welcome")))]
     (assoc opts
-           :site site
-           :list lst
-           :post post
+           :site (without-ns site)
+           :post (-> item
+                     without-ns
+                     (update :tags set))
            :posts posts
-           :welcome welcome
            :pages pages
-           :custom-defaults custom-defaults)))
+           :list (without-ns (first lists))
+           :welcome welcome)))
 
 (defn netlify-fn-config! [{:keys [db site-id site welcome account] lst :list :as opts}]
   (spit "netlify/functions/config.json"
         (json/generate-string
-          {:subscribeRedirect (str (:site/url site) "/subscribed/")
-           :listAddress (:list/address lst)
+          {:subscribeRedirect (str (:url site) "/subscribed/")
+           :listAddress (:address lst)
            :mailgunDomain (:mailgun/domain account)
            :mailgunKey (:mailgun/api-key account)
-           :welcomeEmail {:from (str (:list/title lst)
+           :welcomeEmail {:from (str (:title lst)
                                      " <doreply@" (:mailgun/domain account) ">")
-                          :h:Reply-To (:list/reply-to lst)
-                          :subject (:post/title welcome)
-                          :html (:post/html welcome)}
+                          :h:Reply-To (:reply-to lst)
+                          :subject (:title welcome)
+                          :html (:html welcome)}
            :recaptchaSecret (:recaptcha/secret account)})))
 
 (defn redirects! [{:keys [site]}]
-  (spit "public/_redirects" (:site/redirects site)))
+  (spit "public/_redirects" (:redirects site)))
 
 (defn sitemap! [{:keys [exclude]}]
   (->> (file-seq (io/file "public"))

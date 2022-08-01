@@ -18,37 +18,36 @@
        [:td body]]]]]])
 
 (defn post-url [{:keys [post site] :as opts}]
-  (when (not-empty (:post/slug post))
-    (str (:site/url site) "/p/" (:post/slug post) "/")))
+  (when (not-empty (:slug post))
+    (str (:url site) "/p/" (:slug post) "/")))
 
 (defn comments-url [opts]
   (when (not-empty (post-url opts))
     (str (post-url opts) "#discourse-comments")))
 
 (defn byline [{:keys [post site] :as opts}]
-  (let [author (author opts)]
-    [:table
-     {:border "0"
-      :cellpadding "0"
-      :cellspacing "0"}
-     [:tr
-      [:td [:a {:href (:url author)}
-            [:img {:src (cached-img-url {:url (:image author)
-                                         :w 100 :h 100})
-                   :width "50px"
-                   :height "50px"
-                   :style {:border-radius "50%"
-                           :width "50px"
-                           :height "50px"
-                           :margin-right "10px"}}]]]
-      [:td {:style {:font-size "90%"}}
-       [:div (:name author)]
-       [:div
-        (format-date "d MMM yyyy" (:post/published-at post))
-        (when (custom-key opts :com.platypub/discourse-url)
-          (list
-            interpunct
-            [:a {:href (comments-url opts)} "comments"]))]]]]))
+  [:table
+   {:border "0"
+    :cellpadding "0"
+    :cellspacing "0"}
+   [:tr
+    [:td [:a {:href (:author-url site)}
+          [:img {:src (cached-img-url {:url (:author-image site)
+                                       :w 100 :h 100})
+                 :width "50px"
+                 :height "50px"
+                 :style {:border-radius "50%"
+                         :width "50px"
+                         :height "50px"
+                         :margin-right "10px"}}]]]
+    [:td {:style {:font-size "90%"}}
+     [:div (:author-name site)]
+     [:div
+      (format-date "d MMM yyyy" (:published-at post))
+      (when (:discourse-url site)
+        (list
+         interpunct
+         [:a {:href (comments-url opts)} "comments"]))]]]])
 
 (defn space [px]
   [:div {:style (str "height:" px "px")}])
@@ -70,39 +69,40 @@
 (defn render [{:keys [post site] lst :list :as opts}]
   [:html
    [:head
-    [:title (:post/title post)]
+    [:title (:title post)]
     [:style (raw-string (slurp "email.css"))]
     [:meta {:http-equiv "Content-Type" :content "text/html; charset=utf-8"}]
     [:meta {:name "viewport" :content "width=device-width,initial-scale=1"}]]
    [:body
     (centered
       [:div {:style {:margin "10px 0"}}
-       [:a {:href (:site/url site)} (:list/title lst)]]
+       [:a {:href (:url site)} (:title lst)]]
       (let [title [:h1.title {:style {:font-size "2.25rem"
                                       :margin "0"
                                       :color "black"}}
-                   (:post/title post)]]
-        (if (-> opts :post :post/slug not-empty)
+                   (:title post)]]
+        (if (-> post :slug not-empty)
           [:a {:href (post-url opts)} title]
           title))
       (space 5)
       (byline opts)
       (space 10)
-      [:div.post-content (raw-string (:post/html post))]
+      [:div.post-content (raw-string (:html post))]
       (space 15)
-      (when (custom-key opts :com.platypub/discourse-url)
+      (when (:discourse-url site)
         (list
-          (button {:bg-color (custom-key opts :com.platypub/primary-color)
+          (button {:bg-color (:primary-color site)
                    :href (comments-url opts)
                    :label "View comments"})
           (space 25)))
       [:hr]
       (space 8)
       [:div {:style {:font-size "85%"}}
-       (:list/mailing-address lst) ". "
+       (:mailing-address lst) ". "
        [:a {:href "%mailing_list_unsubscribe_url%"} "Unsubscribe."]])]])
 
-(defn main [opts]
-  {:html (str (hiccup/html (render opts)))})
+(defn main [{:keys [post] :as opts}]
+  {:subject (:title post)
+   :html (str (hiccup/html (render opts)))})
 
 (main (derive-opts *input*))

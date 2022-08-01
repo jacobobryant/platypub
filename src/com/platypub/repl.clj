@@ -22,12 +22,76 @@
                            (dissoc :post/authors))])]
     (xt/submit-tx node tx)))
 
+(defn next-uuid [uuid]
+  (java.util.UUID/nameUUIDFromBytes (.getBytes (str uuid))))
+
+(defn migrate-items! []
+  (biff/sh "cp" "-r" "storage/xtdb/" (str "storage/xtdb-backup-"
+                                          (inst-ms (java.util.Date.))))
+  (let [{:keys [biff/db] :as sys} (get-sys)
+        sites (q db
+                 '{:find (pull site [*])
+                   :where [[site :site/title]]})
+        posts (q db
+                 '{:find (pull post [*])
+                   :where [[post :post/title]]})
+        site-tx (for [site sites]
+                  (merge
+                   {:db/doc-type :site
+                    :db/op :update
+                    :xt/id (:xt/id site)
+                    :site/custom-config :db/dissoc
+                    :site/description :db/dissoc
+                    :site/image :db/dissoc
+                    :site/redirects :db/dissoc
+                    :site/tag :db/dissoc}
+                   (-> site
+                       (select-keys [:site/description
+                                     :site/image
+                                     :site/redirects])
+                       (biff/select-ns-as 'site 'site.custom.com.platypub.site))
+                   (biff/select-ns-as (:site/custom-config site)
+                                      'com.platypub 'site.custom.com.platypub.site)))
+        tag->site-id (->> sites
+                          (map (juxt :site/tag :xt/id))
+                          (into {}))
+        item-tx (for [post posts]
+                  (merge
+                   {:db/doc-type :item
+                    :xt/id (next-uuid (:xt/id post))
+                    :item/user (:post/user post)
+                    :item/sites (->> (:post/tags post)
+                                     (keep tag->site-id)
+                                     (concat (:post/sites post))
+                                     set)
+                    :item.custom.com.platypub.post/draft (= :draft (:post/status post))}
+                   (-> post
+                       (select-keys [:post/title
+                                     :post/html
+                                     :post/description
+                                     :post/tags
+                                     :post/image])
+                       (biff/select-ns-as 'post 'item.custom.com.platypub.post))
+                   (if (contains? (set (:post/tags post)) "page")
+                     {:item.custom.com.platypub.page/path (str "/" (:post/slug post))}
+                     (-> post
+                         (select-keys [:post/canonical
+                                       :post/slug
+                                       :post/published-at])
+                         (biff/select-ns-as 'post 'item.custom.com.platypub.post)))))
+        rm-posts-tx (for [post posts]
+                      {:xt/id (:xt/id post)
+                       :db/op :delete})]
+    (biff/submit-tx sys
+      (concat site-tx item-tx rm-posts-tx))))
+
 (comment
 
   ;; If I eval (biff/refresh) with Conjure, it starts sending stdout to Vim.
   ;; fix-print makes sure stdout keeps going to the terminal.
   (biff/fix-print (biff/refresh))
 
-  (let [{:keys [biff/db netlify/api-key] :as sys} (get-sys)])
+  (let [{:keys [biff/db] :as sys} (get-sys)]
+    )
 
   (sort (keys @biff/system)))

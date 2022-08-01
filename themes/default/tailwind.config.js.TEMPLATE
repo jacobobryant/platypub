@@ -5,9 +5,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'primary': '{{primary}}',
-        'accent': '{{accent}}',
-        'tertiary': '{{tertiary}}',
+        'primary': '{{primary-color}}',
+        'accent': '{{accent-color}}',
+        'tertiary': '{{tertiary-color}}',
       },
     },
   },

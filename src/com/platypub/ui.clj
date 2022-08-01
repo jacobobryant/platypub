@@ -1,7 +1,10 @@
 (ns com.platypub.ui
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [com.biffweb :as biff]))
+            [clojure.string :as str]
+            [com.biffweb :as biff]
+            [com.platypub.util :as util]
+            [rum.core :as rum]))
 
 (def interpunct " · ")
 
@@ -47,10 +50,7 @@
    body))
 
 (def nav-options
-  [{:name :posts
-    :label "Posts"
-    :href "/app"}
-   {:name :sites
+  [{:name :sites
     :label "Sites"
     :href "/sites"}
    {:name :newsletters
@@ -66,7 +66,17 @@
       :href href}
      label]))
 
-(defn nav-page [{:keys [current email]} & body]
+(defn sidebar-link [{:keys [active label href]}]
+  [:a.block.p-2.mx-3.rounded.mb-1
+   {:class (if active
+             '[text-white
+               bg-stone-800]
+             '[text-white
+               hover:bg-stone-800])
+    :href href}
+   label])
+
+(defn nav-page [{:keys [current sites user] :as sys} & body]
   (base
    {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]}
    (list
@@ -82,19 +92,30 @@
                      flex
                      flex-col]}
       [:.h-3]
-      [:.text-xl.mx-6 "Platypub"]
+      [:.text-xl.mx-3 "Platypub"]
       [:.h-6]
+      (for [{:keys [site/title site.config/items xt/id] :as site} (sort-by :site/title sites)
+            :when (not-empty items)]
+        (list
+         [:.mx-3.text-gray-400.uppercase.text-sm title]
+         [:.h-1]
+         [:hr.border-stone-600]
+         [:.h-2]
+         (for [item items]
+           (sidebar-link {:href (util/make-url "/site" id (:slug item))
+                          :label (str (:label item) "s")
+                          :active (= [site item]
+                                     [(:site sys) (:item-spec sys)])}))
+         [:.h-3]))
+      [:hr.border-stone-600]
+      [:.h-3]
       (for [{:keys [name label href]} nav-options]
-        [:a.block.p-3.mx-3.rounded.mb-1 {:class (if (= name current)
-                                                  '[text-white
-                                                    bg-stone-800]
-                                                  '[text-gray-400
-                                                    hover:bg-stone-800])
-                                         :href href}
-         label])
+        (sidebar-link {:href href
+                       :label label
+                       :active (= name current)}))
       [:.flex-grow]
       [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
-      [:.px-6.text-sm email]
+      [:.px-6.text-sm (:user/email user)]
       [:.px-6.text-sm
        (biff/form
         {:action "/auth/signout"
@@ -127,7 +148,7 @@
                     p-3
                     text-white]} "Platypub"]
       [:.py-3
-       [:.px-6 email " | "
+       [:.px-6 (:user/email user) " | "
         (biff/form
          {:action "/auth/signout"
           :class "inline"}
@@ -136,7 +157,7 @@
      [:.flex-grow]
      [:div#prefs.hidden
       [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
-      [:.px-6.text-sm email]
+      [:.px-6.text-sm (:user/email user)]
       [:.px-6.text-sm
        (biff/form
         {:action "/auth/signout"
@@ -251,3 +272,38 @@
         :checked (when (= default value)
                    "checked")}]
       [:span.ml-2 label]])))
+
+(def not-found-response
+  {:status 404
+   :headers {"content-type" "text/html"}
+   :body (rum/render-static-markup [:h1 "Not found"])})
+
+(defn custom-field [{:keys [site item]} k]
+  (let [{:keys [label type default description]} (get-in site [:site.config/fields k])
+        value (if item
+                (get item (util/add-prefix "item.custom." k))
+                (get site (util/add-prefix "site.custom." k)))]
+    (case type
+      :textarea (textarea {:id (name k)
+                           :label label
+                           :value value})
+      :instant (text-input {:id (name k)
+                            :label label
+                            :value (pr-str value)})
+      :boolean (checkbox {:id (name k)
+                          :label label
+                          :checked value})
+      :tags (text-input {:id (name k)
+                         :label label
+                         :value (str/join " " value)})
+      :image (list
+              (text-input {:id (name k)
+                           :label label
+                           :value value})
+              (when (not-empty value)
+                [:.mt-3.flex.justify-center
+                 [:img {:src value
+                        :style {:max-height "10rem"}}]]))
+      (text-input {:id (name k)
+                   :label label
+                   :value value}))))

@@ -1,6 +1,7 @@
 (ns com.platypub.feat.lists
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.mailgun :as mailgun]
+            [com.platypub.middleware :as mid]
             [com.platypub.ui :as ui]
             [com.platypub.util :as util]
             [clj-http.client :as http]
@@ -57,9 +58,9 @@
      :headers {"location" (str "/newsletters/" id)}}))
 
 (defn delete-list [{:keys [path-params biff/db] :as req}]
-  (mailgun/delete! req (:list/address (xt/entity db (parse-uuid (:id path-params)))))
+  (mailgun/delete! req (:list/address (xt/entity db (parse-uuid (:list-id path-params)))))
   (biff/submit-tx req
-    [{:xt/id (parse-uuid (:id path-params))
+    [{:xt/id (parse-uuid (:list-id path-params))
       :db/op :delete}])
   {:status 303
    :headers {"location" "/newsletters"}})
@@ -83,7 +84,7 @@
 
 (defn subscribers [{:keys [biff/db path-params params session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
-        newsletter-id (parse-uuid (:id path-params))
+        newsletter-id (parse-uuid (:list-id path-params))
         newsletter (xt/entity db newsletter-id)
         items (->> (mailgun/get-list-members req (:list/address newsletter) params)
                    :body
@@ -92,9 +93,10 @@
                    set
                    (sort #(compare (:joined-at %2) (:joined-at %1))))]
     (ui/nav-page
-     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-      :current :newsletters
-      :email email}
+     (merge req
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :newsletters
+             :email email})
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:div [:a.link.text-lg {:href (str "/newsletters/" newsletter-id)}
              (or (not-empty (str/trim (:list/title newsletter))) "[No title]")]]
@@ -108,7 +110,7 @@
 
 (defn edit-list-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
-        list-id (parse-uuid (:id path-params))
+        list-id (parse-uuid (:list-id path-params))
         lst (xt/entity db list-id)
         sites (q db
                  '{:find (pull site [*])
@@ -116,9 +118,10 @@
                    :where [[site :site/user user]]}
                  (:uid session))]
     (ui/nav-page
-     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-      :current :newsletters
-      :email email}
+     (merge req
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :newsletters
+             :email email})
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:.max-w-screen-sm
        (biff/form
@@ -157,7 +160,7 @@
 
 (defn list-list-item [{:keys [list/title list/sites xt/id]}]
   [:.mb-4
-   [:div [:a.link.block.text-lg {:href (str "/newsletters/" id)}
+   [:div [:a.link.text-lg {:href (str "/newsletters/" id)}
           (or (not-empty (str/trim title)) "[No title]")]]
    [:.text-sm.text-stone-600.dark:text-stone-300
     [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]
@@ -173,8 +176,9 @@
                    :where [[list :list/user user]]}
                  (:uid session))]
     (ui/nav-page
-     {:current :newsletters
-      :email email}
+     (merge req
+            {:current :newsletters
+             :email email})
      (biff/form
       {:action "/newsletters"}
       (when (nil? (util/get-secret req :mailgun/api-key))
@@ -187,10 +191,10 @@
           (map list-list-item)))))
 
 (def features
-  {:routes ["" {:middleware [util/wrap-signed-in]}
+  {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/newsletters" {:get lists-page
                              :post new-list}]
-            ["/newsletters/:id"
+            ["/newsletters/:list-id"
              ["" {:get edit-list-page
                   :post edit-list}]
              ["/delete" {:post delete-list}]

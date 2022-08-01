@@ -3,7 +3,7 @@
             [com.platypub.feat.auth :as auth]
             [com.platypub.feat.home :as home]
             [com.platypub.feat.lists :as lists]
-            [com.platypub.feat.posts :as posts]
+            [com.platypub.feat.items :as items]
             [com.platypub.feat.sites :as sites]
             [com.platypub.schema :refer [malli-opts]]
             [com.platypub.util :as util]
@@ -19,7 +19,7 @@
   [auth/features
    home/features
    lists/features
-   posts/features
+   items/features
    sites/features])
 
 (def routes [["" {:middleware [anti-forgery/wrap-anti-forgery
