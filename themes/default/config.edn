@@ -1,4 +1,9 @@
-{:fields {:com.platypub.site/primary-color  {:label "Primary color"
+{:fields {:com.platypub.site/description    {:label "Description"}
+          :com.platypub.site/image          {:label "Image"
+                                             :type :image}
+          :com.platypub.site/redirects      {:label "Redirects"
+                                             :type :textarea}
+          :com.platypub.site/primary-color  {:label "Primary color"
                                              :default "#343a40"}
           :com.platypub.site/accent-color   {:label "Accent color"
                                              :default "#009b50"}
@@ -33,18 +38,22 @@
           :com.platypub.post/image          {:label "Image"
                                              :type :image}
           :com.platypub.post/canonical      {:label "Canonical URL"}
+          :com.platypub.post/html           {:type :html}
           :com.platypub.page/path           {:label "Path"}}
- :site {:fields [:com.platypub.site/primary-color
-                 :com.platypub.site/accent-color
-                 :com.platypub.site/tertiary-color
-                 :com.platypub.site/logo-image
-                 :com.platypub.site/logo-url
-                 :com.platypub.site/author-name
-                 :com.platypub.site/author-url
-                 :com.platypub.site/author-image
-                 :com.platypub.site/discourse-url
-                 :com.platypub.site/embed-html
-                 :com.platypub.site/nav-links]}
+ :site-fields [:com.platypub.site/description
+               :com.platypub.site/image
+               :com.platypub.site/redirects
+               :com.platypub.site/primary-color
+               :com.platypub.site/accent-color
+               :com.platypub.site/tertiary-color
+               :com.platypub.site/logo-image
+               :com.platypub.site/logo-url
+               :com.platypub.site/author-name
+               :com.platypub.site/author-url
+               :com.platypub.site/author-image
+               :com.platypub.site/discourse-url
+               :com.platypub.site/embed-html
+               :com.platypub.site/nav-links]
  :items [{:key :com.platypub/post
           :label "Post"
           :match [:com.platypub.post/title]
@@ -55,7 +64,8 @@
                    :com.platypub.post/tags
                    :com.platypub.post/description
                    :com.platypub.post/image
-                   :com.platypub.post/canonical]
+                   :com.platypub.post/canonical
+                   :com.platypub.post/html]
           :sendable true
           :render/label :com.platypub.post/title
           :render/sections [{:label "Drafts"
@@ -69,14 +79,15 @@
                              :show [:com.platypub.post/published-at
                                     :com.platypub.post/tags]}]}
          {:key :com.platypub/page
-          :label "Post"
+          :label "Page"
           :match [:com.platypub.page/path]
           :fields [:com.platypub.post/title
                    :com.platypub.post/path
                    :com.platypub.post/draft
                    :com.platypub.post/tags
                    :com.platypub.post/description
-                   :com.platypub.post/image]
+                   :com.platypub.post/image
+                   :com.platypub.post/html]
           :render/label :com.platypub.post/title
           :render/sections [{:order-by [[:com.platypub.page/path :asc]]
                              :show [:com.platypub.page/path

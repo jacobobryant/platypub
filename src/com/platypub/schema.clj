@@ -15,6 +15,15 @@
    :user (doc {:id :user/id
                :required [:user/email]})
 
+   :site/id :uuid
+   :site [:map
+          [:xt/id :site/id]
+          [:site/user :user/id]
+          [:site/netlify-id :string]
+          [:site/url :string]
+          [:site/title :string]
+          [:site/theme :string]]
+
    :item/id :uuid
    ;; todo only allow additional keys if they start with a certain prefix
    :item [:map
@@ -59,29 +68,6 @@
                            :image/url
                            :image/filename
                            :image/uploaded-at]})
-
-   :site/id :uuid
-   :site/user :user/id
-   :site/url :string
-   :site/title :string
-   :site/description :string
-   :site/image :string
-   :site/tag :string
-   :site/theme :string
-   :site/redirects :string
-   :site/netlify-id :string
-   :site/custom-config map?
-   :site (doc {:id :site/id
-               :required [:site/user
-                          :site/url
-                          :site/title
-                          :site/description
-                          :site/image
-                          :site/tag
-                          :site/theme
-                          :site/redirects
-                          :site/netlify-id]
-               :optional [:site/custom-config]})
 
    :list/id :uuid
    :list/user :user/id
