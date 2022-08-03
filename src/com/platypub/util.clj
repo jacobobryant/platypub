@@ -8,7 +8,50 @@
             [lambdaisland.uri :as uri]
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
-            [ring.util.time :as ring-time]))
+            [ring.util.time :as ring-time]
+            [xtdb.api :as xt]))
+
+(defn add-prefix [prefix k]
+  (keyword (str prefix (namespace k)) (name k)))
+
+(defn join [sep xs]
+  (rest (mapcat vector (repeat sep) xs)))
+
+;; fix bug in select-ns-as
+
+(defn ns-parts [nspace]
+  (if (empty? (str nspace))
+    []
+    (str/split (str nspace) #"\.")))
+
+(defn select-ns [m nspace]
+  (let [parts (ns-parts nspace)]
+    (->> (keys m)
+         (filter (fn [k]
+                   (= parts (take (count parts) (ns-parts (namespace k))))))
+         (select-keys m))))
+
+(defn select-ns-as [m ns-from ns-to]
+  (->> (select-ns m ns-from)
+       (map (fn [[k v]]
+              (let [new-ns-parts (->> (ns-parts (namespace k))
+                                      (drop (count (ns-parts ns-from)))
+                                      (concat (ns-parts ns-to)))]
+                [(if (empty? new-ns-parts)
+                   (keyword (name k))
+                   (keyword (str/join "." new-ns-parts) (name k)))
+                 v])))
+       (into {})))
+
+;;;;
+
+(defn make-url [& args]
+  (let [[args query] (if (map? (last args))
+                       [(butlast args) (last args)]
+                       [args {}])]
+    (str (apply uri/assoc-query
+                (str/replace (str "/" (str/join "/" args)) #"/+" "/")
+                (apply concat query)))))
 
 (defn slurp-config [path]
   (when (.exists (io/file path))
@@ -105,10 +148,25 @@
                                    headers)
                    :body (some-> file file->bytes)})))
 
+(defn q-sites [db user]
+  (->> (q db
+          '{:find (pull site [*])
+            :in [user]
+            :where [[site :site/user user]]}
+          (:xt/id user))
+       (map (fn [site]
+              (merge site
+                     (select-ns-as
+                      (biff/catchall
+                       (edn/read-string
+                        (slurp (str "themes/" (:site/theme site) "/config.edn"))))
+                      nil
+                      'site.config))))))
+
 (defn wrap-signed-in [handler]
-  (fn [{:keys [session] :as req}]
-    (if (some? (:uid session))
-      (handler req)
+  (fn [{:keys [biff/db session] :as req}]
+    (if-some [user (xt/entity db (:uid session))]
+      (handler (assoc req :user user :sites (q-sites db user)))
       {:status 303
        :headers {"location" "/"}})))
 
@@ -139,3 +197,30 @@
 (defn enable-recaptcha? [sys]
   (and (some? (:com.platypub/enable-email-signin sys))
        (some? (get-secret sys :recaptcha/secret))))
+
+(defn last-edited [db id]
+  (:xtdb.api/valid-time (first (xt/entity-history db id :desc))))
+
+(defn order-by-fn [order-by-spec]
+  (let [order-by-spec (for [[k dir] order-by-spec]
+                        [(add-prefix "item.custom." k) dir])]
+    (fn [a b]
+      (or (->> order-by-spec
+               (map (fn [[k direction]]
+                      (cond-> (compare (k a) (k b))
+                        (= direction :desc) (* -1))))
+               (remove zero?)
+               first)
+          0))))
+
+(defn match? [spec item]
+  (if (= :not (first spec))
+    (not (match? (second spec) item))
+    (every? (fn [[k v]]
+              (= (get item (add-prefix "item.custom." k)) v))
+            spec)))
+
+(defn something? [x]
+  (if (or (coll? x) (string? x))
+    (boolean (not-empty x))
+    (some? x)))

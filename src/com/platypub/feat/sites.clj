@@ -165,9 +165,10 @@
         custom-schema (when-some [t (:site/theme site)]
                         (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))]
     (ui/nav-page
-     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-      :current :sites
-      :email email}
+     (merge req
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :sites
+             :email email})
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:.max-w-screen-sm
        (biff/form
@@ -244,8 +245,9 @@
                    :where [[site :site/user user]]}
                  (:uid session))]
     (ui/nav-page
-     {:current :sites
-      :email email}
+     (merge req
+            {:current :sites
+             :email email})
      (biff/form
       {:action "/sites"}
       (when (nil? (util/get-secret req :netlify/api-key))

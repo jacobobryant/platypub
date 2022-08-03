@@ -66,13 +66,17 @@
                    (-> post
                        (select-keys [:post/title
                                      :post/html
-                                     :post/published-at
-                                     :post/slug
                                      :post/description
                                      :post/tags
-                                     :post/canonical
                                      :post/image])
-                       (biff/select-ns-as 'post 'item.custom.com.platypub.post))))]
+                       (biff/select-ns-as 'post 'item.custom.com.platypub.post))
+                   (if (contains? (set (:post/tags post)) "page")
+                     {:item.custom.com.platypub.page/path (str "/" (:post/slug post))}
+                     (-> post
+                         (select-keys [:post/canonical
+                                       :post/slug
+                                       :post/published-at])
+                         (biff/select-ns-as 'post 'item.custom.com.platypub.post)))))]
     (biff/submit-tx sys
       (concat site-tx item-tx))))
 

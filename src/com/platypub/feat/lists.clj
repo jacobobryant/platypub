@@ -92,9 +92,10 @@
                    set
                    (sort #(compare (:joined-at %2) (:joined-at %1))))]
     (ui/nav-page
-     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-      :current :newsletters
-      :email email}
+     (merge req
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :newsletters
+             :email email})
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:div [:a.link.text-lg {:href (str "/newsletters/" newsletter-id)}
              (or (not-empty (str/trim (:list/title newsletter))) "[No title]")]]
@@ -116,9 +117,10 @@
                    :where [[site :site/user user]]}
                  (:uid session))]
     (ui/nav-page
-     {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-      :current :newsletters
-      :email email}
+     (merge req
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :newsletters
+             :email email})
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
       [:.max-w-screen-sm
        (biff/form
@@ -173,8 +175,9 @@
                    :where [[list :list/user user]]}
                  (:uid session))]
     (ui/nav-page
-     {:current :newsletters
-      :email email}
+     (merge req
+            {:current :newsletters
+             :email email})
      (biff/form
       {:action "/newsletters"}
       (when (nil? (util/get-secret req :mailgun/api-key))

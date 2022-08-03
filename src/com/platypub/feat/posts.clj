@@ -98,8 +98,9 @@
                  (:uid session))
         list-id (:list-id params)]
     (ui/nav-page
-     {:current :posts
-      :email email}
+     (merge req
+            {:current :posts
+             :email email})
      (when (= "true" (:sent params))
        [:div
         {:class '[bg-stone-200
@@ -322,8 +323,9 @@
                  (:uid session))
         [drafts published] (util/split-by #(= :published (:post/status %)) posts)]
     (ui/nav-page
-     {:current :posts
-      :email email}
+     (merge req
+            {:current :posts
+             :email email})
      (biff/form
       {:action "/app/posts"}
       [:button.btn {:type "submit"} "New post"])
@@ -361,15 +363,246 @@
      :headers {"content-type" "application/json"}
      :body {:location url}}))
 
+(defn create-item [{:keys [user site item-spec] :as sys}]
+  (let [id (random-uuid)]
+    (biff/submit-tx sys
+      [(into
+        {:db/doc-type :item
+         :xt/id id
+         :item/user (:xt/id user)
+         :item/sites #{(:xt/id site)}}
+        (for [k (:fields item-spec)
+              :let [{:keys [type default]} (get-in site [:site.config/fields k])]]
+          [(util/add-prefix "item.custom." k)
+           (or (when-not (vector? default)
+                 default)
+               (case type
+                 :instant :db/now
+                 :boolean false
+                 :tags []
+                 ""))]))])
+    {:status 303
+     :headers {"location" (util/make-url "site" (:xt/id site) (:slug item-spec) id)}}))
+
+(defn edit-item-page [{:keys [biff/db user site item-spec item] :as req}]
+  (let [html-key (->> (:fields item-spec)
+                      (filter #(= (get-in site [:site.config/fields % :type]) :html))
+                      first)]
+    (ui/base
+     {:base/head (concat
+                  [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+                  (when (some? html-key)
+                    [[:script {:referrerpolicy "origin",
+                               :src (str "https://cdn.tiny.cloud/1/"
+                                         (or (util/get-secret req :tinycloud/api-key) "no-api-key")
+                                         "/tinymce/6/tinymce.min.js")}]
+                     [:script (biff/unsafe (slurp (io/resource "tinymce_init.js")))]
+                     [:link {:rel "stylesheet" :href "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/themes/prism-okaidia.min.css"}]
+                     [:script {:src "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/components/prism-core.min.js"}]
+                     [:script {:src (str "https://cdnjs.cloudflare.com/ajax/libs/prism/1.17.1/plugins/"
+                                         "autoloader/prism-autoloader.min.js")}]]))}
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
+      [:.md:w-80.mx-3
+       [:.flex.justify-between
+        [:.my-3 [:a.link {:href (util/make-url "site" (:xt/id site) (:slug item-spec))}
+                 "< " (:label item-spec) "s"]]
+        [:.my-3 [:a.link {:href (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item) "send")}
+                 "Send"]]]
+       (biff/form
+        {:id "edit"
+         :action (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item))
+         :class '[flex flex-col flex-grow]}
+
+        (for [k (:fields item-spec)
+              :let [{:keys [label type default description]} (get-in site [:site.config/fields k])
+                    value (get item (util/add-prefix "item.custom." k))]
+              :when (not= type :html)]
+          (list
+           (case type
+             :textarea (ui/textarea {:id (name k)
+                                     :label label
+                                     :value value})
+             :instant (ui/text-input {:id (name k)
+                                      :label label
+                                      :value (pr-str value)})
+             :boolean (ui/checkbox {:id (name k)
+                                    :label label
+                                    :checked value})
+             :tags (ui/text-input {:id (name k)
+                                   :label label
+                                   :value (str/join " " value)})
+             :image (list
+                     (ui/text-input {:id (name k)
+                                     :label label
+                                     :value value})
+                     (when (not-empty value)
+                       [:.mt-3.flex.justify-center
+                        [:img {:src value
+                               :style {:max-height "10rem"}}]]))
+             (ui/text-input {:id (name k)
+                             :label label
+                             :value value}))
+           [:.h-3]))
+        [:.h-1]
+        [:button.btn.w-full {:type "submit"} "Save"])
+       [:.h-3]
+       [:.flex.justify-between
+        (biff/form
+         {:onSubmit "return confirm('Delete item?')"
+          :action (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item) "delete")}
+         [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])]
+       [:.h-6]]
+      (when (some? html-key)
+        [:.max-w-screen-md.mx-auto.w-full
+         [:textarea#content
+          {:form "edit"
+           :type "text"
+           :name (name html-key)
+           :value (get item (util/add-prefix "item.custom." html-key))}]])
+      [:.w-6.h-3]])))
+
+(defn edit-item [{:keys [user site item-spec item params] :as sys}]
+  (biff/submit-tx sys
+    [(into
+      {:db/doc-type :item
+       :xt/id (:xt/id item)
+       :db/op :update}
+      (for [k (:fields item-spec)
+            :let [value (get params (keyword (name k)))
+                  {:keys [type default]} (get-in site [:site.config/fields k])]]
+        [(util/add-prefix "item.custom." k)
+         (case type
+           :instant (edn/read-string value)
+           :boolean (= (doto value prn) "on")
+           :tags (->> (str/split value #"\s+")
+                      (remove empty?)
+                      distinct
+                      vec)
+           value)]))])
+  {:status 303
+   :headers {"location" (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item))}})
+
+(defn delete-item [{:keys [site item-spec item] :as sys}]
+  (biff/submit-tx sys
+    [{:xt/id (:xt/id item)
+      :db/op :delete}])
+  {:status 303
+   :headers {"location" (util/make-url "site" (:xt/id site) (:slug item-spec))}})
+
+(defn send-item-page [sys]
+  nil)
+
+(defn send-item [sys]
+  nil)
+
+(defn preview-item [sys]
+  nil)
+
+(defn item-summary [{:keys [biff/db item-spec site] :as sys} item show]
+  [:.mb-4
+   [:div
+    [:a.link {:href (util/make-url "/site"
+                                   (:xt/id site)
+                                   (:slug item-spec)
+                                   (:xt/id item))}
+     (or (not-empty (str/trim (get item
+                                   (util/add-prefix
+                                    "item.custom."
+                                    (:render/label item-spec))
+                                   "")))
+         "[No title]")]]
+   [:.text-sm.text-stone-600.dark:text-stone-300
+    (util/join
+     ui/interpunct
+     (for [k show
+           :let [{:keys [label type]} (get-in sys [:site :site.config/fields k])
+                 value (get item (util/add-prefix "item.custom." k))]
+           :when (util/something? value)]
+       (if (= k :edited-at)
+         (list "Last edited: " (biff/format-date (util/last-edited db (:xt/id item))
+                                                 "dd MMM yyyy, H:mm aa"))
+         (list label ": "
+               (str
+                (case type
+                  :tags (str/join ", " value)
+                  :instant (biff/format-date value "dd MMM yyyy, H:mm aa")
+                  value))))))]])
+
+(defn items-page [{:keys [session biff/db user site item-spec] :as req}]
+  (let [items (q db
+                 {:find '(pull item [*])
+                  :in '[user site]
+                  :where (->> (:match item-spec)
+                              (map (fn [x]
+                                     (let [[k & rst] (if (keyword? x)
+                                                       [x]
+                                                       x)
+                                           k (keyword (str "item.custom." (namespace k)) (name k))]
+                                       (into ['item k] rst))))
+                              (into '[[item :item/user user]
+                                      [item :item/sites site]]))}
+                 (:xt/id user)
+                 (:xt/id site))]
+    (ui/nav-page
+     req
+     (biff/form
+      {:action (util/make-url "/site" (:xt/id site) (:slug item-spec))}
+      [:button.btn {:type "submit"} (str "New " (str/lower-case (:label item-spec)))])
+     [:.h-6]
+     (for [{:keys [label match order-by show]} (:render/sections item-spec)
+           :let [items (->> items
+                            (filter #(util/match? match %))
+                            (sort-by identity (util/order-by-fn order-by)))]]
+       (list
+        (when label
+          [:.text-lg.my-2 label])
+        (when (empty? items)
+          [:.text-stone-600.dark:text-stone-400 "No items yet."])
+        (for [item items]
+          (item-summary req item show))
+        [:.h-3])))))
+
+(defn wrap-item-spec [handler]
+  (fn [{:keys [biff/db session path-params sites] :as req}]
+    (let [site (->> sites
+                    (filter #(= (:site-id path-params)
+                                (str (:xt/id %))))
+                    first)
+          item (->> (:site.config/items site)
+                    (filter #(= (:item-slug path-params)
+                                (:slug %)))
+                    first)]
+      (if (every? some? [site item])
+        (handler (assoc req :site site :item-spec item))
+        ui/not-found-response))))
+
+(defn wrap-item [handler]
+  (fn [{:keys [biff/db session path-params sites user] :as req}]
+    (let [item (xt/entity db (parse-uuid (:item-id path-params)))]
+      (if (= (:item/user item) (:xt/id user))
+        (handler (assoc req :item item))
+        ui/not-found-response))))
+
 (def features
-  {:routes ["/app" {:middleware [util/wrap-signed-in]}
-            ["" {:get app}]
-            ["/images/upload" {:post upload-image}]
-            ["/posts/:id"
-             ["" {:get edit-post-page
-                  :post edit-post}]
-             ["/delete" {:post delete-post}]
-             ["/send" {:get send-page
-                       :post send!}]
-             ["/preview" {:get preview}]]
-            ["/posts" {:post new-post}]]})
+  {:routes [["/app" {:middleware [util/wrap-signed-in]}
+             ["" {:get app}]
+             ["/images/upload" {:post upload-image}]
+             ["/posts/:id"
+              ["" {:get edit-post-page
+                   :post edit-post}]
+              ["/delete" {:post delete-post}]
+              ["/send" {:get send-page
+                        :post send!}]
+              ["/preview" {:get preview}]]
+             ["/posts" {:post new-post}]]
+            ["/site/:site-id/:item-slug" {:middleware [util/wrap-signed-in
+                                                       wrap-item-spec]}
+             ["" {:get items-page
+                  :post create-item}]
+             ["/:item-id" {:middleware [wrap-item]}
+              ["" {:get edit-item-page
+                   :post edit-item}]
+              ["/delete" {:post delete-item}]
+              ["/send" {:get send-item-page
+                        :post send-item}]
+              ["/preview" {:get preview-item}]]]]})

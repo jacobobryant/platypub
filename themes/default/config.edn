@@ -20,7 +20,8 @@
           :com.platypub.site/discourse-url  {:label "Discourse forum URL"
                                              :description "Optional. If you set up a Discourse forum, you can use it to embed comments on your blog posts."}
           :com.platypub.site/embed-html     {:label "Embed HTML"
-                                             :description "This snippet will be injected into the head of every page. Useful for analytics."}
+                                             :description "This snippet will be injected into the head of every page. Useful for analytics."
+                                             :type :textarea}
           :com.platypub.site/nav-links      {:label "Navigation links"
                                              :default "/ Home\n/archive/ Archive\n/about/ About"
                                              :type :textarea}
@@ -28,7 +29,8 @@
           :com.platypub.post/slug           {:label "Slug"
                                              :default [:slugify :com.platypub.post/title]}
           :com.platypub.post/draft          {:label "Draft"
-                                             :type :boolean}
+                                             :type :boolean
+                                             :default true}
           :com.platypub.post/published-at   {:label "Published"
                                              :type :instant}
           :com.platypub.post/tags           {:label "Tags"
@@ -56,7 +58,8 @@
                :com.platypub.site/nav-links]
  :items [{:key :com.platypub/post
           :label "Post"
-          :match [:com.platypub.post/title]
+          :slug "posts"
+          :match [:com.platypub.post/slug]
           :fields [:com.platypub.post/title
                    :com.platypub.post/slug
                    :com.platypub.post/draft
@@ -70,19 +73,20 @@
           :render/label :com.platypub.post/title
           :render/sections [{:label "Drafts"
                              :match [[:com.platypub.post/draft true]]
-                             :order-by [[:edited-at :desc]]
+                             :order-by [[:com.platypub.post/title :desc]]
                              :show [:edited-at
                                     :com.platypub.post/tags]}
                             {:label "Published"
                              :match [:not [[:com.platypub.post/draft true]]]
-                             :order-by [[:com.platypub/published-at :desc]]
+                             :order-by [[:com.platypub.post/published-at :desc]]
                              :show [:com.platypub.post/published-at
                                     :com.platypub.post/tags]}]}
          {:key :com.platypub/page
           :label "Page"
+          :slug "pages"
           :match [:com.platypub.page/path]
           :fields [:com.platypub.post/title
-                   :com.platypub.post/path
+                   :com.platypub.page/path
                    :com.platypub.post/draft
                    :com.platypub.post/tags
                    :com.platypub.post/description
