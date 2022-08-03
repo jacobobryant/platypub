@@ -180,6 +180,24 @@
                                  "/dev/stdin" "/dev/stdout"
                                  :in (:html msg))))))
 
+(defn render-item-email [{:keys [biff/db params] :as sys}]
+  (let [lst (xt/entity db (parse-uuid (:list-id params)))
+        render-opts (util/get-item-render-opts sys)
+        dir (str "themes/" (:list/theme lst))
+        _ (biff/sh "chmod" "+x" "./render-email" :dir dir)
+        msg (merge (edn/read-string (biff/sh "./render-email"
+                                             :in (pr-str render-opts)
+                                             :dir dir))
+                   {:to (:list/address lst)
+                    :from (str (:list/title lst) " <doreply@" (:mailgun/domain sys) ">")
+                    :h:Reply-To (:list/reply-to lst)})]
+    (cond-> msg
+      (nil? (:text msg)) (assoc :text (html->md (:html msg)))
+      true (assoc :html (biff/sh "npx" "juice"
+                                 "--web-resources-images" "false"
+                                 "/dev/stdin" "/dev/stdout"
+                                 :in (:html msg))))))
+
 (defn preview [{:keys [biff/db] {:keys [list-id post-id]} :params :as req}]
   {:status 200
    :headers {"content-type" "text/html"}
@@ -403,11 +421,13 @@
                                          "autoloader/prism-autoloader.min.js")}]]))}
      [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.md:flex.flex-grow
       [:.md:w-80.mx-3
-       [:.flex.justify-between
+       [:.flex
         [:.my-3 [:a.link {:href (util/make-url "site" (:xt/id site) (:slug item-spec))}
                  "< " (:label item-spec) "s"]]
-        [:.my-3 [:a.link {:href (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item) "send")}
-                 "Send"]]]
+        [:.flex-grow]
+        (when (:sendable item-spec)
+          [:.my-3 [:a.link {:href (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item) "send")}
+                   "Send"]])]
        (biff/form
         {:id "edit"
          :action (util/make-url "site" (:xt/id site) (:slug item-spec) (:xt/id item))
@@ -489,14 +509,82 @@
   {:status 303
    :headers {"location" (util/make-url "site" (:xt/id site) (:slug item-spec))}})
 
-(defn send-item-page [sys]
-  nil)
+(defn send-item-page [{:keys [biff/db user site item-spec item params] :as sys}]
+  (let [lists (->> (q db
+                      '{:find (pull list [*])
+                        :in [user]
+                        :where [[list :list/user user]]}
+                      (:xt/id user))
+                   (map (fn [lst]
+                          (assoc lst :list/n-subscribers (recipient-count sys lst)))))
+        list-id (or (some-> (:list-id params) parse-uuid)
+                    (->> lists
+                         (filter #(contains? (set (:list/sites %)) (:xt/id site)))
+                         first
+                         :xt/id))]
+    (ui/nav-page
+     sys
+     (when (= "true" (:sent params))
+       [:div
+        {:class '[bg-stone-200
+                  dark:bg-stone-900
+                  p-3
+                  text-center
+                  border-l-8
+                  border-green-700]
+         :_ "on load wait 5s then remove me"}
+        "Message sent"])
+     [:.flex
+      (biff/form
+       {:onSubmit "return confirm('Send newsletter?')"
+        :id "send"
+        :action (util/make-url "site"
+                               (:xt/id site)
+                               (:slug item-spec)
+                               (:xt/id item)
+                               "send")
+        :class '[flex
+                 flex-col
+                 flex-grow
+                 max-w-lg
+                 w-full]}
+       [:.text-lg.my-2 "Send newsletter"]
+       (ui/text-input {:id "item"
+                       :label (:label item-spec)
+                       :value (get item (util/add-prefix "item.custom." (:render/label item-spec)))
+                       :disabled true})
+       [:.h-3]
+       (ui/select {:label "Newsletter"
+                   :id "list"
+                   :name "list-id"
+                   :default list-id
+                   :options (for [lst (sort-by :list/title lists)]
+                              {:label (str (or (not-empty (:list/title lst)) "[No title]")
+                                           " (" (:list/n-subscribers lst) " subscribers)")
+                               :value (:xt/id lst)})})
+       [:.h-3]
+       [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
+       [:.flex.gap-3
+        (ui/text-input {:id "test-address"})
+        [:button.btn-secondary {:type "submit" :name "send-test" :value "true"}
+         "Send"]]
+       [:.h-6]
+       [:.flex.gap-3
+        [:button.btn-secondary.flex-1
+         {:type "submit"
+          :formmethod "get"
+          :formaction "preview"
+          :formtarget "_blank"}
+         "Preview"]
+        [:button.btn.flex-1 {:type "submit"} "Send"]])])))
 
 (defn send-item [sys]
   nil)
 
 (defn preview-item [sys]
-  nil)
+  {:status 200
+   :headers {"content-type" "text/html"}
+   :body (:html (render-item-email sys))})
 
 (defn item-summary [{:keys [biff/db item-spec site] :as sys} item show]
   [:.mb-4
@@ -529,20 +617,7 @@
                   value))))))]])
 
 (defn items-page [{:keys [session biff/db user site item-spec] :as req}]
-  (let [items (q db
-                 {:find '(pull item [*])
-                  :in '[user site]
-                  :where (->> (:match item-spec)
-                              (map (fn [x]
-                                     (let [[k & rst] (if (keyword? x)
-                                                       [x]
-                                                       x)
-                                           k (keyword (str "item.custom." (namespace k)) (name k))]
-                                       (into ['item k] rst))))
-                              (into '[[item :item/user user]
-                                      [item :item/sites site]]))}
-                 (:xt/id user)
-                 (:xt/id site))]
+  (let [items (util/q-items db user site item-spec)]
     (ui/nav-page
      req
      (biff/form

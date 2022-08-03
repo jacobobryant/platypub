@@ -240,6 +240,25 @@
            :pages pages
            :custom-defaults custom-defaults)))
 
+(defn item-derive-opts [{:keys [lists posts pages] :as opts}]
+  (let [posts (->> posts
+                   (remove :com.platypub.post/draft)
+                   (map #(update % :com.platypub.post/tags set))
+                   (sort-by :com.platypub.post/published-at #(compare %2 %1)))
+        pages (->> pages
+                   (remove :com.platypub.post/draft)
+                   (map #(update % :com.platypub.post/tags set)))
+        welcome (->> posts
+                     (filter #((:com.platypub.post/tags %) "welcome"))
+                     first)
+        posts (->> posts
+                   (remove #((:com.platypub.post/tags %) "welcome")))]
+    (assoc opts
+           :posts posts
+           :pages pages
+           :list (first lists)
+           :welcome welcome)))
+
 (defn netlify-fn-config! [{:keys [db site-id site welcome account] lst :list :as opts}]
   (spit "netlify/functions/config.json"
         (json/generate-string

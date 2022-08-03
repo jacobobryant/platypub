@@ -45,6 +45,17 @@
 
 ;;;;
 
+(defn dissoc-ns [m nspace]
+  (let [parts (ns-parts nspace)]
+    (->> (keys m)
+         (remove (fn [k]
+                   (= parts (take (count parts) (ns-parts (namespace k))))))
+         (select-keys m))))
+
+(defn rename-ns [m ns-from ns-to]
+  (merge (dissoc-ns m ns-from)
+         (select-ns-as m ns-from ns-to)))
+
 (defn make-url [& args]
   (let [[args query] (if (map? (last args))
                        [(butlast args) (last args)]
@@ -193,6 +204,55 @@
                (assoc doc :db/doc-type doc-type))]
     {:account account
      :db (into {} (map (juxt :xt/id identity)) docs)}))
+
+(defn q-items [db user site item-spec]
+  (q db
+     {:find '(pull item [*])
+      :in '[user site]
+      :where (->> (:match item-spec)
+                  (map (fn [x]
+                         (let [[k & rst] (if (keyword? x)
+                                           [x]
+                                           x)
+                               k (keyword (str "item.custom." (namespace k)) (name k))]
+                           (into ['item k] rst))))
+                  (into '[[item :item/user user]
+                          [item :item/sites site]]))}
+     (:xt/id user)
+     (:xt/id site)))
+
+(defn get-item-render-opts [{:keys [biff/db user site item] :as sys}]
+  (let [defaults (->> site
+                      :site.config/fields
+                      (map (fn [[k v]]
+                             [k (:default v)]))
+                      (into {}))
+        site' (-> site
+                  (dissoc-ns 'site.config)
+                  (rename-ns 'site.custom nil))
+        site' (reduce (fn [m k]
+                        (if (contains? m k)
+                          m
+                          (assoc m k (defaults k))))
+                      site'
+                      (:site.config/site-fields site))]
+    (into {:account (-> sys
+                        (select-keys [:mailgun/domain :recaptcha/site])
+                        (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
+                        (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
+           :site site'
+           :lists (q db
+                     '{:find (pull lst [*])
+                       :in [user site]
+                       :where [[lst :list/user user]
+                               [lst :list/sites site]]}
+                     (:xt/id user)
+                     (:xt/id site))
+           :item (rename-ns item 'item.custom nil)}
+          (for [item-spec (:site.config/items site)]
+            [(:key item-spec)
+             (->> (q-items db user site item-spec)
+                  (map #(rename-ns % 'item.custom nil)))]))))
 
 (defn enable-recaptcha? [sys]
   (and (some? (:com.platypub/enable-email-signin sys))

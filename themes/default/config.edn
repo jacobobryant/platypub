@@ -56,7 +56,7 @@
                :com.platypub.site/discourse-url
                :com.platypub.site/embed-html
                :com.platypub.site/nav-links]
- :items [{:key :com.platypub/post
+ :items [{:key :posts
           :label "Post"
           :slug "posts"
           :match [:com.platypub.post/slug]
@@ -81,7 +81,7 @@
                              :order-by [[:com.platypub.post/published-at :desc]]
                              :show [:com.platypub.post/published-at
                                     :com.platypub.post/tags]}]}
-         {:key :com.platypub/page
+         {:key :pages
           :label "Page"
           :slug "pages"
           :match [:com.platypub.page/path]

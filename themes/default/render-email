@@ -102,7 +102,17 @@
        (:list/mailing-address lst) ". "
        [:a {:href "%mailing_list_unsubscribe_url%"} "Unsubscribe."]])]])
 
+(defn item-render [opts]
+  ;; TODO
+  [:div "hello there"])
+
 (defn main [opts]
   {:html (str (hiccup/html (render opts)))})
 
-(main (derive-opts *input*))
+(defn item-main [{:keys [item] :as opts}]
+  {:subject (:com.platypub.post/title item)
+   :html (str (hiccup/html (item-render opts)))})
+
+(if (contains? *input* :site)
+  (item-main (item-derive-opts *input*))
+  (main (derive-opts *input*)))
