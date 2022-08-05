@@ -31,33 +31,6 @@
           [:item/user :user/id]
           [:item/sites [:set :site/id]]]
 
-   :post/id :uuid
-   :post/user :user/id
-   :post/title :string
-   :post/html :string
-   :post/published-at inst?
-   :post/edited-at inst?
-   :post/slug :string
-   :post/description :string
-   :post/tags [:sequential :string]
-   :post/canonical :string
-   :post/image :string
-   :post/status [:enum :draft :published]
-   :post/sites [:vector :site/id]
-   :post (doc {:id :post/id
-               :required [:post/user
-                          :post/title
-                          :post/html
-                          :post/published-at
-                          :post/edited-at
-                          :post/slug
-                          :post/description
-                          :post/tags
-                          :post/canonical
-                          :post/image
-                          :post/status]
-               :optional [:post/sites]})
-
    :image/id :uuid
    :image/user :user/id
    :image/url :string

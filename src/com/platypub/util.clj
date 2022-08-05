@@ -132,7 +132,7 @@
                   file
                   headers]}]
   ;; See https://docs.aws.amazon.com/AmazonS3/latest/userguide/RESTAuthentication.html
-  ;; We should upgrade to v4 at some point.
+  ;; We should upgrade to v4 at some point, maybe.
   (let [date (format-date (java.util.Date.) "EEE, dd MMM yyyy HH:mm:ss Z")
         path (str "/" bucket "/" key)
         md5 (some-> file md5-base64)
@@ -174,36 +174,12 @@
                       nil
                       'site.config))))))
 
-(defn wrap-signed-in [handler]
-  (fn [{:keys [biff/db session] :as req}]
-    (if-some [user (xt/entity db (:uid session))]
-      (handler (assoc req :user user :sites (q-sites db user)))
-      {:status 303
-       :headers {"location" "/"}})))
-
 (defn serve-static-file [file]
   {:status 200
    :headers {"content-length" (str (.length file))
              "last-modified" (ring-time/format-date (ring-io/last-modified-date file))
              "content-type" (mime/ext-mime-type (.getName file))}
    :body file})
-
-(defn get-render-opts [{:keys [biff/db session] :as sys}]
-  (let [account (-> sys
-                    (select-keys [:mailgun/domain :recaptcha/site])
-                    (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
-                    (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
-        docs (for [[doc-type k] [[:post :post/user]
-                                 [:site :site/user]
-                                 [:list :list/user]]
-                   doc (q db
-                          {:find '(pull doc [*])
-                           :in '[user]
-                           :where [['doc k 'user]]}
-                          (:uid session))]
-               (assoc doc :db/doc-type doc-type))]
-    {:account account
-     :db (into {} (map (juxt :xt/id identity)) docs)}))
 
 (defn q-items [db user site item-spec]
   (q db
@@ -221,7 +197,7 @@
      (:xt/id user)
      (:xt/id site)))
 
-(defn get-item-render-opts [{:keys [biff/db user site item] :as sys}]
+(defn get-render-opts [{:keys [biff/db user site item] :as sys}]
   (let [defaults (->> site
                       :site.config/fields
                       (map (fn [[k v]]
@@ -284,3 +260,20 @@
   (if (or (coll? x) (string? x))
     (boolean (not-empty x))
     (some? x)))
+
+(defn params->custom-fields [{:keys [site item-spec params]}]
+  (let [[prefix ks] (if item-spec
+                      ["item.custom." (:fields item-spec)]
+                      ["site.custom." (:site.config/site-fields site)])]
+    (for [k ks
+          :let [value (get params (keyword (name k)))
+                {:keys [type default]} (get-in site [:site.config/fields k])]]
+      [(add-prefix prefix k)
+       (case type
+         :instant (edn/read-string value)
+         :boolean (= value "on")
+         :tags (->> (str/split value #"\s+")
+                    (remove empty?)
+                    distinct
+                    vec)
+         value)])))

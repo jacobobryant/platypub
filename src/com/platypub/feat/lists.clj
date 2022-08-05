@@ -1,6 +1,7 @@
 (ns com.platypub.feat.lists
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.mailgun :as mailgun]
+            [com.platypub.middleware :as mid]
             [com.platypub.ui :as ui]
             [com.platypub.util :as util]
             [clj-http.client :as http]
@@ -57,9 +58,9 @@
      :headers {"location" (str "/newsletters/" id)}}))
 
 (defn delete-list [{:keys [path-params biff/db] :as req}]
-  (mailgun/delete! req (:list/address (xt/entity db (parse-uuid (:id path-params)))))
+  (mailgun/delete! req (:list/address (xt/entity db (parse-uuid (:list-id path-params)))))
   (biff/submit-tx req
-    [{:xt/id (parse-uuid (:id path-params))
+    [{:xt/id (parse-uuid (:list-id path-params))
       :db/op :delete}])
   {:status 303
    :headers {"location" "/newsletters"}})
@@ -83,7 +84,7 @@
 
 (defn subscribers [{:keys [biff/db path-params params session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
-        newsletter-id (parse-uuid (:id path-params))
+        newsletter-id (parse-uuid (:list-id path-params))
         newsletter (xt/entity db newsletter-id)
         items (->> (mailgun/get-list-members req (:list/address newsletter) params)
                    :body
@@ -109,7 +110,7 @@
 
 (defn edit-list-page [{:keys [path-params biff/db session] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
-        list-id (parse-uuid (:id path-params))
+        list-id (parse-uuid (:list-id path-params))
         lst (xt/entity db list-id)
         sites (q db
                  '{:find (pull site [*])
@@ -190,10 +191,10 @@
           (map list-list-item)))))
 
 (def features
-  {:routes ["" {:middleware [util/wrap-signed-in]}
+  {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/newsletters" {:get lists-page
                              :post new-list}]
-            ["/newsletters/:id"
+            ["/newsletters/:list-id"
              ["" {:get edit-list-page
                   :post edit-list}]
              ["/delete" {:post delete-list}]

@@ -1,6 +1,7 @@
 (ns com.platypub.ui
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [com.biffweb :as biff]
             [com.platypub.util :as util]
             [rum.core :as rum]))
@@ -49,10 +50,7 @@
    body))
 
 (def nav-options
-  [{:name :posts
-    :label "Posts"
-    :href "/app"}
-   {:name :sites
+  [{:name :sites
     :label "Sites"
     :href "/sites"}
    {:name :newsletters
@@ -107,7 +105,7 @@
            (sidebar-link {:href (util/make-url "/site" id (:slug item))
                           :label (str (:label item) "s")
                           :active (= [site item]
-                                     [(:site sys) (:item sys)])}))
+                                     [(:site sys) (:item-spec sys)])}))
          [:.h-3]))
       [:hr.border-stone-600]
       [:.h-3]
@@ -279,3 +277,33 @@
   {:status 404
    :headers {"content-type" "text/html"}
    :body (rum/render-static-markup [:h1 "Not found"])})
+
+(defn custom-field [{:keys [site item]} k]
+  (let [{:keys [label type default description]} (get-in site [:site.config/fields k])
+        value (if item
+                (get item (util/add-prefix "item.custom." k))
+                (get site (util/add-prefix "site.custom." k)))]
+    (case type
+      :textarea (textarea {:id (name k)
+                           :label label
+                           :value value})
+      :instant (text-input {:id (name k)
+                            :label label
+                            :value (pr-str value)})
+      :boolean (checkbox {:id (name k)
+                          :label label
+                          :checked value})
+      :tags (text-input {:id (name k)
+                         :label label
+                         :value (str/join " " value)})
+      :image (list
+              (text-input {:id (name k)
+                           :label label
+                           :value value})
+              (when (not-empty value)
+                [:.mt-3.flex.justify-center
+                 [:img {:src value
+                        :style {:max-height "10rem"}}]]))
+      (text-input {:id (name k)
+                   :label label
+                   :value value}))))

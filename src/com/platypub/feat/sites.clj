@@ -1,5 +1,6 @@
 (ns com.platypub.feat.sites
   (:require [com.biffweb :as biff :refer [q]]
+            [com.platypub.middleware :as mid]
             [com.platypub.netlify :as netlify]
             [com.platypub.ui :as ui]
             [com.platypub.util :as util]
@@ -14,39 +15,18 @@
             [ring.util.mime-type :as mime]
             [lambdaisland.uri :as uri]))
 
-(defn edit-site [{:keys [biff/db params] :as req}]
-  (let [{:keys [id
-                url
-                title
-                description
-                image
-                tag
-                theme
-                redirects]} params
-        custom-schema (when-some [t (:site/theme (xt/entity db (parse-uuid id)))]
-                        (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))
-        custom-config (->> custom-schema
-                           (map (fn [{k :key}]
-                                  ;; If k is namespaced, then in params it'll
-                                  ;; be a string instead of a keyword.
-                                  [k (or (get params (subs (str k) 1))
-                                         (get params k)
-                                         "")]))
-                           (into {}))]
-    (biff/submit-tx req
-      [(into {:db/doc-type :site
-              :db/op :update
-              :xt/id (parse-uuid id)
-              :site/title title
-              :site/url url
-              :site/description description
-              :site/image image
-              :site/tag tag
-              :site/theme theme
-              :site/redirects redirects
-              :site/custom-config custom-config})])
-    {:status 303
-     :headers {"location" (str "/sites/" id)}}))
+(defn edit-site [{:keys [site params] :as sys}]
+  (biff/submit-tx sys
+    [(into
+      {:db/doc-type :site
+       :xt/id (:xt/id site)
+       :db/op :update
+       :site/title (:title params)
+       :site/url (:url params)
+       :site/theme (:theme params)}
+      (util/params->custom-fields sys))])
+  {:status 303
+   :headers {"location" (util/make-url "sites" (:xt/id site))}})
 
 (defn new-site [{:keys [session] :as req}]
   (let [id (random-uuid)
@@ -59,33 +39,28 @@
         :site/user (:uid session)
         :site/url ssl_url
         :site/title name
-        :site/description ""
-        :site/image ""
-        :site/tag ""
         :site/theme "default"
-        :site/redirects ""
         :site/netlify-id site_id}])
     {:status 303
      :headers {"location" (str "/sites/" id)}}))
 
-(defn delete-site [{:keys [path-params biff/db] :as req}]
-  (netlify/delete! req {:site-id (:site/netlify-id (xt/entity db (parse-uuid (:id path-params))))})
+(defn delete-site [{:keys [path-params biff/db site] :as req}]
+  (netlify/delete! req {:site-id (:site/netlify-id site)})
   (biff/submit-tx req
-    [{:xt/id (parse-uuid (:id path-params))
+    [{:xt/id (:xt/id site)
       :db/op :delete}])
   {:status 303
    :headers {"location" "/sites"}})
 
-(defn export [{:keys [path-params] :as req}]
+(defn export [sys]
   {:status 200
    :headers {"content-type" "application/edn"
              "content-disposition" "attachment; filename=\"input.edn\""}
-   :body (pr-str (assoc (util/get-render-opts req)
-                        :site-id (parse-uuid (:id path-params))))})
+   :body (pr-str (util/get-render-opts sys))})
 
 (defn generate! [{:keys [biff/db path-params params dir] :as req}]
   (let [render-opts (assoc (util/get-render-opts req)
-                           :site-id (parse-uuid (:id path-params)))
+                           :site-id (parse-uuid (:site-id path-params)))
         path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
         {:keys [site/theme]} (xt/entity db (:site-id render-opts))
         theme-last-modified (->> (file-seq (io/file "themes" theme))
@@ -106,8 +81,8 @@
       (spit (io/file dir "_hash") _hash))))
 
 (defn preview [{:keys [biff/db path-params params] :as req}]
-  (let [site (xt/entity db (parse-uuid (:id path-params)))
-        dir (io/file "storage/previews" (:id path-params))
+  (let [site (xt/entity db (parse-uuid (:site-id path-params)))
+        dir (io/file "storage/previews" (:site-id path-params))
         _ (generate! (assoc req :dir dir))
         path (or (:path params) "/")
         file (->> (file-seq (io/file dir "public"))
@@ -148,7 +123,7 @@
              :body "<h1>Not found.</h1>"})))
 
 (defn publish [{:keys [biff/db path-params] :as req}]
-  (let [site (xt/entity db (parse-uuid (:id path-params)))
+  (let [site (xt/entity db (parse-uuid (:site-id path-params)))
         dir (io/file "storage/deploys" (str (random-uuid)))]
     (generate! (assoc req :dir dir))
     (netlify/deploy! {:api-key (util/get-secret req :netlify/api-key)
@@ -158,65 +133,43 @@
     {:status 303
      :headers {"location" "/sites"}}))
 
-(defn edit-site-page [{:keys [path-params biff/db session] :as req}]
-  (let [{:user/keys [email]} (xt/entity db (:uid session))
-        site-id (parse-uuid (:id path-params))
-        site (xt/entity db site-id)
-        custom-schema (when-some [t (:site/theme site)]
-                        (biff/catchall (edn/read-string (slurp (str "themes/" t "/custom-schema.edn")))))]
-    (ui/nav-page
-     (merge req
-            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-             :current :sites
-             :email email})
-     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
-      [:.max-w-screen-sm
-       (biff/form
-        {:id "edit"
-         :action (str "/sites/" site-id)
-         :hidden {:id site-id}
-         :class '[flex flex-col flex-grow]}
-        (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
-        [:.h-3]
-        (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
-        [:.h-3]
-        (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
-        [:.h-3]
-        (ui/textarea {:id "description" :label "Description" :value (:site/description site)})
-        [:.h-3]
-        (ui/image {:id "image" :label "Image" :value (:site/image site)})
-        [:.h-3]
-        (ui/text-input {:id "tag" :label "Tag" :value (:site/tag site)})
-        [:.h-3]
-        (ui/textarea {:id "redirects" :label "Redirects" :value (:site/redirects site)})
-        [:.h-3]
-        (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
-        (for [{:keys [label description default key type]} custom-schema]
-          [:.mt-3
-           ((case type
-              :textarea ui/textarea
-              ui/text-input)
-            {:id (subs (str key) 1)
-             :label label
-             :description description
-             :value (get-in site [:site/custom-config key] default)})])
-        [:.h-4]
-        [:button.btn.w-full {:type "submit"} "Save"])
-       [:.h-3]
-       (biff/form
-        {:onSubmit "return confirm('Delete site?')"
-         :method "POST"
-         :action (str "/sites/" (:xt/id site) "/delete")}
-        [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
-       [:.h-6]]])))
+(defn edit-site-page [{:keys [path-params biff/db user site] :as sys}]
+  (ui/nav-page
+   (merge sys
+          {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+           :current :sites})
+   [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+    [:.max-w-screen-sm
+     (biff/form
+      {:id "edit"
+       :action (str "/sites/" (:xt/id site))
+       :class '[flex flex-col flex-grow]}
+      (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
+      [:.h-3]
+      (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
+      [:.h-3]
+      (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
+      [:.h-3]
+      (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
+      [:.h-3]
+      (for [k (:site.config/site-fields site)]
+        (list
+         (ui/custom-field sys k)
+         [:.h-3]))
+      [:.h-4]
+      [:button.btn.w-full {:type "submit"} "Save"])
+     [:.h-3]
+     (biff/form
+      {:onSubmit "return confirm('Delete site?')"
+       :method "POST"
+       :action (str "/sites/" (:xt/id site) "/delete")}
+      [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+     [:.h-6]]]))
 
 (defn site-list-item [{:keys [site/title
-                              site/image
                               site/url
                               xt/id]}]
   [:.flex.items-center.mb-4
-   (when image
-     [:img.mr-3.max-h-12.max-w-12 {:src image}])
    [:div
     [:div [:a.link.block.text-lg {:href (str "/sites/" id)}
            (or (not-empty (str/trim title)) "[No title]")]]
@@ -260,10 +213,10 @@
           (map site-list-item)))))
 
 (def features
-  {:routes ["" {:middleware [util/wrap-signed-in]}
+  {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/sites" {:get sites-page
                        :post new-site}]
-            ["/sites/:id"
+            ["/sites/:site-id"
              ["" {:get edit-site-page
                   :post edit-site}]
              ["/delete" {:post delete-site}]

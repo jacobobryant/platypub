@@ -3,12 +3,12 @@
 (load-file "common.bb")
 
 (defn logo [{:keys [site] :as opts}]
-  [:div (if-some [image (custom-key opts :com.platypub/logo-image)]
-          [:a {:href (custom-key opts :com.platypub/logo-url)}
+  [:div (if-some [image (:logo-image site)]
+          [:a {:href (:logo-url site)}
            [:img {:src image
                   :alt "Logo"
                   :style {:max-height "30px"}}]]
-          (:site/title site))])
+          (:title site))])
 
 (def hamburger-icon
   [:div.sm:hidden.cursor-pointer
@@ -17,8 +17,8 @@
      [:div.bg-white
       {:class "h-[4px] w-[30px] my-[6px]"}])])
 
-(defn parse-nav-links [opts]
-  (->> (custom-key opts :com.platypub/nav-links)
+(defn parse-nav-links [{:keys [site]}]
+  (->> (:nav-links site)
        str/split-lines
        (map #(str/split % #"\s+" 2))))
 
@@ -39,34 +39,33 @@
        [:div.my-2 [:a.hover:underline.text-lg {:href href} label]])]))
 
 (defn byline [{:keys [post site byline/card] :as opts}]
-  (let [author (author opts)]
-    [:div
-     {:style {:display "flex"
-              :align-items "center"}}
-     [:img (if card
-             {:src (:image author)
-              :width "115px"
-              :height "115px"
-              :style {:border-radius "50%"}}
-             {:src (cached-img-url {:url (:image author)
-                                    :w 200 :h 200})
-              :width "50px"
-              :height "50px"
-              :style {:border-radius "50%"}})]
-     [:div {:style {:width "0.75rem"}}]
-     [:div
-      [:div {:style {:line-height "1.25"}}
-       [:a.hover:underline
-        {:class (if card
-                  "text-[2.5rem]"
-                  "text-blue-600")
-         :href (:url author)
-         :target "_blank"}
-        (:name author)]]
-      [:div {:class (if card "text-[2.2rem]" "text-[90%]")
-             :style {:line-height "1"
-                     :color "#4b5563"}}
-       (format-date "d MMM yyyy" (:post/published-at post))]]]))
+  [:div
+   {:style {:display "flex"
+            :align-items "center"}}
+   [:img (if card
+           {:src (:author-image site)
+            :width "115px"
+            :height "115px"
+            :style {:border-radius "50%"}}
+           {:src (cached-img-url {:url (:author-image site)
+                                  :w 200 :h 200})
+            :width "50px"
+            :height "50px"
+            :style {:border-radius "50%"}})]
+   [:div {:style {:width "0.75rem"}}]
+   [:div
+    [:div {:style {:line-height "1.25"}}
+     [:a.hover:underline
+      {:class (if card
+                "text-[2.5rem]"
+                "text-blue-600")
+       :href (:author-url site)
+       :target "_blank"}
+      (:author-name site)]]
+    [:div {:class (if card "text-[2.2rem]" "text-[90%]")
+           :style {:line-height "1"
+                   :color "#4b5563"}}
+     (format-date "d MMM yyyy" (:published-at post))]]])
 
 (def errors
   {"invalid-email" "It looks like that email is invalid. Try a different one."
@@ -77,9 +76,9 @@
   [:div.flex.flex-col.items-center.text-center.px-3.bg-primary.text-white
    [:div.h-20]
    [:div.font-bold.text-3xl.leading-none
-    (:list/title lst)]
+    (:title lst)]
    [:div.h-4]
-   [:div.text-lg (:site/description site)]
+   [:div.text-lg (:description site)]
    [:div.h-6]
    [:script (raw-string "function onSubscribe(token) { document.getElementById('recaptcha-form').submit(); }")]
    [:form#recaptcha-form.w-full.max-w-md
@@ -128,7 +127,7 @@
    [:div.h-20]])
 
 (defn post-page [{:keys [site post account base/path] :as opts}]
-  (let [width (if ((:post/tags post) "video")
+  (let [width (if ((:tags post) "video")
                 "max-w-screen-lg"
                 "max-w-screen-sm")]
     (base-html
@@ -139,17 +138,17 @@
        [:div.h-2]
        [:h1.font-bold.leading-tight.text-gray-900
         {:style {:font-size "2.75rem"}}
-        (:post/title post)]
+        (:title post)]
        [:div.h-3]
        (byline opts)
        [:div.h-5]
-       [:div.post-content (raw-string (:post/html post))]
+       [:div.post-content (raw-string (:html post))]
        [:div.h-5]
-       (when-some [forum-url (custom-key opts :com.platypub/discourse-url)]
+       (when-some [forum-url (:discourse-url site)]
          (list
            [:div.text-xl.font-bold.mb-3 "Comments"]
            (embed-discourse {:forum-url forum-url
-                             :page-url (str (:site/url site) path)})
+                             :page-url (str (:url site) path)})
            [:div.h-5]))]
       (subscribe-form opts)
       [:div.bg-primary
@@ -161,7 +160,7 @@
     opts
     (navbar opts)
     [:div.mx-auto.p-3.text-lg.flex-grow.w-full.max-w-screen-md
-     [:div.post-content (raw-string (:post/html post))]]))
+     [:div.post-content (raw-string (:html post))]]))
 
 (defn archive-page [{:keys [posts site] lst :list :as opts}]
   (base-html
@@ -170,14 +169,14 @@
     [:div.bg-tertiary.h-full.flex-grow.flex.flex-col
      [:div.h-5]
      [:div.max-w-screen-md.mx-auto.px-3.w-full
-      (for [{:post/keys [title slug published-at description tags]} posts
-            :when (not (tags "unlisted"))]
+      (for [post posts
+            :when (not ((:tags post) "unlisted"))]
         [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
-         {:href (str "/p/" slug "/")
+         {:href (str "/p/" (:slug post) "/")
           :class "hover:bg-white/50"}
-         [:div.text-sm.text-gray-800 (format-date "d MMM yyyy" published-at)]
-         [:div.text-xl.font-bold title]
-         [:div description]])]
+         [:div.text-sm.text-gray-800 (format-date "d MMM yyyy" (:published-at post))]
+         [:div.text-xl.font-bold (:title post)]
+         [:div (:description post)]])]
      [:div.flex-grow]]
     (subscribe-form opts)
     [:div.bg-primary
@@ -186,26 +185,22 @@
 
 (defn landing-page [{:keys [posts site] lst :list :as opts}]
   (base-html
-    (assoc opts :base/title (:list/title lst))
+    (assoc opts :base/title (:title lst))
     (navbar opts)
     (subscribe-form opts)
     [:div.bg-tertiary.h-full.flex-grow.flex.flex-col
      [:div.h-5]
      [:div.max-w-screen-md.mx-auto.px-3.w-full
-      (for [{:post/keys [title
-                         slug
-                         published-at
-                         description
-                         tags]} (->> posts
-                                     (sort-by #(not ((:post/tags %) "featured")))
-                                     (remove #((:post/tags %) "unlisted"))
-                                     (take 5))]
+      (for [post (->> posts
+                      (sort-by #(not ((:post/tags %) "featured")))
+                      (remove #((:post/tags %) "unlisted"))
+                      (take 5))]
         [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
-         {:href (str "/p/" slug "/")
+         {:href (str "/p/" (:slug post) "/")
           :class "hover:bg-white/50"}
-         [:div.text-sm.text-gray-800 (format-date "d MMM yyyy" published-at)]
-         [:div.text-xl.font-bold title]
-         [:div description]])]
+         [:div.text-sm.text-gray-800 (format-date "d MMM yyyy" (:published-at post))]
+         [:div.text-xl.font-bold (:title post)]
+         [:div (:description post)]])]
      [:div.flex-grow]
      [:div.sm:text-center.text-sm.leading-snug.opacity-75.w-full.px-3
       (recaptcha-disclosure {:link-class "underline"})]
@@ -227,7 +222,7 @@
       [:div {:class "h-[1.5rem]"}]
       [:h1.font-bold.leading-none
        {:class "text-[6rem]"}
-       (str/replace (:post/title post) #"^\[draft\] " "")]
+       (str/replace (:title post) #"^\[draft\] " "")]
       [:div {:class "h-[2.5rem]"}]
       (byline (assoc opts :byline/card true))]]))
 
@@ -235,7 +230,7 @@
   ;; In Firefox, you can inspect element -> screenshot node, then use as the
   ;; post image (for social media previews).
   (doseq [post posts
-          :let [path (str "/p/" (:post/slug post) "/card/")]]
+          :let [path (str "/p/" (:slug post) "/card/")]]
     (render! path
              "<!DOCTYPE html>"
              (render-card (assoc opts :base/path path :post post)))))
