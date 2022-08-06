@@ -67,8 +67,6 @@
       label]]]])
 
 (defn render [{:keys [post site] lst :list :as opts}]
-  (binding [*out* *err*]
-    (prn (keys post)))
   [:html
    [:head
     [:title (:title post)]
