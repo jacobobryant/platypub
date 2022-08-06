@@ -1,0 +1,7 @@
+{:indentation?                    true
+ :remove-surrounding-whitespace?  true
+ :remove-trailing-whitespace?     true
+ :remove-consecutive-blank-lines? true
+ :insert-missing-whitespace?      true
+ :align-associative?              false
+ :indents                         {submit-tx [[:inner 0]]}}
