@@ -160,7 +160,7 @@
 
 (defn list-list-item [{:keys [list/title list/sites xt/id]}]
   [:.mb-4
-   [:div [:a.link.block.text-lg {:href (str "/newsletters/" id)}
+   [:div [:a.link.text-lg {:href (str "/newsletters/" id)}
           (or (not-empty (str/trim title)) "[No title]")]]
    [:.text-sm.text-stone-600.dark:text-stone-300
     [:a.hover:underline {:href (str "/newsletters/" id "/subscribers")} "Subscribers"]

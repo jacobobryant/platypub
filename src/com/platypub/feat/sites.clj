@@ -58,11 +58,10 @@
              "content-disposition" "attachment; filename=\"input.edn\""}
    :body (pr-str (util/get-render-opts sys))})
 
-(defn generate! [{:keys [biff/db path-params params dir] :as req}]
-  (let [render-opts (assoc (util/get-render-opts req)
-                           :site-id (parse-uuid (:site-id path-params)))
+(defn generate! [{:keys [biff/db path-params params dir site] :as sys}]
+  (let [render-opts (util/get-render-opts sys)
         path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
-        {:keys [site/theme]} (xt/entity db (:site-id render-opts))
+        theme (:site/theme site)
         theme-last-modified (->> (file-seq (io/file "themes" theme))
                                  (filter #(.isFile %))
                                  (map ring-io/last-modified-date)
@@ -80,10 +79,9 @@
       (some-> (biff/sh "./render-site" :dir dir :env {"PATH" path}) not-empty log/info)
       (spit (io/file dir "_hash") _hash))))
 
-(defn preview [{:keys [biff/db path-params params] :as req}]
-  (let [site (xt/entity db (parse-uuid (:site-id path-params)))
-        dir (io/file "storage/previews" (:site-id path-params))
-        _ (generate! (assoc req :dir dir))
+(defn preview [{:keys [biff/db path-params params site] :as sys}]
+  (let [dir (io/file "storage/previews" (str (:xt/id site)))
+        _ (generate! (assoc sys :dir dir))
         path (or (:path params) "/")
         file (->> (file-seq (io/file dir "public"))
                   (filter (fn [file]
@@ -122,11 +120,10 @@
              :headers {"content-type" "text/html"}
              :body "<h1>Not found.</h1>"})))
 
-(defn publish [{:keys [biff/db path-params] :as req}]
-  (let [site (xt/entity db (parse-uuid (:site-id path-params)))
-        dir (io/file "storage/deploys" (str (random-uuid)))]
-    (generate! (assoc req :dir dir))
-    (netlify/deploy! {:api-key (util/get-secret req :netlify/api-key)
+(defn publish [{:keys [biff/db path-params site] :as sys}]
+  (let [dir (io/file "storage/deploys" (str (random-uuid)))]
+    (generate! (assoc sys :dir dir))
+    (netlify/deploy! {:api-key (util/get-secret sys :netlify/api-key)
                       :site-id (:site/netlify-id site)
                       :dir (str dir)})
     (biff/sh "rm" "-rf" (str dir))
@@ -168,11 +165,19 @@
 
 (defn site-list-item [{:keys [site/title
                               site/url
-                              xt/id]}]
+                              xt/id
+                              site.config/items]}]
   [:.flex.items-center.mb-4
    [:div
-    [:div [:a.link.block.text-lg {:href (str "/sites/" id)}
-           (or (not-empty (str/trim title)) "[No title]")]]
+    [:div [:a.link.text-lg {:href (str "/sites/" id)}
+           (or (not-empty (str/trim title)) "[No title]")]
+     [:span.md:hidden
+      " " biff/emdash " "
+      (util/join
+       ", "
+       (for [{:keys [slug label]} items]
+         [:a.link.text-lg {:href (util/make-url "site" id slug)}
+          (str label "s")]))]]
     [:.text-sm.text-stone-600.dark:text-stone-300
      [:a.hover:underline {:href url :target "_blank"} "View"]
      ui/interpunct
@@ -190,27 +195,19 @@
                           :target "_blank"}
       "Export"]]]])
 
-(defn sites-page [{:keys [session biff/db] :as req}]
-  (let [{:user/keys [email]} (xt/entity db (:uid session))
-        sites (q db
-                 '{:find (pull site [*])
-                   :in [user]
-                   :where [[site :site/user user]]}
-                 (:uid session))]
-    (ui/nav-page
-     (merge req
-            {:current :sites
-             :email email})
-     (biff/form
-      {:action "/sites"}
-      (when (nil? (util/get-secret req :netlify/api-key))
-        [:p "You need to enter a Netlify API key"])
-      [:button.btn {:type "submit"
-                    :disabled (nil? (util/get-secret req :netlify/api-key))} "New site"])
-     [:.h-6]
-     (->> sites
-          (sort-by :site/title)
-          (map site-list-item)))))
+(defn sites-page [{:keys [sites] :as sys}]
+  (ui/nav-page
+   (merge sys {:current :sites})
+   (biff/form
+    {:action "/sites"}
+    (when (nil? (util/get-secret sys :netlify/api-key))
+      [:p "You need to enter a Netlify API key"])
+    [:button.btn {:type "submit"
+                  :disabled (nil? (util/get-secret sys :netlify/api-key))} "New site"])
+   [:.h-6]
+   (->> sites
+        (sort-by :site/title)
+        (map site-list-item))))
 
 (def features
   {:routes ["" {:middleware [mid/wrap-signed-in]}

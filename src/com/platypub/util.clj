@@ -185,7 +185,7 @@
   (q db
      {:find '(pull item [*])
       :in '[user site]
-      :where (->> (:match item-spec)
+      :where (->> (:query item-spec)
                   (map (fn [x]
                          (let [[k & rst] (if (keyword? x)
                                            [x]

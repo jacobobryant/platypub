@@ -22,15 +22,12 @@
                            (dissoc :post/authors))])]
     (xt/submit-tx node tx)))
 
-;; cleanup
-;; - remove anything with :post/title
-;; - remove keys from sites: custom-config, description, image, redirects, tag
-
-
 (defn next-uuid [uuid]
   (java.util.UUID/nameUUIDFromBytes (.getBytes (str uuid))))
 
 (defn migrate-items! []
+  (biff/sh "cp" "-r" "storage/xtdb/" (str "storage/xtdb-backup-"
+                                          (inst-ms (java.util.Date.))))
   (let [{:keys [biff/db] :as sys} (get-sys)
         sites (q db
                  '{:find (pull site [*])
@@ -42,7 +39,12 @@
                   (merge
                    {:db/doc-type :site
                     :db/op :update
-                    :xt/id (:xt/id site)}
+                    :xt/id (:xt/id site)
+                    :site/custom-config :db/dissoc
+                    :site/description :db/dissoc
+                    :site/image :db/dissoc
+                    :site/redirects :db/dissoc
+                    :site/tag :db/dissoc}
                    (-> site
                        (select-keys [:site/description
                                      :site/image
@@ -76,9 +78,12 @@
                          (select-keys [:post/canonical
                                        :post/slug
                                        :post/published-at])
-                         (biff/select-ns-as 'post 'item.custom.com.platypub.post)))))]
+                         (biff/select-ns-as 'post 'item.custom.com.platypub.post)))))
+        rm-posts-tx (for [post posts]
+                      {:xt/id (:xt/id post)
+                       :db/op :delete})]
     (biff/submit-tx sys
-      (concat site-tx item-tx))))
+      (concat site-tx item-tx rm-posts-tx))))
 
 (comment
 

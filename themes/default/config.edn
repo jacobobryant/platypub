@@ -59,7 +59,7 @@
  :items [{:key :posts
           :label "Post"
           :slug "posts"
-          :match [:com.platypub.post/slug]
+          :query [:com.platypub.post/slug]
           :fields [:com.platypub.post/title
                    :com.platypub.post/slug
                    :com.platypub.post/draft
@@ -74,8 +74,7 @@
           :render/sections [{:label "Drafts"
                              :match [[:com.platypub.post/draft true]]
                              :order-by [[:com.platypub.post/title :desc]]
-                             :show [:edited-at
-                                    :com.platypub.post/tags]}
+                             :show [:com.platypub.post/tags]}
                             {:label "Published"
                              :match [:not [[:com.platypub.post/draft true]]]
                              :order-by [[:com.platypub.post/published-at :desc]]
@@ -94,5 +93,4 @@
                    :com.platypub.post/html]
           :render/label :com.platypub.post/title
           :render/sections [{:order-by [[:com.platypub.page/path :asc]]
-                             :show [:com.platypub.page/path
-                                    :edited-at]}]}]}
+                             :show [:com.platypub.page/path]}]}]}

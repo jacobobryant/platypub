@@ -155,12 +155,12 @@
        [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.text-white.opacity-75
         (recaptcha-disclosure {:link-class "underline"})]])))
 
-(defn render-page [{:keys [site post account] :as opts}]
+(defn render-page [{:keys [site page account] :as opts}]
   (base-html
     opts
     (navbar opts)
     [:div.mx-auto.p-3.text-lg.flex-grow.w-full.max-w-screen-md
-     [:div.post-content (raw-string (:html post))]]))
+     [:div.post-content (raw-string (:html page))]]))
 
 (defn archive-page [{:keys [posts site] lst :list :as opts}]
   (base-html
@@ -192,8 +192,8 @@
      [:div.h-5]
      [:div.max-w-screen-md.mx-auto.px-3.w-full
       (for [post (->> posts
-                      (sort-by #(not ((:post/tags %) "featured")))
-                      (remove #((:post/tags %) "unlisted"))
+                      (sort-by #(not ((:tags %) "featured")))
+                      (remove #((:tags %) "unlisted"))
                       (take 5))]
         [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
          {:href (str "/p/" (:slug post) "/")

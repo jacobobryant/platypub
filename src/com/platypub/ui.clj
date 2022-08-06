@@ -94,7 +94,7 @@
       [:.h-3]
       [:.text-xl.mx-3 "Platypub"]
       [:.h-6]
-      (for [{:keys [site/title site.config/items xt/id] :as site} sites
+      (for [{:keys [site/title site.config/items xt/id] :as site} (sort-by :site/title sites)
             :when (not-empty items)]
         (list
          [:.mx-3.text-gray-400.uppercase.text-sm title]

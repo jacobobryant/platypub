@@ -57,6 +57,7 @@
          url] (for [k ["title" "description" "image" "url"]]
                 (or (get opts (keyword "base" k))
                     (get-in opts [:post (keyword k)])
+                    (get-in opts [:page (keyword k)])
                     (get-in opts [:site (keyword k)])))
         title (->> [title (:title site)]
                    distinct
@@ -168,11 +169,12 @@
              (render-post (assoc opts :base/path path :post post)))))
 
 (defn pages! [opts render-page pages]
-  (doseq [post (:pages opts)
-          :let [path (str "/" (:slug post) "/")]]
+  (doseq [page (:pages opts)
+          :let [path (str/replace (str "/" (:path page) "/")
+                                  #"/+" "/")]]
     (render! path
              "<!DOCTYPE html>"
-             (render-page (assoc opts :base/path path :post post))))
+             (render-page (assoc opts :base/path path :page page))))
   (doseq [[path page] pages]
       (render! path
                "<!DOCTYPE html>"
