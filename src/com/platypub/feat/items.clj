@@ -14,14 +14,6 @@
             [ring.middleware.anti-forgery :as anti-forgery])
   (:import [io.github.furstenheim CopyDown]))
 
-(defn title->slug [title]
-  (-> title
-      str/lower-case
-      ; RFC 3986 reserved or unsafe characters in url
-      (str/replace #"[/|]" "-")
-      (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
-      (str/replace #"\s+" "-")))
-
 (defn recipient-count [sys list]
   (->> (mailgun/get-list-members sys (:list/address list) {})
        :body

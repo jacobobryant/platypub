@@ -261,10 +261,20 @@
     (boolean (not-empty x))
     (some? x)))
 
+(defn title->slug [title]
+  (-> title
+      str/lower-case
+      ; RFC 3986 reserved or unsafe characters in url
+      (str/replace #"[/|]" "-")
+      (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
+      (str/replace #"\s+" "-")))
+
 (defn params->custom-fields [{:keys [site item-spec params]}]
   (let [[prefix ks] (if item-spec
                       ["item.custom." (:fields item-spec)]
-                      ["site.custom." (:site.config/site-fields site)])]
+                      ["site.custom." (:site.config/site-fields site)])
+        params (if (not-empty (:slug params)) params
+                   (assoc params :slug (some-> params :title not-empty title->slug)))]
     (for [k ks
           :let [value (get params (keyword (name k)))
                 {:keys [type default]} (get-in site [:site.config/fields k])]]
