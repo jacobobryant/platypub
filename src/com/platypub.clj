@@ -81,7 +81,7 @@
     :biff/after-refresh `start
     :biff/handler #'handler
     :biff/malli-opts #'malli-opts
-    :biff.hawk/on-save #'on-save
+    :biff.beholder/on-save #'on-save
     :biff.xtdb/on-tx #'on-tx
     :biff.chime/tasks tasks
     :biff/config "config.edn"
@@ -97,8 +97,9 @@
                        :com.platypub/enable-worker
                        biff/use-chime)
                       (biff/use-when
-                       :com.platypub/enable-hawk
-                       biff/use-hawk)]})
+                       (some-fn :com.platypub/enable-hawk ; for backwards compatibility
+                                :com.platypub/enable-beholder)
+                       biff/use-beholder)]})
   (generate-assets! @biff/system)
   (log/info "Go to" (:biff/base-url @biff/system)))
 

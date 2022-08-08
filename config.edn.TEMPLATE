@@ -29,7 +29,7 @@
         ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
         :recaptcha/site ""}
  :dev {:merge [:prod]
-       :com.platypub/enable-hawk true
+       :com.platypub/enable-beholder true
        :biff/host "0.0.0.0"
        :biff/base-url "http://localhost:8080"
        :biff.xtdb/topology :standalone
