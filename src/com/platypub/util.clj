@@ -261,7 +261,7 @@
     (boolean (not-empty x))
     (some? x)))
 
-(defn title->slug [title]
+(defn slugify [title]
   (-> title
       str/lower-case
       ; RFC 3986 reserved or unsafe characters in url
