@@ -286,6 +286,8 @@
                              vec)
          (and (empty? value)
               (instance? clojure.lang.PersistentVector default))
-         ((ns-resolve (symbol (namespace ::x)) (symbol (first default)))
+         ((case (first default)
+            :slugify slugify
+            (constantly nil))
           (params (keyword (name (second default)))))
          :else value)])))
