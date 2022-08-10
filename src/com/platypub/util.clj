@@ -272,18 +272,20 @@
 (defn params->custom-fields [{:keys [site item-spec params]}]
   (let [[prefix ks] (if item-spec
                       ["item.custom." (:fields item-spec)]
-                      ["site.custom." (:site.config/site-fields site)])
-        params (if (not-empty (:slug params)) params
-                   (assoc params :slug (some-> params :title not-empty title->slug)))]
+                      ["site.custom." (:site.config/site-fields site)])]
     (for [k ks
           :let [value (get params (keyword (name k)))
                 {:keys [type default]} (get-in site [:site.config/fields k])]]
       [(add-prefix prefix k)
-       (case type
-         :instant (edn/read-string value)
-         :boolean (= value "on")
-         :tags (->> (str/split value #"\s+")
-                    (remove empty?)
-                    distinct
-                    vec)
-         value)])))
+       (cond
+         (= type :instant) (edn/read-string value)
+         (= type :boolean) (= value "on")
+         (= type :tags) (->> (str/split value #"\s+")
+                             (remove empty?)
+                             distinct
+                             vec)
+         (and (empty? value)
+              (instance? clojure.lang.PersistentVector default))
+         ((ns-resolve (symbol (namespace ::x)) (symbol (first default)))
+          (params (keyword (name (second default)))))
+         :else value)])))
