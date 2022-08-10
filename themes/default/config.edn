@@ -41,7 +41,8 @@
                                              :type :image}
           :com.platypub.post/canonical      {:label "Canonical URL"}
           :com.platypub.post/html           {:type :html}
-          :com.platypub.page/path           {:label "Path"}}
+          :com.platypub.page/path           {:label "Path"
+                                             :default [:slugify :com.platypub.post/title]}}
  :site-fields [:com.platypub.site/description
                :com.platypub.site/image
                :com.platypub.site/redirects
