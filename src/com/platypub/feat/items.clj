@@ -223,7 +223,7 @@
           :formaction "preview"
           :formtarget "_blank"}
          "Preview"]
-        [:button.btn.flex-1 {:hx-confirm "Send newsletter"
+        [:button.btn.flex-1 {:hx-confirm "Send newsletter?"
                              :hx-post (util/make-url "site"
                                                     (:xt/id site)
                                                     (:slug item-spec)
