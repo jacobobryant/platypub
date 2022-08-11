@@ -207,13 +207,12 @@
        [:.h-3]
        [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
        [:.flex.gap-3
-        (ui/text-input {:id "test-address" :name "test-address"})
+        (ui/text-input {:id "test-address"})
         [:button.btn-secondary {:hx-post (util/make-url "site"
                                                         (:xt/id site)
                                                         (:slug item-spec)
                                                         (:xt/id item)
                                                         "send?send-test=true")
-                                :hx-include "[name='test-address']"
                                 :hx-target "body"}
          "Send"]]
        [:.h-6]
