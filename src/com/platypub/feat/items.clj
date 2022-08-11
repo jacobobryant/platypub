@@ -184,13 +184,7 @@
         "Message sent"])
      [:.flex
       (biff/form
-       {:onSubmit "return confirm('Send newsletter?')"
-        :id "send"
-        :action (util/make-url "site"
-                               (:xt/id site)
-                               (:slug item-spec)
-                               (:xt/id item)
-                               "send")
+       {:id "send"
         :class '[flex
                  flex-col
                  flex-grow
@@ -213,8 +207,14 @@
        [:.h-3]
        [:label.block.text-sm.mb-1 {:for "addresses"} "Send test email"]
        [:.flex.gap-3
-        (ui/text-input {:id "test-address"})
-        [:button.btn-secondary {:type "submit" :name "send-test" :value "true"}
+        (ui/text-input {:id "test-address" :name "test-address"})
+        [:button.btn-secondary {:hx-post (util/make-url "site"
+                                                        (:xt/id site)
+                                                        (:slug item-spec)
+                                                        (:xt/id item)
+                                                        "send?send-test=true")
+                                :hx-include "[name='test-address']"
+                                :hx-target "body"}
          "Send"]]
        [:.h-6]
        [:.flex.gap-3
@@ -224,7 +224,13 @@
           :formaction "preview"
           :formtarget "_blank"}
          "Preview"]
-        [:button.btn.flex-1 {:type "submit"} "Send"]])])))
+        [:button.btn.flex-1 {:hx-confirm "Send newsletter"
+                             :hx-post (util/make-url "site"
+                                                    (:xt/id site)
+                                                    (:slug item-spec)
+                                                    (:xt/id item)
+                                                    "send")}
+         "Send"]])])))
 
 (defn preview [sys]
   {:status 200
