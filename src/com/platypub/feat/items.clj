@@ -228,7 +228,8 @@
                                                     (:xt/id site)
                                                     (:slug item-spec)
                                                     (:xt/id item)
-                                                    "send")}
+                                                    "send")
+                             :hx-target "body"}
          "Send"]])])))
 
 (defn preview [sys]
