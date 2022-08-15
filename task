@@ -106,4 +106,12 @@ prod-dev () {
   logs
 }
 
+backup () {
+  file=platypub-$(date -u "+%Y-%m-%d_%H-%M-%S").tar.gz
+  ssh app@$SERVER mkdir -p storage/backups
+  ssh app@$SERVER tar -cvzf storage/backups/$file storage/xtdb/
+  mkdir -p storage/backups
+  scp app@$SERVER:storage/backups/$file storage/backups/$file
+}
+
 "$@"
