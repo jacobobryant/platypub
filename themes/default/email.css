@@ -6,11 +6,9 @@ body {
 
 img {
   max-width: 100%;
-  width: auto;
-  height: auto;
   border: 1px solid #eee;
   display: block;
-  margin: 10px 0;
+  margin: 10px auto;
 }
 
 hr {
