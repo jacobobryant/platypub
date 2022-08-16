@@ -275,6 +275,23 @@
                   :instant (biff/format-date value "dd MMM yyyy, H:mm aa")
                   value))))))]])
 
+(defn site-list-item [{:keys [site/title
+                              xt/id
+                              site.config/items]}
+                      item-spec]
+  [:.md:hidden.flex.items-center.mt-7
+   [:div [:a.link.text-lg {:href (str "/sites/" id)}
+          (or (not-empty (str/trim title)) "[No title]")]
+    [:span.md:hidden
+     " " biff/emdash " "
+     (util/join
+      ", "
+      (for [{:keys [slug label]} items]
+        (if (= slug (:slug item-spec))
+          [:span.text-lg (str label "s")]
+          [:a.link.text-lg {:href (util/make-url "site" id slug)}
+           (str label "s")])))]]])
+
 (defn items-page [{:keys [session biff/db user site item-spec] :as req}]
   (let [items (util/q-items db user site item-spec)]
     (ui/nav-page
@@ -282,6 +299,7 @@
      (biff/form
       {:action (util/make-url "/site" (:xt/id site) (:slug item-spec))}
       [:button.btn {:type "submit"} (str "New " (str/lower-case (:label item-spec)))])
+     (site-list-item site item-spec)
      [:.h-6]
      (for [{:keys [label match order-by show]} (:render/sections item-spec)
            :let [items (->> items
