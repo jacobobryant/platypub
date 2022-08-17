@@ -225,10 +225,10 @@
          "Preview"]
         [:button.btn.flex-1 {:hx-confirm "Send newsletter?"
                              :hx-post (util/make-url "site"
-                                                    (:xt/id site)
-                                                    (:slug item-spec)
-                                                    (:xt/id item)
-                                                    "send")
+                                                     (:xt/id site)
+                                                     (:slug item-spec)
+                                                     (:xt/id item)
+                                                     "send")
                              :hx-target "body"}
          "Send"]])])))
 
@@ -242,8 +242,8 @@
                  (merge (render-email sys)
                         (when send-test
                           {:to test-address})))
-  {:status 303
-   :headers {"location" (str "send?sent=true&list-id=" list-id)}})
+  {:status 200
+   :headers {"hx-redirect" (str "send?sent=true&list-id=" list-id)}})
 
 (defn item-summary [{:keys [biff/db item-spec site] :as sys} item show]
   [:.mb-4
