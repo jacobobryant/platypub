@@ -78,7 +78,7 @@ restart () {
 
 auto-soft-deploy () {
   soft-deploy
-  fswatch -orl 0.1 --event=Updated --event=Removed . | while read changed ; do
+  fswatch -orl 0.1 --event=Updated --event=Removed --allow-overflow . | while read changed ; do
     soft-deploy
   done
 }
