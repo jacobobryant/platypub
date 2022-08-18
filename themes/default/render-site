@@ -144,7 +144,7 @@
        [:div.h-5]
        [:div.post-content (raw-string (:html post))]
        [:div.h-5]
-       (when-some [forum-url (:discourse-url site)]
+       (when-some [forum-url (not-empty (:discourse-url site))]
          (list
            [:div.text-xl.font-bold.mb-3 "Comments"]
            (embed-discourse {:forum-url forum-url
