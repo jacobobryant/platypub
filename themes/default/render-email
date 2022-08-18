@@ -44,7 +44,7 @@
      [:div (:author-name site)]
      [:div
       (format-date "d MMM yyyy" (:published-at post))
-      (when (:discourse-url site)
+      (when (not-empty (:discourse-url site))
         (list
          interpunct
          [:a {:href (comments-url opts)} "comments"]))]]]])
@@ -89,7 +89,7 @@
       (space 10)
       [:div.post-content (raw-string (:html post))]
       (space 15)
-      (when (:discourse-url site)
+      (when (not-empty (:discourse-url site))
         (list
           (button {:bg-color (:primary-color site)
                    :href (comments-url opts)
