@@ -48,20 +48,10 @@
     (biff/export-rum static-pages "target/resources/public")
     (biff/delete-old-files {:dir "target/resources/public"
                             :exts [".html"]})
-    (log/info "Generating CSS...")
-    ;; Normally I'd use biff/sh which throws an exception + prints stderr when
-    ;; the command fails, but tailwind returns status 0 even if there's an
-    ;; error 😡
-    (print (:err (shell/sh "npx" "tailwindcss"
-                           "-c" "resources/tailwind.config.js"
-                           "-i" "resources/tailwind.css"
-                           "-o" "target/resources/public/css/main.css"
-                           "--minify")))
-    (log/info "CSS done")))
+    (log/info :done)))
 
 (defn on-save [sys]
   (biff/eval-files! sys)
-  (println :done)
   (generate-assets! sys)
   ;; Uncomment this if we add any real tests.
   #_(test/run-all-tests #"com.platypub.test.*"))

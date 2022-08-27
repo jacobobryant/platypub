@@ -25,9 +25,18 @@ run () {
     -M -m $MAIN_NS --port $PORT --middleware '[cider.nrepl/cider-middleware]'
 }
 
+css () {
+  npx tailwindcss \
+    -c resources/tailwind.config.js \
+    -i resources/tailwind.css \
+    -o target/resources/public/css/main.css \
+    "$@"
+}
+
 dev () {
   echo $PORT > .nrepl-port
-  BIFF_ENV=dev run
+  BIFF_ENV=dev run &
+  css --watch
 }
 
 format () {
@@ -47,12 +56,16 @@ post-receive () {
 }
 
 deploy () {
+  css --minify
   chmod 600 config.* secrets.edn
-  rsync -a --exclude node_modules config.* secrets.edn themes app@$SERVER:
+  rsync -a --exclude node_modules config.* secrets.edn themes \
+    target/resources/public/css/main.css \
+    app@$SERVER:
   time git push --force $DEPLOY_TO $DEPLOY_FROM
 }
 
 soft-deploy () {
+  css --minify
   chmod 600 config.* secrets.edn
   rsync -a --info=name1 --delete \
     --exclude node_modules \
@@ -63,6 +76,7 @@ soft-deploy () {
     task \
     src \
     resources \
+    target/resources/public/css/main.css \
     app@$SERVER:
   trench '"('$SOFT_DEPLOY_FN' @com.biffweb/system)"'
 }
