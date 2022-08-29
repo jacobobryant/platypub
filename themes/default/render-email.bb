@@ -79,7 +79,8 @@
        [:a {:href (:url site)} (:title lst)]]
       (let [title [:h1.title {:style {:font-size "2.25rem"
                                       :margin "0"
-                                      :color "black"}}
+                                      :color "black"
+                                      :line-height "1.15"}}
                    (:title post)]]
         (if (-> post :slug not-empty)
           [:a {:href (post-url opts)} title]
