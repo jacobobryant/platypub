@@ -296,7 +296,7 @@
 
 (defn run-theme-cmd [cmd dir]
   (let [[file & args] cmd
-        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))]
+        path (str (.getAbsolutePath (io/file "bin")) ":" (System/getenv "PATH"))]
     (when (and (str/starts-with? file "./")
                (.exists (io/file dir file)))
       ;; can we assume render-site/render-email is already executable?

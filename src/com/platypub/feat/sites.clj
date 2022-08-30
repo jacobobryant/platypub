@@ -67,14 +67,20 @@
                                  (apply max-key inst-ms))
         _hash (str (hash [render-opts theme-last-modified]))]
     (when (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash)
-      ;; copy theme code to new directory
-      (biff/sh "rm" "-rf" (str dir))
-      (io/make-parents dir)
+      ;; preinstall npm deps
       (when (and (:com.platypub/copy-theme-npm-deps sys)
                  (.exists (io/file "themes" theme "package.json"))
                  (not (.exists (io/file "themes" theme "node_modules"))))
         (biff/sh "npm" "install" :dir (str (io/file "themes" theme))))
-      (biff/sh "cp" "-r" (str (io/file "themes" theme)) (str dir))
+
+      ;; copy theme code to new directory
+      (if (biff/catchall (biff/sh "which" "rsync"))
+        (biff/sh "rsync" "-a" "--delete"
+                 (str (io/file "themes" theme) "/")
+                 (str dir "/"))
+        (do (biff/sh "rm" "-rf" (str dir))
+            (io/make-parents dir)
+            (biff/sh "cp" "-r" "--preserve=timestamps" (str (io/file "themes" theme)) (str dir))))
 
       ;; install npm deps in new directory
       (when-not (:com.platypub/copy-theme-npm-deps sys)
