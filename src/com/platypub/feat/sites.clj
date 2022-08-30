@@ -58,7 +58,7 @@
              "content-disposition" "attachment; filename=\"input.edn\""}
    :body (pr-str (util/get-render-opts sys))})
 
-(defn generate! [{:keys [biff/db path-params params dir site] :as sys}]
+(defn generate! [{:keys [biff/db dir site] :as sys}]
   (let [render-opts (util/get-render-opts sys)
         theme (:site/theme site)
         theme-last-modified (->> (file-seq (io/file "themes" theme))
@@ -75,9 +75,10 @@
 
       ;; copy theme code to new directory
       (if (biff/catchall (biff/sh "which" "rsync"))
-        (biff/sh "rsync" "-a" "--delete"
-                 (str (io/file "themes" theme) "/")
-                 (str dir "/"))
+        (do (biff/sh "rsync" "-a" "--delete"
+                     (str (io/file "themes" theme) "/")
+                     (str dir "/"))
+            (biff/sh "rm" "-rf" (str dir "/public")))
         (do (biff/sh "rm" "-rf" (str dir))
             (io/make-parents dir)
             (biff/sh "cp" "-r" "--preserve=timestamps" (str (io/file "themes" theme)) (str dir))))
