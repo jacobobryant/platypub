@@ -55,10 +55,11 @@
                :required [:list/user
                           :list/address
                           :list/title
-                          :list/theme
                           :list/reply-to]
-               :optional [:list/tags
-                          :list/mailing-address
-                          :list/sites]})})
+               :optional [:list/mailing-address
+                          :list/sites
+                          ;; deprecated
+                          :list/theme
+                          :list/tags]})})
 
 (def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})

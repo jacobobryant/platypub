@@ -1,5 +1,6 @@
 {:deps {local/deps {:local/root "."}}
  :tasks {dev          com.platypub.themes.common.tasks/dev
+         build        com.platypub.themes.common.tasks/build
          clean        com.platypub.themes.common.tasks/clean
          css          com.platypub.themes.common.tasks/css
          -on-save     com.platypub.themes.common.tasks/-on-save

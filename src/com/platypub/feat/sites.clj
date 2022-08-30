@@ -60,7 +60,6 @@
 
 (defn generate! [{:keys [biff/db path-params params dir site] :as sys}]
   (let [render-opts (util/get-render-opts sys)
-        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))
         theme (:site/theme site)
         theme-last-modified (->> (file-seq (io/file "themes" theme))
                                  (filter #(.isFile %))
@@ -68,20 +67,27 @@
                                  (apply max-key inst-ms))
         _hash (str (hash [render-opts theme-last-modified]))]
     (when (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash)
+      ;; copy theme code to new directory
       (biff/sh "rm" "-rf" (str dir))
       (io/make-parents dir)
-      (biff/sh "cp" "-r" (str (io/file "themes" theme)) (str dir))
       (when (and (:com.platypub/copy-theme-npm-deps sys)
                  (.exists (io/file "themes" theme "package.json"))
                  (not (.exists (io/file "themes" theme "node_modules"))))
         (biff/sh "npm" "install" :dir (str (io/file "themes" theme))))
+      (biff/sh "cp" "-r" (str (io/file "themes" theme)) (str dir))
+
+      ;; install npm deps in new directory
       (when-not (:com.platypub/copy-theme-npm-deps sys)
         (biff/sh "rm" "-rf" (str dir "/node_modules"))
         (when (.exists (io/file dir "package.json"))
           (biff/sh "npm" "install" :dir (str dir))))
+
+      ;; render
       (spit (io/file dir "input.edn") (pr-str render-opts))
-      (biff/sh "chmod" "+x" (str (io/file dir "render-site")))
-      (some-> (biff/sh "./render-site" :dir dir :env {"PATH" path}) not-empty log/info)
+      (some-> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)
+              :out
+              not-empty
+              log/info)
       (spit (io/file dir "_hash") _hash))))
 
 (defn preview [{:keys [biff/db path-params params site] :as sys}]

@@ -135,10 +135,6 @@
         [:.h-3]
         (ui/text-input {:id "reply-to" :label "Reply To" :value (:list/reply-to lst)})
         [:.h-3]
-        (ui/text-input {:id "tags" :label "Tags" :value (str/join " " (:list/tags lst))})
-        [:.h-3]
-        (ui/text-input {:id "theme" :label "Theme" :value (:list/theme lst)})
-        [:.h-3]
         (ui/text-input {:id "mailing-address" :label "Mailing address" :value (:list/mailing-address lst)})
         [:.h-3]
         (ui/select {:id "sites"

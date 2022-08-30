@@ -43,7 +43,12 @@
   (fs/copy "main.css" "public/css/main.css" {:replace-existing true}))
 
 (defn -on-save []
-  (spit "config.edn" (:out (shell/shell "bb" "config")))
+  (spit "config.edn" (:out (shell/sh "bb" "config")))
   (clean)
   (shell "bb run render-site")
   (css))
+
+(defn build []
+  (when (fs/exists? "package.json")
+    (shell "npm install"))
+  (-on-save))

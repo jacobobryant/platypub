@@ -3,7 +3,9 @@
             [clj-http.client :as http]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [com.biffweb :as biff :refer [q]]
             [lambdaisland.uri :as uri]
             [ring.util.io :as ring-io]
@@ -291,3 +293,13 @@
             (constantly nil))
           (params (keyword (name (second default)))))
          :else value)])))
+
+(defn run-theme-cmd [cmd dir]
+  (let [[file & args] cmd
+        path (str (.getPath (io/file "bin")) ":" (System/getenv "PATH"))]
+    (when (and (str/starts-with? file "./")
+               (.exists (io/file dir file)))
+      ;; can we assume render-site/render-email is already executable?
+      ;; this is just for backwards compatibility anyway
+      (biff/sh "chmod" "+x" (str (io/file dir file))))
+    (apply shell/sh (concat cmd [:dir dir :env {"PATH" path}]))))

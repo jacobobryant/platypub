@@ -10,6 +10,7 @@
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [xtdb.api :as xt]
             [ring.middleware.anti-forgery :as anti-forgery])
   (:import [io.github.furstenheim CopyDown]))
@@ -26,15 +27,12 @@
       (str/replace "(" "( ")
       (str/replace ")" " )")))
 
-(defn render-email [{:keys [biff/db params] :as sys}]
-  (let [lst (xt/entity db (parse-uuid (:list-id params)))
-        render-opts (util/get-render-opts sys)
-        dir (str "themes/" (:list/theme lst))
-        _ (biff/sh "chmod" "+x" "./render-email" :dir dir)
-        render-result (shell/sh "./render-email"
-                                :in (pr-str render-opts)
-                                :dir dir)
-        _ (some-> render-result :err not-empty println)
+(defn render-email [{:keys [biff/db params site] lst :list :as sys}]
+  (let [dir (str "themes/" (:site/theme site))
+        cmd (concat (:site.config/render-email site ["./render-email"])
+                    [:in (pr-str (util/get-render-opts sys))])
+        render-result (util/run-theme-cmd cmd dir)
+        _ (some-> render-result :err not-empty log/error)
         msg (merge (edn/read-string (:out render-result))
                    {:to (:list/address lst)
                     :from (str (:list/title lst) " <doreply@" (:mailgun/domain sys) ">")
