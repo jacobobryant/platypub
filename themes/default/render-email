@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-set -e
-./render-email.bb
+bb run render-email "$@"

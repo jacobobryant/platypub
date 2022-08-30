@@ -1,7 +1,21 @@
-(require '[hiccup2.core :as hiccup])
-(require '[hiccup.util :refer [raw-string]])
-(require '[babashka.fs :as fs])
-(require '[selmer.parser :as selmer])
+(ns com.platypub.themes.common
+  (:require [hiccup2.core :as hiccup]
+            [hiccup.util :refer [raw-string]]
+            [babashka.fs :as fs]
+            [babashka.nrepl.server :as nrepl]
+            [cheshire.core :as cheshire]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+(defn safe-spit [f & args]
+  (io/make-parents f)
+  (apply spit f args))
+
+(defn safe-copy [src dest]
+  (when (fs/exists? src)
+    (io/make-parents dest)
+    (fs/copy src dest {:replace-existing true})))
 
 (defn url-encode [s]
   (java.net.URLEncoder/encode (str s) "UTF-8"))
@@ -28,10 +42,6 @@
          (format (.toInstant date)))))
   ([date]
    (format-date rfc3339 date)))
-
-(defn read-edn-file [path]
-  (when (fs/exists? path)
-    (edn/read-string (slurp path))))
 
 (def emdash [:span (raw-string "&mdash;")])
 
@@ -138,28 +148,12 @@
 (defn render! [path doctype hiccup]
   (let [path (str "public" (str/replace path #"/$" "/index.html"))]
     (io/make-parents path)
-    (spit path (str doctype "\n" (hiccup/html hiccup)))))
+    (safe-spit path (str doctype "\n" (hiccup/html hiccup)))))
 
 (defn atom-feed! [opts]
   (render! "/feed.xml"
            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
            (atom-feed* (assoc opts :path "/feed.xml"))))
-
-(defn tailwind! [{:keys [site]}]
-  (when (fs/exists? "tailwind.config.js.TEMPLATE")
-    (spit "tailwind.config.js" (selmer/render (slurp "tailwind.config.js.TEMPLATE") site)))
-  (-> (shell/sh "npx" "tailwindcss"
-                "-c" "tailwind.config.js"
-                "-i" "tailwind.css"
-                "-o" "public/css/main.css"
-                "--minify")
-      :err
-      print))
-
-(defn assets! []
-  (->> (file-seq (io/file "assets"))
-       (filter #(.isFile %))
-       (run! #(io/copy % (doto (io/file "public" (subs (.getPath %) (count "assets/"))) io/make-parents)))))
 
 (defn posts! [{:keys [posts] :as opts} render-post]
   (doseq [post posts
@@ -175,16 +169,13 @@
     (render! path
              "<!DOCTYPE html>"
              (render-page (assoc opts :base/path path :page page))))
-  (doseq [[path page] pages]
+  (doseq [[path render-page] pages]
       (render! path
                "<!DOCTYPE html>"
-               (page (assoc opts :base/path path)))))
+               (render-page (assoc opts :base/path path)))))
 
 (defn without-ns [m]
-  (->> m
-       (map (fn [[k v]]
-              [(keyword (name k)) v]))
-       (into {})))
+  (update-keys m (comp keyword name)))
 
 (defn derive-opts [{:keys [site item lists posts pages] :as opts}]
   (let [posts (->> posts
@@ -196,11 +187,11 @@
                    (map without-ns)
                    (remove :draft)
                    (map #(update % :tags set)))
-        welcome (->> posts
+        welcome (->> (concat pages posts) ; include posts for backwards compatibility
                      (filter #((:tags %) "welcome"))
                      first)
-        posts (->> posts
-                   (remove #((:tags %) "welcome")))]
+        posts (remove #((:tags %) "welcome") posts)
+        pages (remove #((:tags %) "welcome") pages)]
     (assoc opts
            :site (without-ns site)
            :post (-> item
@@ -211,22 +202,25 @@
            :list (without-ns (first lists))
            :welcome welcome)))
 
-(defn netlify-fn-config! [{:keys [db site-id site welcome account] lst :list :as opts}]
-  (spit "netlify/functions/config.json"
-        (json/generate-string
-          {:subscribeRedirect (str (:url site) "/subscribed/")
-           :listAddress (:address lst)
-           :mailgunDomain (:mailgun/domain account)
-           :mailgunKey (:mailgun/api-key account)
-           :welcomeEmail {:from (str (:title lst)
-                                     " <doreply@" (:mailgun/domain account) ">")
-                          :h:Reply-To (:reply-to lst)
-                          :subject (:title welcome)
-                          :html (:html welcome)}
-           :recaptchaSecret (:recaptcha/secret account)})))
+(defn netlify-subscribe-fn! [{:keys [db site-id site welcome account] lst :list :as opts}]
+  (safe-spit
+   "netlify/functions/config.json"
+   (cheshire/generate-string
+    {:subscribeRedirect (str (:url site) "/subscribed/")
+     :listAddress (:address lst)
+     :mailgunDomain (:mailgun/domain account)
+     :mailgunKey (:mailgun/api-key account)
+     :welcomeEmail {:from (str (:title lst)
+                               " <doreply@" (:mailgun/domain account) ">")
+                    :h:Reply-To (:reply-to lst)
+                    :subject (:title welcome)
+                    :html (:html welcome)}
+     :recaptchaSecret (:recaptcha/secret account)}))
+  (safe-copy (io/resource "com/platypub/themes/common/subscribe.js")
+             "netlify/functions/subscribe.js"))
 
 (defn redirects! [{:keys [site]}]
-  (spit "public/_redirects" (:redirects site)))
+  (safe-spit "public/_redirects" (:redirects site)))
 
 (defn sitemap! [{:keys [exclude]}]
   (->> (file-seq (io/file "public"))
@@ -240,4 +234,4 @@
        (remove (fn [path]
                  (some #(re-matches % path) exclude)))
        (str/join "\n")
-       (spit "public/sitemap.txt")))
+       (safe-spit "public/sitemap.txt")))

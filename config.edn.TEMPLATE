@@ -1,6 +1,7 @@
 ;; vim: ft=clojure
 {:prod {:com.platypub/enable-web true
         :com.platypub/enable-worker true
+        :com.platypub/copy-theme-npm-deps true
         ;; Uncomment these if you'd like to deploy Platypub on the web.
         ;; :com.platypub/allowed-users #{"hello@example.com"}
         ;; :com.platypub/enable-email-signin true
@@ -30,6 +31,7 @@
         :recaptcha/site ""}
  :dev {:merge [:prod]
        :com.platypub/enable-beholder true
+        :com.platypub/copy-theme-npm-deps false
        :biff/host "0.0.0.0"
        :biff/base-url "http://localhost:8080"
        :biff.xtdb/topology :standalone

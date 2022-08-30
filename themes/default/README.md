@@ -30,22 +30,21 @@ theme to `mytheme` (or whatever you called the directory).
 
 #### Option 1: develop from within Platypub
 
-Run Platypub, go to the Sites tab, click "preview." Edit `render-site` to make
-changes.
+Run Platypub, go to the Sites tab, click "preview." Edit theme files, save, and
+refresh the page to make changes.
 
 Note that the newsletter signup form will not work; to test that you'll need to
 use option 2.
 
 #### Option 2: develop with `netlify dev`
 
- - Go to the Sites page on Platypub and click "export" to download an
-   `input.edn` file. Copy it to this directory.
- - Run `npm install`
- - Run `./task dev`
+ 1. Go to the Sites page on Platypub and click "export" to download an
+ `input.edn` file. Copy it to this directory.
+ 2. Run `bb dev`
 
 This will open a browser tab to `localhost:8888` with your site. Whenever you
-make a change to `render-site` and save the file, the site will be regenerated.
-You'll need to hit refresh in the browser tab manually.
+save a file, the site will be regenerated. You'll need to hit refresh in the
+browser tab manually.
 
 If you want to update the site/newsletter/post data, you'll need to export the
 `input.edn` file again.
@@ -53,3 +52,4 @@ If you want to update the site/newsletter/post data, you'll need to export the
 ### Email template
 
 Run Platypub, make a post and open it, click "send", then click "preview."
+Email clients are finnicky, so be sure to send a test email at least to GMail.

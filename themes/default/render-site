@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-set -e
-./render-site.bb
+bb run render-site "$@"

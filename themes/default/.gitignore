@@ -1,7 +1,6 @@
 .netlify
 assets
-netlify/functions/config.json
+input.edn
+netlify
 node_modules
 public
-input.edn
-tailwind.config.js
