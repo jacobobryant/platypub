@@ -281,7 +281,7 @@
 
 (defn subscribe-page [{:keys [posts site about] lst :list :as opts}]
   (common/base-html
-    (assoc opts :base/title (:title lst))
+    (assoc opts :base/title (str "Subscribe to " (:title lst)))
     [:div.flex-grow {:style {:background-color (:primary-color site)}}]
     (subscribe-form (assoc opts :show-read-more true))
     [:div.flex-grow {:style {:background-color (:primary-color site)}}]
