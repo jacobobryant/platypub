@@ -95,7 +95,7 @@
 (defn subscribe-form [{:keys [site account show-read-more] lst :list}]
   [:div.flex.flex-col.items-center.text-center.px-3.text-white
    {:style {:background-color (:primary-color site)}}
-   (if (:home-logo site)
+   (if (not-empty (:home-logo site))
      (list
       [:div.h-16]
       [:img.w-full {:src (:home-logo site)
@@ -269,7 +269,7 @@
 (defn landing-page [{:keys [posts site about] lst :list :as opts}]
   (common/base-html
     (assoc opts :base/title (:title lst))
-    (navbar (assoc opts :navbar/show-logo false))
+    (navbar (assoc opts :navbar/show-logo (empty? (:home-logo site))))
     (subscribe-form opts)
     (when about
       [:div.h-6 {:style {:background-color (:primary-color site)}}])
