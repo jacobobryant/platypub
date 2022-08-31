@@ -199,6 +199,11 @@
      (:xt/id user)
      (:xt/id site)))
 
+(defn something? [x]
+  (if (or (coll? x) (string? x))
+    (boolean (not-empty x))
+    (some? x)))
+
 (defn get-render-opts [{:keys [biff/db user site item] :as sys}]
   (let [defaults (->> site
                       :site.config/fields
@@ -209,7 +214,7 @@
                   (dissoc-ns 'site.config)
                   (rename-ns 'site.custom nil))
         site' (reduce (fn [m k]
-                        (if (contains? m k)
+                        (if (something? (m k))
                           m
                           (assoc m k (defaults k))))
                       site'
@@ -258,11 +263,6 @@
               (= (get item (add-prefix "item.custom." k)) v))
             spec)))
 
-(defn something? [x]
-  (if (or (coll? x) (string? x))
-    (boolean (not-empty x))
-    (some? x)))
-
 (defn slugify [title]
   (-> title
       str/lower-case
@@ -292,6 +292,7 @@
             :slugify slugify
             (constantly nil))
           (params (keyword (name (second default)))))
+
          :else value)])))
 
 (defn run-theme-cmd [cmd dir]

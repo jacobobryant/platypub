@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [clojure.set :as set]
             [com.biffweb :as biff]
             [com.platypub.util :as util]
             [rum.core :as rum]))
@@ -282,28 +283,26 @@
   (let [{:keys [label type default description]} (get-in site [:site.config/fields k])
         value (if item
                 (get item (util/add-prefix "item.custom." k))
-                (get site (util/add-prefix "site.custom." k)))]
+                (get site (util/add-prefix "site.custom." k)))
+        opts {:id (name k)
+              :label label
+              :value value
+              :description (->> [(when default
+                                   (str "Default: "
+                                        (pr-str default)))
+                                 description]
+                                (filter some?)
+                                (str/join ". ")
+                                not-empty)}]
     (case type
-      :textarea (textarea {:id (name k)
-                           :label label
-                           :value value})
-      :instant (text-input {:id (name k)
-                            :label label
-                            :value (pr-str value)})
-      :boolean (checkbox {:id (name k)
-                          :label label
-                          :checked value})
-      :tags (text-input {:id (name k)
-                         :label label
-                         :value (str/join " " value)})
+      :textarea (textarea opts)
+      :instant (text-input (update opts :value pr-str))
+      :boolean (checkbox (set/rename-keys opts {:value :checked}))
+      :tags (text-input (assoc opts :value (str/join " " value)))
       :image (list
-              (text-input {:id (name k)
-                           :label label
-                           :value value})
+              (text-input opts)
               (when (not-empty value)
                 [:.mt-3.flex.justify-center
                  [:img {:src value
                         :style {:max-height "10rem"}}]]))
-      (text-input {:id (name k)
-                   :label label
-                   :value value}))))
+      (text-input opts))))

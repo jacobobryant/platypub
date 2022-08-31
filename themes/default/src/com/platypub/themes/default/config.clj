@@ -10,11 +10,11 @@
             :com.platypub.site/redirects      {:label "Redirects"
                                                :type :textarea}
             :com.platypub.site/primary-color  {:label "Primary color"
-                                               :default "#343a40"}
+                                               :default "#181917"}
             :com.platypub.site/accent-color   {:label "Accent color"
-                                               :default "#009b50"}
+                                               :default "#d97706"}
             :com.platypub.site/tertiary-color {:label "Tertiary color"
-                                               :default "#e5e7eb"}
+                                               :default "#f3f4f6"}
             :com.platypub.site/logo-image     {:label "Navbar logo image URL"
                                                :description "Suggested dimensions: 320x60 px"
                                                :type :image}
@@ -22,7 +22,7 @@
                                                :description "Where should people go when they click on the logo?"
                                                :default "/"}
             :com.platypub.site/home-logo      {:label "Home logo image URL"
-                                               :description "Optional. A larger logo to display on the home page. Suggested dimensions: 500x500 px"
+                                               :description "Optional. A larger logo to display on the home page."
                                                :type :image}
             :com.platypub.site/author-name    {:label "Author name"}
             :com.platypub.site/author-url     {:label "Author URL"}

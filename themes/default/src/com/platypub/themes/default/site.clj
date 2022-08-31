@@ -229,16 +229,20 @@
     [:div.h-full.flex-grow.flex.flex-col.p-6
      {:style {:background-color (:tertiary-color site)}}
 
-     [:div.text-2xl.text-center "Featured"]
-     [:div.h-6]
-     [:div.max-w-screen-md.mx-auto.w-full
-      (map post-list-item featured)]
-     [:div.h-6]
+     (when (not-empty featured)
+       (list
+        [:div.text-2xl.text-center "Featured"]
+        [:div.h-6]
+        [:div.max-w-screen-md.mx-auto.w-full
+         (map post-list-item featured)]
+        [:div.h-6]))
 
-     [:div.text-2xl.text-center "Recent"]
-     [:div.h-6]
-     [:div.max-w-screen-md.mx-auto.w-full
-      (map post-list-item recent)]
+     (when (not-empty recent)
+       (list
+        [:div.text-2xl.text-center "Recent"]
+        [:div.h-6]
+        [:div.max-w-screen-md.mx-auto.w-full
+         (map post-list-item recent)]))
 
      [:div.h-6]
      [:a.text-xl.underline.block.text-center
