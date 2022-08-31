@@ -26,7 +26,8 @@
                                                :type :image}
             :com.platypub.site/author-name    {:label "Author name"}
             :com.platypub.site/author-url     {:label "Author URL"}
-            :com.platypub.site/author-image   {:label "Author image URL"}
+            :com.platypub.site/author-image   {:label "Author image URL"
+                                               :type :image}
             :com.platypub.site/discourse-url  {:label "Discourse forum URL"
                                                :description "Optional. If you set up a Discourse forum, you can use it to embed comments on your blog posts."}
             :com.platypub.site/embed-html     {:label "Embed HTML"

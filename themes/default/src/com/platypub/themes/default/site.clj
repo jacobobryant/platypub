@@ -7,6 +7,14 @@
             [com.platypub.themes.common :as common]
             [hiccup.util :refer [raw-string]]))
 
+(def footer-text
+  [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.opacity-75
+   "Made with "
+   [:a.underline {:href "https://biffweb.com/p/announcing-platypub/"
+                  :target "_blank"} "Platypub"]
+   ". "
+   (common/recaptcha-disclosure {:link-class "underline"})])
+
 (defn logo [{:keys [site] :as opts}]
   [:div (if-some [image (:logo-image site)]
           [:a {:href (:logo-url site)}
@@ -84,7 +92,7 @@
    "recaptcha-failed" "reCAPTCHA check failed. Try again."
    "unknown" "There was an unexpected error. Try again."})
 
-(defn subscribe-form [{:keys [site account] lst :list}]
+(defn subscribe-form [{:keys [site account show-read-more] lst :list}]
   [:div.flex.flex-col.items-center.text-center.px-3.text-white
    {:style {:background-color (:primary-color site)}}
    (if (:home-logo site)
@@ -138,11 +146,17 @@
                :type "submit"}
       "Subscribe"]]
     (for [[code explanation] errors]
-      [:div.text-red-600.hidden.text-left
+      [:div.hidden.text-left.mt-1
        {:_ (str "on load if window.location.search.includes('error="
                 code
                 "') remove .hidden from me")}
        explanation])]
+   (when show-read-more
+     (list
+      [:div.h-6]
+      [:a.block.text-center.underline
+       {:href "/"}
+       "Read it first"]))
    [:div.h-20]])
 
 (defn post-page [{:keys [site post account base/path] :as opts}]
@@ -172,14 +186,13 @@
       (subscribe-form opts)
       [:div
        {:style {:background-color (:primary-color site)}}
-       [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.text-white.opacity-75
-        (common/recaptcha-disclosure {:link-class "underline"})]])))
+       [:div.text-white footer-text]])))
 
 (defn render-page [{:keys [site page account] :as opts}]
   (common/base-html
     opts
     (navbar opts)
-    [:div.mx-auto.p-3.text-lg.flex-grow.w-full.max-w-screen-md
+    [:div.mx-auto.px-3.pb-3.text-lg.flex-grow.w-full.max-w-screen-md
      [:div.post-content (raw-string (:html page))]]))
 
 (defn post-list-item [post]
@@ -205,8 +218,7 @@
     (subscribe-form opts)
     [:div
      {:style {:background-color (:primary-color site)}}
-     [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.text-white.opacity-75
-      (common/recaptcha-disclosure {:link-class "underline"})]]))
+     [:div.text-white footer-text]]))
 
 (defn landing-page-posts [{:keys [posts site] :as opts}]
   (let [posts (remove #((:tags %) "unlisted") posts)
@@ -230,15 +242,28 @@
 
      [:div.h-6]
      [:a.text-xl.underline.block.text-center
-      {:href "/archive"}
+      {:href "/archive/"}
       "View all posts"]
      [:div.h-12]
      [:div.flex-grow]
-     [:div.sm:text-center.text-sm.leading-snug.opacity-75.w-full.px-3
-      (common/recaptcha-disclosure {:link-class "underline"})]]))
+     footer-text]))
 
-(defn about-section [{:keys [about] :as opts}]
-  [:div.mx-auto.p-6.text-lg.flex-grow.w-full.max-w-screen-md
+(defn about-section [{:keys [about site] :as opts}]
+  [:div.mx-auto.px-6.lg:px-12.pb-6.text-lg.flex-grow.w-full.max-w-screen-md
+   {:style {:margin-top "-63px"}}
+   [:div
+    [:a.block.bg-black.inline-block
+     {:href (:author-url site) :target "_blank"
+      :style {:border-radius "50%"
+              :border "3px solid white"}}
+     [:img.hover:opacity-80
+      {:src (common/cached-img-url {:url (:author-image site)
+                                    :w 240 :h 240})
+       :height "120px"
+       :width "120px"
+       :style {:border-radius "50%"}}]]]
+   [:a.text-2xl.block.font-bold.hover:underline {:href (:author-url site) :target "_blank"} (:author-name site)]
+   [:div.h-6]
    [:div.post-content (raw-string (:html about))]])
 
 (defn landing-page [{:keys [posts site about] lst :list :as opts}]
@@ -246,15 +271,28 @@
     (assoc opts :base/title (:title lst))
     (navbar (assoc opts :navbar/show-logo false))
     (subscribe-form opts)
+    (when about
+      [:div.h-6 {:style {:background-color (:primary-color site)}}])
     (if about
       [:div.lg:grid.grid-cols-2
        (about-section opts)
        (landing-page-posts opts)]
       (landing-page-posts opts))))
 
+(defn subscribe-page [{:keys [posts site about] lst :list :as opts}]
+  (common/base-html
+    (assoc opts :base/title (:title lst))
+    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
+    (subscribe-form (assoc opts :show-read-more true))
+    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
+    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
+    [:div.text-white {:style {:background-color (:primary-color site)}}
+     footer-text]))
+
 (def pages
   {"/" landing-page
-   "/archive/" archive-page})
+   "/archive/" archive-page
+   "/subscribe/" subscribe-page})
 
 (defn render-card [{:keys [site post] :as opts}]
   (common/base-html
