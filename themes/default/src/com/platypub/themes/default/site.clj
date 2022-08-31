@@ -25,24 +25,30 @@
 (defn parse-nav-links [{:keys [site]}]
   (->> (:nav-links site)
        str/split-lines
+       (remove empty?)
        (map #(str/split % #"\s+" 2))))
 
-(defn navbar [{:keys [site navbar/max-w] :as opts}]
-  (list
-    [:div.py-2 {:style {:background-color (:primary-color site)}}
-     [:div.flex.mx-auto.items-center.text-white.gap-4.text-lg.flex-wrap.px-3
-      {:class (or max-w "max-w-screen-md")}
-      (logo opts)
-      [:div.flex-grow]
-      (for [[href label] (parse-nav-links opts)]
-        [:a.hover:underline.hidden.sm:block
-         {:href href}
-         label])
-      hamburger-icon]]
-    [:div#nav-menu.px-5.py-2.text-white.text-lg.hidden.transition-all.ease-in-out.sm:hidden
-     {:style {:background-color (:primary-color site)}}
-     (for [[href label] (parse-nav-links opts)]
-       [:div.my-2 [:a.hover:underline.text-lg {:href href} label]])]))
+(defn navbar [{:keys [site navbar/max-w navbar/show-logo]
+               :or {show-logo true} :as opts}]
+  (let [nav-links (parse-nav-links opts)]
+    (when (or show-logo (not-empty nav-links))
+      (list
+       [:div.py-2 {:style {:background-color (:primary-color site)}}
+        [:div.flex.mx-auto.items-center.text-white.gap-4.text-lg.flex-wrap.px-3
+         {:class (or max-w "max-w-screen-md")}
+         (logo opts)
+         [:div.flex-grow]
+         (for [[href label] nav-links]
+           [:a.hover:underline.hidden.sm:block
+            {:href href}
+            label])
+         (when (not-empty nav-links)
+           hamburger-icon)]]
+       (when (not-empty nav-links)
+         [:div#nav-menu.px-5.py-2.text-white.text-lg.hidden.transition-all.ease-in-out.sm:hidden
+          {:style {:background-color (:primary-color site)}}
+          (for [[href label] (parse-nav-links opts)]
+            [:div.my-2 [:a.hover:underline.text-lg {:href href} label]])])))))
 
 (defn byline [{:keys [post site byline/card] :as opts}]
   [:div
@@ -81,11 +87,17 @@
 (defn subscribe-form [{:keys [site account] lst :list}]
   [:div.flex.flex-col.items-center.text-center.px-3.text-white
    {:style {:background-color (:primary-color site)}}
-   [:div.h-20]
-   [:div.font-bold.text-3xl.leading-none
-    (:title lst)]
-   [:div.h-4]
-   [:div.text-lg (:description site)]
+   (if (:home-logo site)
+     (list
+      [:div.h-16]
+      [:img.w-full {:src (:home-logo site)
+                    :style {:max-width "500px"}}])
+     (list
+      [:div.h-20]
+      [:div.font-bold.text-3xl.leading-none
+       (:title lst)]
+      [:div.h-4]))
+   [:div.text-lg.md:text-xl (:description site)]
    [:div.h-6]
    [:script (raw-string "function onSubscribe(token) { document.getElementById('recaptcha-form').submit(); }")]
    [:form#recaptcha-form.w-full.max-w-md
@@ -170,6 +182,14 @@
     [:div.mx-auto.p-3.text-lg.flex-grow.w-full.max-w-screen-md
      [:div.post-content (raw-string (:html page))]]))
 
+(defn post-list-item [post]
+  [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
+   {:href (str "/p/" (:slug post) "/")
+    :class "hover:bg-white/50"}
+   [:div.text-sm.text-gray-800 (common/format-date "d MMM yyyy" (:published-at post))]
+   [:div.text-xl.font-bold (:title post)]
+   [:div (:description post)]])
+
 (defn archive-page [{:keys [posts site] lst :list :as opts}]
   (common/base-html
     (assoc opts :base/title "Archive")
@@ -178,14 +198,9 @@
      {:style {:background-color (:tertiary-color site)}}
      [:div.h-5]
      [:div.max-w-screen-md.mx-auto.px-3.w-full
-      (for [post posts
-            :when (not ((:tags post) "unlisted"))]
-        [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
-         {:href (str "/p/" (:slug post) "/")
-          :class "hover:bg-white/50"}
-         [:div.text-sm.text-gray-800 (common/format-date "d MMM yyyy" (:published-at post))]
-         [:div.text-xl.font-bold (:title post)]
-         [:div (:description post)]])]
+      (->> posts
+           (remove #((:tags %) "unlisted"))
+           (map post-list-item))]
      [:div.flex-grow]]
     (subscribe-form opts)
     [:div
@@ -193,29 +208,49 @@
      [:div.sm:text-center.text-sm.leading-snug.w-full.px-3.pb-3.text-white.opacity-75
       (common/recaptcha-disclosure {:link-class "underline"})]]))
 
-(defn landing-page [{:keys [posts site] lst :list :as opts}]
-  (common/base-html
-    (assoc opts :base/title (:title lst))
-    (navbar opts)
-    (subscribe-form opts)
-    [:div.h-full.flex-grow.flex.flex-col
+(defn landing-page-posts [{:keys [posts site] :as opts}]
+  (let [posts (remove #((:tags %) "unlisted") posts)
+        featured (filter #((:tags %) "featured") posts)
+        recent (->> posts
+                    (remove #((:tags %) "featured"))
+                    (take 5))]
+    [:div.h-full.flex-grow.flex.flex-col.p-6
      {:style {:background-color (:tertiary-color site)}}
-     [:div.h-5]
-     [:div.max-w-screen-md.mx-auto.px-3.w-full
-      (for [post (->> posts
-                      (sort-by #(not ((:tags %) "featured")))
-                      (remove #((:tags %) "unlisted"))
-                      (take 5))]
-        [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
-         {:href (str "/p/" (:slug post) "/")
-          :class "hover:bg-white/50"}
-         [:div.text-sm.text-gray-800 (common/format-date "d MMM yyyy" (:published-at post))]
-         [:div.text-xl.font-bold (:title post)]
-         [:div (:description post)]])]
+
+     [:div.text-2xl.text-center "Featured"]
+     [:div.h-6]
+     [:div.max-w-screen-md.mx-auto.w-full
+      (map post-list-item featured)]
+     [:div.h-6]
+
+     [:div.text-2xl.text-center "Recent"]
+     [:div.h-6]
+     [:div.max-w-screen-md.mx-auto.w-full
+      (map post-list-item recent)]
+
+     [:div.h-6]
+     [:a.text-xl.underline.block.text-center
+      {:href "/archive"}
+      "View all posts"]
+     [:div.h-12]
      [:div.flex-grow]
      [:div.sm:text-center.text-sm.leading-snug.opacity-75.w-full.px-3
-      (common/recaptcha-disclosure {:link-class "underline"})]
-     [:div.h-3]]))
+      (common/recaptcha-disclosure {:link-class "underline"})]]))
+
+(defn about-section [{:keys [about] :as opts}]
+  [:div.mx-auto.p-6.text-lg.flex-grow.w-full.max-w-screen-md
+   [:div.post-content (raw-string (:html about))]])
+
+(defn landing-page [{:keys [posts site about] lst :list :as opts}]
+  (common/base-html
+    (assoc opts :base/title (:title lst))
+    (navbar (assoc opts :navbar/show-logo false))
+    (subscribe-form opts)
+    (if about
+      [:div.lg:grid.grid-cols-2
+       (about-section opts)
+       (landing-page-posts opts)]
+      (landing-page-posts opts))))
 
 (def pages
   {"/" landing-page

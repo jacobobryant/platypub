@@ -15,11 +15,15 @@
                                                :default "#009b50"}
             :com.platypub.site/tertiary-color {:label "Tertiary color"
                                                :default "#e5e7eb"}
-            :com.platypub.site/logo-image     {:label "Logo image URL"
-                                               :description "Suggested dimensions: 320x60 px"}
-            :com.platypub.site/logo-url       {:label "Logo destination URL"
+            :com.platypub.site/logo-image     {:label "Navbar logo image URL"
+                                               :description "Suggested dimensions: 320x60 px"
+                                               :type :image}
+            :com.platypub.site/logo-url       {:label "Navbar logo destination URL"
                                                :description "Where should people go when they click on the logo?"
                                                :default "/"}
+            :com.platypub.site/home-logo      {:label "Home logo image URL"
+                                               :description "Optional. A larger logo to display on the home page. Suggested dimensions: 500x500 px"
+                                               :type :image}
             :com.platypub.site/author-name    {:label "Author name"}
             :com.platypub.site/author-url     {:label "Author URL"}
             :com.platypub.site/author-image   {:label "Author image URL"}
@@ -57,6 +61,7 @@
                  :com.platypub.site/tertiary-color
                  :com.platypub.site/logo-image
                  :com.platypub.site/logo-url
+                 :com.platypub.site/home-logo
                  :com.platypub.site/author-name
                  :com.platypub.site/author-url
                  :com.platypub.site/author-image

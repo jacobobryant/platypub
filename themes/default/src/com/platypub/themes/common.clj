@@ -60,6 +60,17 @@
         :class link-class}
     "Terms of Service"] " apply."])
 
+;; From https://realfavicongenerator.net
+(def favicon-settings
+  (list
+   [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
+   [:link {:rel "manifest", :href "/site.webmanifest"}]
+   [:link {:rel "mask-icon", :href "/safari-pinned-tab.svg", :color "#5bbad5"}]
+   [:meta {:name "msapplication-TileColor", :content "#da532c"}]
+   [:meta {:name "theme-color", :content "#ffffff"}]))
+
 (defn base-html [{:base/keys [head path] :keys [site] :as opts} & body]
   (let [[title
          description
@@ -69,9 +80,7 @@
                     (get-in opts [:post (keyword k)])
                     (get-in opts [:page (keyword k)])
                     (get-in opts [:site (keyword k)])))
-        title (->> [title (:title site)]
-                   distinct
-                   (str/join " | "))]
+        title (or title (:title site))]
     [:html
      {:lang "en-US"
       :style {:min-height "100%"
@@ -100,6 +109,7 @@
       [:script {:src "https://www.google.com/recaptcha/api.js"
                 :async "async"
                 :defer "defer"}]
+      favicon-settings
       (when-some [html (:embed-html site)]
         (raw-string html))
       head]
@@ -191,7 +201,10 @@
                      (filter #((:tags %) "welcome"))
                      first)
         posts (remove #((:tags %) "welcome") posts)
-        pages (remove #((:tags %) "welcome") pages)]
+        pages (remove #((:tags %) "welcome") pages)
+        about (->> pages
+                   (filter #((:tags %) "about"))
+                   first)]
     (assoc opts
            :site (without-ns site)
            :post (-> item
@@ -200,7 +213,8 @@
            :posts posts
            :pages pages
            :list (without-ns (first lists))
-           :welcome welcome)))
+           :welcome welcome
+           :about about)))
 
 (defn netlify-subscribe-fn! [{:keys [db site-id site welcome account] lst :list :as opts}]
   (safe-spit
