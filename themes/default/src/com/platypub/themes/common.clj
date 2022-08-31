@@ -75,11 +75,11 @@
   (let [[title
          description
          image
-         url] (for [k ["title" "description" "image" "url"]]
-                (or (get opts (keyword "base" k))
-                    (get-in opts [:post (keyword k)])
-                    (get-in opts [:page (keyword k)])
-                    (get-in opts [:site (keyword k)])))
+         base-url] (for [k ["title" "description" "image" "url"]]
+                     (or (get opts (keyword "base" k))
+                         (get-in opts [:post (keyword k)])
+                         (get-in opts [:page (keyword k)])
+                         (get-in opts [:site (keyword k)])))
         title (or title (:title site))]
     [:html
      {:lang "en-US"
@@ -96,8 +96,8 @@
           [:meta {:content "summary_large_image" :name "twitter:card"}]
           [:meta {:content image :name "twitter:image"}]
           [:meta {:content image :property "og:image"}]))
-      [:meta {:content (str url path) :property "og:url"}]
-      [:link {:ref "canonical" :href (str url path)}]
+      [:meta {:content (str base-url path) :property "og:url"}]
+      [:link {:ref "canonical" :href (str base-url path)}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
       [:meta {:charset "utf-8"}]
       [:link {:href "/feed.xml",
