@@ -18,8 +18,6 @@
 (defn edit-list [{:keys [biff/db params] :as req}]
   (let [{:keys [id
                 title
-                theme
-                tags
                 reply-to
                 mailing-address
                 site-id]} params
@@ -30,12 +28,7 @@
         :db/op :update
         :xt/id (parse-uuid id)
         :list/title title
-        :list/theme theme
         :list/reply-to reply-to
-        :list/tags (->> (str/split tags #"\s+")
-                        (remove empty?)
-                        distinct
-                        vec)
         :list/mailing-address mailing-address
         :list/sites (vector (parse-uuid site-id))}])
     {:status 303
@@ -52,7 +45,6 @@
         :list/address address
         :list/title ""
         :list/reply-to ""
-        :list/theme "default"
         :list/mailing-address ""}])
     {:status 303
      :headers {"location" (str "/newsletters/" id)}}))
