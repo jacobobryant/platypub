@@ -58,7 +58,7 @@
              "content-disposition" "attachment; filename=\"input.edn\""}
    :body (pr-str (util/get-render-opts sys))})
 
-(defn generate! [{:keys [biff/db dir site] :as sys}]
+(defn generate! [{:keys [biff/db dir site params] :as sys}]
   (let [render-opts (util/get-render-opts sys)
         theme (:site/theme site)
         theme-last-modified (->> (file-seq (io/file "themes" theme))
@@ -66,7 +66,8 @@
                                  (map ring-io/last-modified-date)
                                  (apply max-key inst-ms))
         _hash (str (hash [render-opts theme-last-modified]))]
-    (when (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash)
+    (when (or (:force params)
+              (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash))
       ;; preinstall npm deps
       (when (and (:com.platypub/copy-theme-npm-deps sys)
                  (.exists (io/file "themes" theme "package.json"))
@@ -89,11 +90,14 @@
         (when (.exists (io/file dir "package.json"))
           (biff/sh "npm" "install" :dir (str dir))))
 
+      ;; Need to figure out why this is ever necessary
+      (when (:force params)
+        (time (biff/sh "bb" "--force" "-e" "nil" :dir dir)))
+
       ;; render
       (spit (io/file dir "input.edn") (pr-str render-opts))
       (some-> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)
-              :out
-              not-empty
+              ((some-fn (comp not-empty :err) (comp not-empty :out)))
               log/info)
       (spit (io/file dir "_hash") _hash))))
 
@@ -202,6 +206,10 @@
      [:a.hover:underline {:href (str "/sites/" id "/preview?path=/")
                           :target "_blank"}
       "Preview"]
+     ui/interpunct
+     [:a.hover:underline {:href (str "/sites/" id "/preview?force=true&path=/")
+                          :target "_blank"}
+      "Force refresh"]
      ui/interpunct
      (biff/form
       {:method "POST"
