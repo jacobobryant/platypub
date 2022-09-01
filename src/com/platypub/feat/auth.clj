@@ -5,7 +5,8 @@
             [com.platypub.util :as util]
             [clj-http.client :as http]
             [rum.core :as rum]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt]
+            [buddy.hashers :as hashers]))
 
 ;; You can enable recaptcha to prevent bot signups.
 (defn human? [{:keys [params] :as sys}]
@@ -110,9 +111,73 @@
     [:li "We think your email address is invalid or high risk."]
     [:li "We tried to email the link to you, but there was an unexpected error."]]))
 
+(defn good-password? [password]
+  (not= password "12345"))
+
+(defn signup [{:keys [params
+                      com.platypub/allowed-users
+                      biff/db
+                      biff.xtdb/node
+                      session]
+               :as req}]
+  (let [email (biff/normalize-email (:email params))
+        human (human? req)
+        valid (email-valid? req email)
+        allowed true #_(or (nil? allowed-users)
+                           (contains? allowed-users email))
+        exists (some? (biff/lookup-id db :user/email email))
+        matches (= (:password params)
+                   (:confirm-password params))
+        good (good-password? (:password params))
+        failed (or exists
+                   (not valid)
+                   (not matches)
+                   (not good))
+        _ (prn email)
+        _ (when-not failed
+            (println "creating user")
+            (prn (biff/submit-tx req
+                   [{:db/doc-type :user
+                     :xt/id [:db/lookup {:user/email email}]
+                     :user/email-unconfirmed true
+                     :user/password-hash (hashers/derive (:password params))}])))
+        db (xt/db node)
+        user (biff/lookup db :user/email email)]
+    (merge
+     {:status 303
+      :headers {"location" (if failed
+                             "/auth/fail/"
+                             "/app")}}
+     (when-not failed
+       {:session (assoc session :uid (:xt/id user))}))))
+
+(defn signin [{:keys [params
+                      com.platypub/allowed-users
+                      biff/db
+                      biff.xtdb/node
+                      session]
+               :as req}]
+  (let [email (biff/normalize-email (:email params))
+        human (human? req)
+        user (biff/lookup db :user/email email)
+        exists (some? user)
+        correct-password (hashers/check (:password params)
+                                        (:user/password-hash user))
+        success (and human exists correct-password)]
+    (prn human exists correct-password)
+    (merge
+     {:status 303
+      :headers {"location" (if success
+                             "/app"
+                             "/auth/fail/")}}
+     (when success
+       {:session (assoc session :uid (:xt/id user))}))))
+
 (def features
   {:routes [["/auth/send"          {:post send-token}]
             ["/auth/verify/:token" {:get verify-token}]
-            ["/auth/signout"       {:post signout}]]
+            ["/auth/signout"       {:post signout}]
+            ["/auth/signup"        {:post signup}]
+            ["/auth/signin"        {:post signin}]]
    :static {"/auth/sent/" signin-sent
             "/auth/fail/" signin-fail}})

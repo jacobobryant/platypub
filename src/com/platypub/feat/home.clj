@@ -43,18 +43,92 @@
       "Until you add an API key for Mailgun, we'll just print your sign-in "
       "link to the console."])))
 
+(defn password-signup-form [{:keys [recaptcha/site] :as sys}]
+  (biff/form
+   {:id "password-signup-form"
+    :action "/auth/signup"}
+   (ui/text-input {:id "email"
+                   :label "Email address:"
+                   :type "email"
+                   :placeholder "Enter your email address"})
+   [:.h-1]
+   (ui/text-input {:id "password"
+                   :label "Password:"
+                   :type "password"
+                   :placeholder "********"})
+   [:.h-1]
+   (ui/text-input {:id "confirm-password"
+                   :label "Confirm password:"
+                   :type "password"
+                   :placeholder "********"})
+   [:.h-3]
+   [:button.btn.g-recaptcha
+    (merge
+     (when (util/enable-recaptcha? sys)
+       {:data-sitekey site
+        :data-callback "onPasswordSignup"
+        :data-action "signup"})
+     {:type "submit"})
+    "Sign up"]
+   [:.h-1]
+   (if (util/enable-recaptcha? sys)
+     [:.text-sm (recaptcha-disclosure {:link-class "link"})]
+     [:.text-sm
+      "Doesn't need to be a real address. "
+      "Until you add an API key for Mailgun, we'll just print your sign-in "
+      "link to the console."])))
+
+(defn password-signin-form [{:keys [recaptcha/site] :as sys}]
+  (biff/form
+   {:id "password-signin-form"
+    :action "/auth/signin"}
+   (ui/text-input {:id "email"
+                   :label "Email address:"
+                   :type "email"
+                   :placeholder "Enter your email address"})
+   [:.h-1]
+   (ui/text-input {:id "password"
+                   :label "Password:"
+                   :type "password"
+                   :placeholder "********"})
+   [:.h-3]
+   [:button.btn.g-recaptcha
+    (merge
+     (when (util/enable-recaptcha? sys)
+       {:data-sitekey site
+        :data-callback "onPasswordSignin"
+        :data-action "signin"})
+     {:type "submit"})
+    "Sign in"]
+   [:.h-1]
+   (if (util/enable-recaptcha? sys)
+     [:.text-sm (recaptcha-disclosure {:link-class "link"})]
+     [:.text-sm
+      "Doesn't need to be a real address. "
+      "Until you add an API key for Mailgun, we'll just print your sign-in "
+      "link to the console."])))
+
 (def recaptcha-scripts
   [[:script {:src "https://www.google.com/recaptcha/api.js"
              :async "async"
              :defer "defer"}]
    [:script (biff/unsafe
-             (str "function onSubscribe(token) { document.getElementById('signin-form').submit(); }"))]])
+             (str "function onSubscribe(token) { document.getElementById('signin-form').submit(); }"))]
+   [:script (biff/unsafe
+             (str "function onPasswordSignup(token) { document.getElementById('password-signup-form').submit(); }"))]
+   [:script (biff/unsafe
+             (str "function onPasswordSignin(token) { document.getElementById('password-signin-form').submit(); }"))]])
+
 
 (defn home [sys]
   (ui/page
    {:base/head (when (util/enable-recaptcha? sys)
                  recaptcha-scripts)}
-   (signin-form sys)))
+   (signin-form sys)
+   [:.h-6]
+   (password-signup-form sys)
+   [:.h-6]
+   (password-signin-form sys)))
 
 (defn wrap-redirect-signed-in [handler]
   (fn [{:keys [session] :as req}]

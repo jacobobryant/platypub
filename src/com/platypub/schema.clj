@@ -12,8 +12,12 @@
 (def schema
   {:user/id :uuid
    :user/email :string
+   :user/password-hash :string
+   :user/email-unconfirmed :boolean
    :user (doc {:id :user/id
-               :required [:user/email]})
+               :required [:user/email]
+               :optional [:user/password-hash
+                          :user/email-unconfirmed]})
 
    :site/id :uuid
    :site [:map

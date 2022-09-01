@@ -2,7 +2,8 @@
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.netlify :as netlify]
             [clj-http.client :as http]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt]
+            [buddy.hashers :as hashers]))
 
 (defn get-sys []
   (biff/assoc-db @biff/system))
@@ -91,7 +92,18 @@
   ;; fix-print makes sure stdout keeps going to the terminal.
   (biff/fix-print (biff/refresh))
 
-  (let [{:keys [biff/db] :as sys} (get-sys)]
+  (def h (hashers/derive "abc123"))
+
+  (hashers/check "bc123" nil)
+
+  (let [{:keys [biff/db] :as sys} (get-sys)
+        ]
+
+
+    (biff/lookup db :user/email "abcd@example.com")
+    
+    
+
     )
 
   (sort (keys @biff/system)))

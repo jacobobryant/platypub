@@ -2,4 +2,5 @@
  :deps {com.biffweb/biff {:git/url "https://github.com/jacobobryant/biff" :sha "ad2fd9198366dcd407c1a4fc6692dba054279df8"}
         io.github.furstenheim/copy_down {:mvn/version "1.0"}
         org.slf4j/slf4j-simple {:mvn/version "2.0.0-alpha5"}
-        org.clojure/clojure {:mvn/version "1.11.1"}}}
+        org.clojure/clojure {:mvn/version "1.11.1"}
+        buddy/buddy-hashers {:mvn/version "1.8.158"}}}
