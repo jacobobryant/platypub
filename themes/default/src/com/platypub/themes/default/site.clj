@@ -33,6 +33,7 @@
 (defn parse-nav-links [{:keys [site]}]
   (->> (:nav-links site)
        str/split-lines
+       (map str/trim)
        (remove empty?)
        (map #(str/split % #"\s+" 2))))
 
@@ -44,7 +45,7 @@
        [:div.py-2 {:style {:background-color (:primary-color site)}}
         [:div.flex.mx-auto.items-center.text-white.gap-4.text-lg.flex-wrap.px-3
          {:class (or max-w "max-w-screen-md")}
-         (logo opts)
+         (when show-logo (logo opts))
          [:div.flex-grow]
          (for [[href label] nav-links]
            [:a.hover:underline.hidden.sm:block
