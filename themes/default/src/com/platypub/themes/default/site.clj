@@ -332,13 +332,18 @@
        (run! #(io/copy % (doto (io/file "public" (subs (.getPath %) (count "assets/"))) io/make-parents)))))
 
 (defn -main []
-  (let [opts (common/derive-opts (edn/read-string (slurp "input.edn")))]
+  (let [opts (common/derive-opts (edn/read-string (slurp "input.edn")))
+        sitemap-exclude (->> (:posts opts)
+                             (filter #((:tags %) "unlisted"))
+                             (map (fn [post]
+                                    (re-pattern (str "/p/" (:slug post) "/")))))]
     (common/redirects! opts)
     (common/netlify-subscribe-fn! opts)
     (common/pages! opts render-page pages)
     (common/posts! opts post-page)
     (common/atom-feed! opts)
-    (common/sitemap! {:exclude [#"/subscribed/" #".*/card/"]})
+    (common/sitemap! {:exclude (concat [#"/subscribed/" #".*/card/"]
+                                       sitemap-exclude)})
     (cards! opts)
     (assets!)
     (when (fs/exists? "main.css")

@@ -96,10 +96,12 @@
 
       ;; render
       (spit (io/file dir "input.edn") (pr-str render-opts))
-      (some-> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)
-              ((some-fn (comp not-empty :err) (comp not-empty :out)))
-              log/info)
+      (some->> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)
+               ((juxt :out :err))
+               (keep not-empty)
+               (run! #(log/info %)))
       (spit (io/file dir "_hash") _hash))))
+
 
 (defn preview [{:keys [biff/db path-params params site] :as sys}]
   (let [dir (io/file "storage/previews" (str (:xt/id site)))
