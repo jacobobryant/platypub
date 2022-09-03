@@ -2,7 +2,6 @@
   (:require [hiccup2.core :as hiccup]
             [hiccup.util :refer [raw-string]]
             [babashka.fs :as fs]
-            [babashka.nrepl.server :as nrepl]
             [cheshire.core :as cheshire]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
