@@ -90,10 +90,6 @@
         (when (.exists (io/file dir "package.json"))
           (biff/sh "npm" "install" :dir (str dir))))
 
-      ;; Need to figure out why this is ever necessary
-      (when (:force params)
-        (time (biff/sh "bb" "--force" "-e" "nil" :dir dir)))
-
       ;; render
       (spit (io/file dir "input.edn") (pr-str render-opts))
       (some->> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)

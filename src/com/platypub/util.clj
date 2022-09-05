@@ -303,4 +303,6 @@
       ;; can we assume render-site/render-email is already executable?
       ;; this is just for backwards compatibility anyway
       (biff/sh "chmod" "+x" (str (io/file dir file))))
+    ;; TODO figure out why this is sometimes necessary
+    (time (biff/sh "bb" "--force" "-e" "nil" :dir dir))
     (apply shell/sh (concat cmd [:dir dir :env {"PATH" path}]))))
