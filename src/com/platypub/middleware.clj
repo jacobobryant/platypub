@@ -9,7 +9,7 @@
     doc))
 
 (defn wrap-signed-in [handler]
-  (fn [{:keys [biff/db session path-params] :as req}]
+  (fn [{:keys [biff/db session path-params params] :as req}]
     (let [user (xt/entity db (:uid session))
           sites (delay (util/q-sites db user))
           site (delay (->> @sites
@@ -23,12 +23,12 @@
                        (xt/entity db (parse-uuid (:item-id path-params)))))
           lst (delay (ensure-owner
                       user
-                      (xt/entity db (parse-uuid (:list-id path-params)))))
+                      (xt/entity db (parse-uuid (some :list-id [path-params params])))))
           params (-> {:site-id site
                       :item-slug item-spec
                       :item-id item
                       :list-id lst}
-                     (select-keys (keys path-params))
+                     (select-keys (keys (merge path-params params)))
                      (set/rename-keys {:site-id :site
                                        :item-slug :item-spec
                                        :item-id :item
