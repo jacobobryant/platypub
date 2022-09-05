@@ -58,7 +58,7 @@ post-receive () {
 deploy () {
   css --minify
   chmod 600 config.* secrets.edn
-  rsync -a --exclude node_modules config.* secrets.edn themes \
+  rsync -a --relative --exclude node_modules config.* secrets.edn themes \
     target/resources/public/css/main.css \
     app@$SERVER:
   time git push --force $DEPLOY_TO $DEPLOY_FROM
@@ -67,7 +67,7 @@ deploy () {
 soft-deploy () {
   css --minify
   chmod 600 config.* secrets.edn
-  rsync -a --info=name1 --delete \
+  rsync -a --relative --info=name1 --delete \
     --exclude node_modules \
     config.* \
     secrets.edn \
