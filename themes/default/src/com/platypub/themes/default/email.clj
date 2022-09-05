@@ -28,8 +28,9 @@
     (str (:url site) "/p/" (:slug post) "/")))
 
 (defn comments-url [opts]
-  (when (not-empty (post-url opts))
-    (str (post-url opts) "#discourse-comments")))
+  (or (get-in opts [:site :comments-url])
+      (when (not-empty (post-url opts))
+        (str (post-url opts) "#discourse-comments"))))
 
 (defn byline [{:keys [post site] :as opts}]
   [:table
@@ -50,7 +51,7 @@
      [:div (:author-name site)]
      [:div
       (common/format-date "d MMM yyyy" (:published-at post))
-      (when (not-empty (:discourse-url site))
+      (when (not-empty (some site [:discourse-url :comments-url]))
         (list
          common/interpunct
          [:a {:href (comments-url opts)} "comments"]))]]]])
@@ -76,7 +77,10 @@
   [:html
    [:head
     [:title (:title post)]
-    [:style (raw-string (slurp (io/resource "com/platypub/themes/default/email.css")))]
+    [:style (-> (io/resource "com/platypub/themes/default/email.css")
+                slurp
+                (str/replace "$ACCENT_COLOR" (or (:accent-color site) "#06c"))
+                raw-string)]
     [:meta {:http-equiv "Content-Type" :content "text/html; charset=utf-8"}]
     [:meta {:name "viewport" :content "width=device-width,initial-scale=1"}]]
    [:body
@@ -96,7 +100,7 @@
      (space 10)
      [:div.post-content (raw-string (:html post))]
      (space 15)
-     (when (not-empty (:discourse-url site))
+     (when (not-empty (some site [:discourse-url :comments-url]))
        (list
         (button {:bg-color (:primary-color site)
                  :href (comments-url opts)

@@ -28,6 +28,8 @@
             :com.platypub.site/author-url     {:label "Author URL"}
             :com.platypub.site/author-image   {:label "Author image URL"
                                                :type :image}
+            :com.platypub.site/comments-url   {:label "Comments URL"
+                                               :description "Optional. Adds a \"View comments\" button to your emails. Takes precedence over `Discourse forum URL`."}
             :com.platypub.site/discourse-url  {:label "Discourse forum URL"
                                                :description "Optional. If you set up a Discourse forum, you can use it to embed comments on your blog posts."}
             :com.platypub.site/embed-html     {:label "Embed HTML"
@@ -66,6 +68,7 @@
                  :com.platypub.site/author-name
                  :com.platypub.site/author-url
                  :com.platypub.site/author-image
+                 :com.platypub.site/comments-url
                  :com.platypub.site/discourse-url
                  :com.platypub.site/embed-html
                  :com.platypub.site/nav-links]

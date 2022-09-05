@@ -19,7 +19,7 @@ hr {
 
 a {
   text-decoration: none;
-  color: #0066cc;
+  color: $ACCENT_COLOR;
 }
 
 .post-content a {
@@ -37,4 +37,13 @@ li {
 
 .post-content .webonly {
   display: none;
+}
+
+blockquote {
+  border-left: 2px solid $ACCENT_COLOR;
+  margin: 32px 0;
+  padding: 0 24px;
+  background-color: inherit;
+  color: inherit;
+  border-radius: 0;
 }

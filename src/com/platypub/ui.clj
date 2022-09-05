@@ -9,6 +9,9 @@
 
 (def interpunct " · ")
 
+;; useful if you want to prevent gmail from formatting something as a link
+(def fake-period "․")
+
 ;; https://orioniconlibrary.com/icon/sun-and-moon-4452
 
 (def sun-moon-svg
