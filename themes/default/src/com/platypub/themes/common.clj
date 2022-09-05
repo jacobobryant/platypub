@@ -136,7 +136,7 @@
         [:id (url-encode url)]
         [:updated (format-date (:published-at post))]
         [:content {:type "html"} (:html post)]
-        [:link {:href (:url post)}]
+        [:link {:href url}]
         [:author
          [:name (:author-name site)]
          [:uri (:author-url site)]]])]))
