@@ -28,9 +28,15 @@
     (str (:url site) "/p/" (:slug post) "/")))
 
 (defn comments-url [opts]
-  (or (get-in opts [:site :comments-url])
+  (or (not-empty (get-in opts [:post :comments-url]))
+      (not-empty (get-in opts [:site :comments-url]))
       (when (not-empty (post-url opts))
         (str (post-url opts) "#discourse-comments"))))
+
+(defn comments-enabled? [{:keys [post site]}]
+  (or (not-empty (:comments-url post))
+      (not-empty (:comments-url site))
+      (not-empty (:discourse-url site))))
 
 (defn byline [{:keys [post site] :as opts}]
   [:table
@@ -51,7 +57,7 @@
      [:div (:author-name site)]
      [:div
       (common/format-date "d MMM yyyy" (:published-at post))
-      (when (not-empty (some site [:discourse-url :comments-url]))
+      (when (comments-enabled? opts)
         (list
          common/interpunct
          [:a {:href (comments-url opts)} "comments"]))]]]])
@@ -100,7 +106,7 @@
      (space 10)
      [:div.post-content (raw-string (:html post))]
      (space 15)
-     (when (not-empty (some site [:discourse-url :comments-url]))
+     (when (comments-enabled? opts)
        (list
         (button {:bg-color (:primary-color site)
                  :href (comments-url opts)

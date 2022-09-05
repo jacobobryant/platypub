@@ -53,7 +53,10 @@
             :com.platypub.post/image          {:label "Image"
                                                :type :image}
             :com.platypub.post/canonical      {:label "Canonical URL"}
+            :com.platypub.post/comments-url   {:label "Comments URL"
+                                               :description "Optional. Adds a post-specific \"View comments\" button to your emails."}
             :com.platypub.post/html           {:type :html}
+
             :com.platypub.page/path           {:label "Path"
                                                :default [:slugify :com.platypub.post/title]}}
    :site-fields [:com.platypub.site/description
@@ -84,6 +87,7 @@
                      :com.platypub.post/description
                      :com.platypub.post/image
                      :com.platypub.post/canonical
+                     :com.platypub.post/comments-url
                      :com.platypub.post/html]
             :sendable true
             :render/label :com.platypub.post/title
