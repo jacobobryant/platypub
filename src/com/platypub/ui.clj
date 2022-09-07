@@ -148,27 +148,15 @@
       [:a {:href "#"
            :class '[block
                     text-xl
-                    mx-3
                     p-3
                     text-white]} "Platypub"]
-      [:.py-3
-       [:.px-6 (:user/email user) " | "
+      [:.p-3
+       [:div (:user/email user) " | "
         (biff/form
          {:action "/auth/signout"
           :class "inline"}
          [:button.hover:underline {:type "submit"}
           "sign out"])]]]
-     [:.flex-grow]
-     [:div#prefs.hidden
-      [:button.btn.mx-6.my-3 {:onclick "toggleDarkMode()"} "Toggle dark mode"]
-      [:.px-6.text-sm (:user/email user)]
-      [:.px-6.text-sm
-       (biff/form
-        {:action "/auth/signout"
-         :class "inline"}
-        [:button.text-amber-600.hover:underline {:type "submit"}
-         "sign out"])]
-      [:.h-3]]
      [:div#body {:class '[p-3
                           text-black
                           bg-gray-100
@@ -179,7 +167,7 @@
        (pills {:options nav-options
                :active current})
        [:.flex-grow]
-       [:a.mr-3 {:href "#"
+       [:a {:href "#"
                  :onclick "toggleDarkMode()"} sun-moon-svg]]
       [:.h-5]
       body]])))
