@@ -145,18 +145,16 @@
                text-gray-100]}
      [:div {:class '[flex
                      justify-between]}
-      [:a {:href "#"
-           :class '[block
-                    text-xl
-                    p-3
-                    text-white]} "Platypub"]
-      [:.p-3
-       [:div (:user/email user) " | "
-        (biff/form
-         {:action "/auth/signout"
-          :class "inline"}
-         [:button.hover:underline {:type "submit"}
-          "sign out"])]]]
+      [:div {:class '[block
+                      p-3
+                      text-xl
+                      text-white]} "Platypub"]
+      [:.p-3 (:user/email user) " | "
+       (biff/form
+        {:action "/auth/signout"
+         :class "inline"}
+        [:button.hover:underline {:type "submit"}
+         "sign out"])]]
      [:div#body {:class '[p-3
                           text-black
                           bg-gray-100
