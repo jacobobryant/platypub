@@ -36,7 +36,7 @@
   }
 
   .post-content img {
-    @apply my-5;
+    @apply my-8 mx-auto;
     box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.3);
   }
 

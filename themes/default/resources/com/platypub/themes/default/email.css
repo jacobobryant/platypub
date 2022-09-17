@@ -4,11 +4,11 @@ body {
   line-height: 140%;
 }
 
-img {
+.post-content img {
   max-width: 100%;
-  border: 1px solid #eee;
+  border: 1px solid #666;
   display: block;
-  margin: 10px auto;
+  margin: 32px auto;
 }
 
 hr {

@@ -54,8 +54,8 @@
                          :height "50px"
                          :margin-right "10px"}}]]]
     [:td {:style {:font-size "90%"}}
-     [:div (:author-name site)]
-     [:div
+     [:div {:style {:line-height "120%"}} (:author-name site)]
+     [:div {:style {:line-height "120%"}}
       (common/format-date "d MMM yyyy" (:published-at post))
       (when (comments-enabled? opts)
         (list
@@ -101,7 +101,7 @@
        (if (-> post :slug not-empty)
          [:a {:href (post-url opts)} title]
          title))
-     (space 5)
+     (space 15)
      (byline opts)
      (space 10)
      [:div.post-content (raw-string (:html post))]
