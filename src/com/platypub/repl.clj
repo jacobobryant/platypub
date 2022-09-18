@@ -2,7 +2,8 @@
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.netlify :as netlify]
             [clj-http.client :as http]
-            [xtdb.api :as xt]))
+            [xtdb.api :as xt]
+            [babashka.fs :as fs]))
 
 (defn get-sys []
   (biff/assoc-db @biff/system))
@@ -26,7 +27,7 @@
   (java.util.UUID/nameUUIDFromBytes (.getBytes (str uuid))))
 
 (defn migrate-items! []
-  (biff/sh "cp" "-r" "storage/xtdb/" (str "storage/xtdb-backup-"
+  (fs/copy-tree "storage/xtdb/" (str "storage/xtdb-backup-"
                                           (inst-ms (java.util.Date.))))
   (let [{:keys [biff/db] :as sys} (get-sys)
         sites (q db

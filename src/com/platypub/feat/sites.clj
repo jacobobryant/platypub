@@ -13,7 +13,8 @@
             [ring.middleware.anti-forgery :as anti-forgery]
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
-            [lambdaisland.uri :as uri]))
+            [lambdaisland.uri :as uri]
+            [babashka.fs :as fs]))
 
 (defn edit-site [{:keys [site params] :as sys}]
   (biff/submit-tx sys
@@ -75,18 +76,18 @@
         (biff/sh "npm" "install" :dir (str (io/file "themes" theme))))
 
       ;; copy theme code to new directory
-      (if (biff/catchall (biff/sh "which" "rsync"))
+      (if (biff/catchall (fs/which "rsync"))
         (do (biff/sh "rsync" "-a" "--delete"
                      (str (io/file "themes" theme) "/")
                      (str dir "/"))
-            (biff/sh "rm" "-rf" (str dir "/public")))
-        (do (biff/sh "rm" "-rf" (str dir))
+            (fs/delete-tree (str dir "/public")))
+        (do (fs/delete-tree (str dir))
             (io/make-parents dir)
-            (biff/sh "cp" "-r" "--preserve=timestamps" (str (io/file "themes" theme)) (str dir))))
+            (fs/copy-tree (str (io/file "themes" theme)) (str dir) {:copy-attributes ["--preserve=timestamps"]}))) ;; :opts -r --preserve=timestamps
 
       ;; install npm deps in new directory
       (when-not (:com.platypub/copy-theme-npm-deps sys)
-        (biff/sh "rm" "-rf" (str dir "/node_modules"))
+        (fs/delete-tree (str dir "/node_modules"))
         (when (.exists (io/file dir "package.json"))
           (biff/sh "npm" "install" :dir (str dir))))
 
@@ -146,7 +147,7 @@
     (netlify/deploy! {:api-key (util/get-secret sys :netlify/api-key)
                       :site-id (:site/netlify-id site)
                       :dir (str dir)})
-    (biff/sh "rm" "-rf" (str dir))
+    (fs/delete-tree (str dir))
     {:status 303
      :headers {"location" "/sites"}}))
 
