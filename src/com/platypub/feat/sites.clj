@@ -76,14 +76,14 @@
         (biff/sh "npm" "install" :dir (str (io/file "themes" theme))))
 
       ;; copy theme code to new directory
-      (if (biff/catchall (fs/which "rsync"))
+      (if (fs/which "rsync")
         (do (biff/sh "rsync" "-a" "--delete"
                      (str (io/file "themes" theme) "/")
                      (str dir "/"))
             (fs/delete-tree (str dir "/public")))
         (do (fs/delete-tree (str dir))
             (io/make-parents dir)
-            (fs/copy-tree (str (io/file "themes" theme)) (str dir) {:copy-attributes ["--preserve=timestamps"]}))) ;; :opts -r --preserve=timestamps
+            (fs/copy-tree (str (io/file "themes" theme)) (str dir) {:copy-attributes true})))
 
       ;; install npm deps in new directory
       (when-not (:com.platypub/copy-theme-npm-deps sys)
