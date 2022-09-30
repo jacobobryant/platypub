@@ -35,8 +35,8 @@ css () {
 
 dev () {
   echo $PORT > .nrepl-port
-  BIFF_ENV=dev run &
-  css --watch
+  css --watch <<< "" &
+  BIFF_ENV=dev run
 }
 
 format () {
