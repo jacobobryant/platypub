@@ -1,11 +1,17 @@
 # Platypub
 
-An in-depth, real-world example project made with [Biff](https://biffweb.com/). Platypub is a publishing platform that's meant to give you the same amount of control as you would get from a static site generator,
-while providing the same level of convenience as WordPress, Ghost, Substack etc. In addition to scratching my own itch, Platypub is
-intended to help people learn Biff by providing a fun opportunity to hack on an open-source application. See the [list of good first issues](https://github.com/jacobobryant/platypub/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) if you'd like to start contributing.
+A blogging + newsletter platform. Platypub is basically a CMS with integrations for Netlify (for hosting your site) and Mailgun (for sending your newsletter). Platypub supports multiple users (as opposed to wordpress or ghost where each user/publication must have its own instance), so you can run a public instance of it cheaply. Alternatively you can run your own instance of Platypub on your local machine--since hosting is done by Netlify, Platypub doesn't need to run all the time.
 
-See also [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/). Platypub is very early stage and needs a lot of work. Nevertheless I am already using it for both
-[biffweb.com](https://biffweb.com) and [blog.thesample.ai](https://blog.thesample.ai/).
+Platypub is not ready for general use yet. When it is, I'll host a public instance of it (with usage-based pricing and a free tier).
+
+Platypub is built with [Biff](https://biffweb.com/), a Clojure web framework. If you're a Clojurist and you'd like to contribute, see [the roadmap](https://github.com/users/jacobobryant/projects/1/views/1) for a list of good first issues.
+
+See also [Announcing Platypub: open-source blogging + newsletter tool](https://biffweb.com/p/announcing-platypub/).
+
+<div>
+<img width="450px" style="margin-right:10px" src="https://user-images.githubusercontent.com/3696602/194668648-c0950e8e-c595-404a-a0e2-d6c7847b43ce.png" />
+<img width="450px" src="https://user-images.githubusercontent.com/3696602/194668694-c7b968ec-0900-4f1e-aa80-fafc0feed911.png" />
+</div>
 
 ## Getting started
 
@@ -26,27 +32,6 @@ cp config.sh.TEMPLATE config.sh
 Then you can start Platypub with `./task dev`. After you see a `System started` message, the app will be running on `localhost:8080`.
 Once you've signed in, you can create a site, a newsletter,
 and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
-
-## Roadmap
-
-Stage 1: Platypub can be used locally by a single user. (Current stage)
-
-Stage 2: Platypub can be ran as a managed web service and used by multiple users, without
-custom themes. Users must supply their own API keys for Mailgun, Netlify, and Recaptcha. And
-maybe S3.
-
-Stage 3: Like stage 2, but with custom themes. Need to be able to run themes in
-a sandbox, ideally with https://www.cloudflare.com/lp/workers-for-platforms/.
-I'll apply for access once we're ready, though I'm guessing they only care
-about enterprise at this point. If needed we could hopefully use AWS Lambda
-without much too much trouble, though I'm inclined to just wait until
-Cloudflare opens up access. (Probably everyone who uses Platypub will be self-hosting/running it
-locally for a while anyway.)
-
-Stage 4: Like stage 3, but users don't have to bring their own API keys.
-
-Stage 5: Theme development can be done from within Platypub. Platypub becomes
-good at sucking people into Clojure/programming in general.
 
 ## Deployment
 
