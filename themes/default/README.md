@@ -5,26 +5,24 @@ Must have `bb` on path.
 ## Setup
 
 Within Platypub, you'll want to have at least one site, newsletter, and post.
-Tags are used to specify which sites, newsletters, and posts go together. For
-experimenting, you could create one of each and assign them all a tag of
-`example-site`.
 
-For using this theme as-is, you'll also want to create three additional special posts:
+For using this theme as-is, you'll also want to create three special pages:
 
- - One with `example-site welcome` for the tags. The contents of this post will
+ - One with `welcome` for the tag. The contents of this post will
    be emailed to new subscribers.
- - One with `example-site page` for the tags and `subscribed` for the slug.
+ - One with `/subscribed/` for the path.
    This page will be rendered at `http://localhost:8888/subscribed/` and will
    be shown to new subscribers. It should say something like "check your inbox
    for a welcome email."
- - One with `example-site page` for the tags and `about` for the slug. This will
+ - One with `/about` for the path. This will
    be linked to from the default site's nav bar.
 
 ## Theme development
 
-Make your own theme by copying this folder, e.g. `cp -r themes/default
-themes/mytheme`. Then go to your site and newsletter in Platypub and change the
-theme to `mytheme` (or whatever you called the directory).
+See https://github.com/jacobobryant/platypub-theme-minimalist for an example of a custom
+theme that reuses code from Platypub's default theme. To create your own custom theme,
+you can copy that repo's contents into a `themes/my-custom-theme` directory, and then
+make your changes.
 
 ### Website
 
