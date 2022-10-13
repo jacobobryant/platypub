@@ -271,6 +271,10 @@
       (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
       (str/replace #"\s+" "-")))
 
+(defn date-time-string->java-Date [date-string]
+  (when (not-empty date-string)
+    (edn/read-string (str "#inst" "\"" date-string "\""))))
+
 (defn params->custom-fields [{:keys [site item-spec params]}]
   (let [[prefix ks] (if item-spec
                       ["item.custom." (:fields item-spec)]
@@ -280,7 +284,7 @@
                 {:keys [type default]} (get-in site [:site.config/fields k])]]
       [(add-prefix prefix k)
        (cond
-         (= type :instant) (edn/read-string value)
+         (= type :instant) (date-time-string->java-Date value)
          (= type :boolean) (= value "on")
          (= type :tags) (->> (str/split value #"\s+")
                              (remove empty?)

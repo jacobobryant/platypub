@@ -135,7 +135,7 @@
                      min-h-screen]}
       body]]
 
-    ;;; Pills 
+    ;;; Pills
 
     [:div.md:hidden
      {:class '[flex
@@ -176,13 +176,13 @@
    [:.p-3.mx-auto.max-w-screen-sm.w-full
     body]))
 
-(defn text-input [{:keys [id label description element]
-                   :or {element :input}
+(defn input [{:keys [id label description element type]
+                   :or {element :input type "text"}
                    :as opts}]
   (list
    (when label
      [:label.block.text-sm.mb-1 {:for id} label])
-   [element (merge {:type "text"
+   [element (merge {:type type
                     :class '[w-full
                              border-gray-300
                              rounded
@@ -196,6 +196,9 @@
                    (dissoc opts :label :description))]
    (when description
      [:.text-sm.text-gray-600.dark:text-gray-400 description])))
+
+(defn text-input [opts]
+  (input (merge opts {:type "text"})))
 
 (defn textarea [opts]
   (text-input (assoc opts :element :textarea)))
@@ -285,7 +288,15 @@
                                 not-empty)}]
     (case type
       :textarea (textarea opts)
-      :instant (text-input (update opts :value pr-str))
+      :instant (input {:id (name k)
+                       :type "datetime-local"
+                       :label (str label " (UTC)")
+                       :step 1
+                       :value (some-> value
+                                      (.toInstant)
+                                      (.toString)
+                                      (str/split #"(\.|Z)")
+                                      first)})
       :boolean (checkbox (set/rename-keys opts {:value :checked}))
       :tags (text-input (assoc opts :value (str/join " " value)))
       :image (list
