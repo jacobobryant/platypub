@@ -151,47 +151,62 @@
     {:status 303
      :headers {"location" "/sites"}}))
 
+(defn custom-config [{:keys [path-params biff/db user site params] :as sys}]
+  (let [{:keys [theme]} params
+        site (if (contains? (set (util/installed-themes)) theme)
+               (merge (xt/entity db (:xt/id site))
+                      (util/select-ns-as
+                       (biff/catchall
+                        (edn/read-string
+                         (slurp (str "themes/" theme "/config.edn"))))
+                       nil
+                       'site.config))
+               site)]
+    [:div#custom-config
+     (for [k (:site.config/site-fields site)]
+       (list
+        (ui/custom-field sys k)
+        [:.h-3]))]))
+
 (defn edit-site-page [{:keys [path-params biff/db user site] :as sys}]
-  (let [themes (->> (.listFiles (io/file "themes"))
-                    (map #(.getName %))
-                    sort)]
-    (ui/nav-page
-     (merge sys
-            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-             :current :sites})
-     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
-      [:.max-w-screen-sm
-       (biff/form
-        {:id "edit"
-         :action (str "/sites/" (:xt/id site))
-         :class '[flex flex-col flex-grow]}
-        (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
-        [:.h-3]
-        (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
-        [:.h-3]
-        (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
-        [:.h-3]
-        (ui/select {:id "theme"
-                    :name "theme"
-                    :label "Theme"
-                    :value (:site/theme site)
-                    :options (for [t themes]
-                               {:label t :value t})
-                    :default "default"})
-        [:.h-3]
-        (for [k (:site.config/site-fields site)]
-          (list
-           (ui/custom-field sys k)
-           [:.h-3]))
-        [:.h-4]
-        [:button.btn.w-full {:type "submit"} "Save"])
-       [:.h-3]
-       (biff/form
-        {:onSubmit "return confirm('Delete site?')"
-         :method "POST"
-         :action (str "/sites/" (:xt/id site) "/delete")}
-        [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
-       [:.h-6]]])))
+  (ui/nav-page
+   (merge sys
+          {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+           :current :sites})
+   [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+    [:.max-w-screen-sm
+     (biff/form
+      {:id "edit"
+       :action (str "/sites/" (:xt/id site))
+       :class '[flex flex-col flex-grow]}
+      (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
+      [:.h-3]
+      (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
+      [:.h-3]
+      (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
+      [:.h-3]
+      (ui/select {:id "theme"
+                  :name "theme"
+                  :label "Theme"
+                  :value (:site/theme site)
+                  :options (for [t (util/installed-themes)]
+                             {:label t :value t})
+                  :default (:site/theme site)
+                  :hx-trigger "change"
+                  :hx-get (str "/sites/" (:xt/id site) "/custom-config")
+                  :hx-target "#custom-config"
+                  :hx-swap "outerHTML"})
+      [:.h-3]
+      (custom-config sys)
+      [:.h-4]
+      [:button.btn.w-full {:type "submit"} "Save"])
+     [:.h-3]
+     (biff/form
+      {:onSubmit "return confirm('Delete site?')"
+       :method "POST"
+       :action (str "/sites/" (:xt/id site) "/delete")}
+      [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+     [:.h-6]]]))
 
 (defn site-list-item [{:keys [site/title
                               site/url
@@ -250,6 +265,7 @@
             ["/sites/:site-id"
              ["" {:get edit-site-page
                   :post edit-site}]
+             ["/custom-config" {:get custom-config}]
              ["/delete" {:post delete-site}]
              ["/publish" {:post publish}]
              ["/preview" {:get preview}]

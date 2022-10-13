@@ -310,3 +310,8 @@
     ;; TODO figure out why this is sometimes necessary
     (time (biff/sh "bb" "--force" "-e" "nil" :dir dir))
     (apply shell/sh (concat cmd [:dir dir :env {"PATH" path}]))))
+
+(defn installed-themes []
+  (->> (.listFiles (io/file "themes"))
+       (map #(.getName %))
+       sort))
