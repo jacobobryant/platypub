@@ -152,37 +152,46 @@
      :headers {"location" "/sites"}}))
 
 (defn edit-site-page [{:keys [path-params biff/db user site] :as sys}]
-  (ui/nav-page
-   (merge sys
-          {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
-           :current :sites})
-   [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
-    [:.max-w-screen-sm
-     (biff/form
-      {:id "edit"
-       :action (str "/sites/" (:xt/id site))
-       :class '[flex flex-col flex-grow]}
-      (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
-      [:.h-3]
-      (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
-      [:.h-3]
-      (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
-      [:.h-3]
-      (ui/text-input {:id "theme" :label "Theme" :value (:site/theme site)})
-      [:.h-3]
-      (for [k (:site.config/site-fields site)]
-        (list
-         (ui/custom-field sys k)
-         [:.h-3]))
-      [:.h-4]
-      [:button.btn.w-full {:type "submit"} "Save"])
-     [:.h-3]
-     (biff/form
-      {:onSubmit "return confirm('Delete site?')"
-       :method "POST"
-       :action (str "/sites/" (:xt/id site) "/delete")}
-      [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
-     [:.h-6]]]))
+  (let [themes (->> (.listFiles (io/file "themes"))
+                    (map #(.getName %))
+                    sort)]
+    (ui/nav-page
+     (merge sys
+            {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
+             :current :sites})
+     [:.bg-gray-100.dark:bg-stone-800.dark:text-gray-50.flex-grow
+      [:.max-w-screen-sm
+       (biff/form
+        {:id "edit"
+         :action (str "/sites/" (:xt/id site))
+         :class '[flex flex-col flex-grow]}
+        (ui/text-input {:id "netlify-id" :label "Netlify ID" :value (:site/netlify-id site) :disabled true})
+        [:.h-3]
+        (ui/text-input {:id "url" :label "URL" :value (:site/url site)})
+        [:.h-3]
+        (ui/text-input {:id "title" :label "Title" :value (:site/title site)})
+        [:.h-3]
+        (ui/select {:id "theme"
+                    :name "theme"
+                    :label "Theme"
+                    :value (:site/theme site)
+                    :options (for [t themes]
+                               {:label t :value t})
+                    :default "default"})
+        [:.h-3]
+        (for [k (:site.config/site-fields site)]
+          (list
+           (ui/custom-field sys k)
+           [:.h-3]))
+        [:.h-4]
+        [:button.btn.w-full {:type "submit"} "Save"])
+       [:.h-3]
+       (biff/form
+        {:onSubmit "return confirm('Delete site?')"
+         :method "POST"
+         :action (str "/sites/" (:xt/id site) "/delete")}
+        [:button.text-red-600.hover:text-red-700 {:type "submit"} "Delete"])
+       [:.h-6]]])))
 
 (defn site-list-item [{:keys [site/title
                               site/url
