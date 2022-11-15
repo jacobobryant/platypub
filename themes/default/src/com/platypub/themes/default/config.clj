@@ -15,6 +15,8 @@
                                                :default "#d97706"}
             :com.platypub.site/tertiary-color {:label "Tertiary color"
                                                :default "#f3f4f6"}
+            :com.platypub.site/link-color     {:label "Link color"}
+            :com.platypub.site/bg-color       {:label "Background color"}
             :com.platypub.site/logo-image     {:label "Navbar logo image URL"
                                                :description "Suggested dimensions: 320x60 px"
                                                :type :image}
@@ -65,6 +67,8 @@
                  :com.platypub.site/primary-color
                  :com.platypub.site/accent-color
                  :com.platypub.site/tertiary-color
+                 :com.platypub.site/link-color
+                 :com.platypub.site/bg-color
                  :com.platypub.site/logo-image
                  :com.platypub.site/logo-url
                  :com.platypub.site/home-logo

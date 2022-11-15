@@ -39,28 +39,31 @@
       (not-empty (:discourse-url site))))
 
 (defn byline [{:keys [post site] :as opts}]
-  [:table
-   {:border "0"
-    :cellpadding "0"
-    :cellspacing "0"}
-   [:tr
-    [:td [:a {:href (:author-url site)}
-          [:img {:src (common/cached-img-url {:url (:author-image site)
-                                              :w 100 :h 100})
-                 :width "50px"
-                 :height "50px"
-                 :style {:border-radius "50%"
-                         :width "50px"
-                         :height "50px"
-                         :margin-right "10px"}}]]]
-    [:td {:style {:font-size "90%"}}
-     [:div {:style {:line-height "120%"}} (:author-name site)]
-     [:div {:style {:line-height "120%"}}
-      (common/format-date "d MMM yyyy" (:published-at post))
-      (when (comments-enabled? opts)
-        (list
-         common/interpunct
-         [:a {:href (comments-url opts)} "comments"]))]]]])
+  (let [image [:img {:src (common/cached-img-url {:url (:author-image site)
+                                                  :w 100 :h 100})
+                     :width "50px"
+                     :height "50px"
+                     :style {:border-radius "50%"
+                             :width "50px"
+                             :height "50px"
+                             :margin-right "10px"}}]]
+    [:table
+     {:border "0"
+      :cellpadding "0"
+      :cellspacing "0"}
+     [:tr
+      [:td (if-some [url (not-empty (:author-url site))]
+             [:a {:href (:author-url site)
+                  :style {:text-decoration "none"}} image]
+             image)]
+      [:td
+       [:div {:style {:line-height "120%"}} (:author-name site)]
+       [:div {:style {:line-height "120%"}}
+        (common/format-date "d MMM yyyy" (:published-at post))
+        (when (comments-enabled? opts)
+          (list
+           common/interpunct
+           [:a {:href (comments-url opts)} "comments"]))]]]]))
 
 (defn space [px]
   [:div {:style (str "height:" px "px")}])
@@ -76,7 +79,8 @@
                   :padding "10px 20px"
                   :border-radius "3px"
                   :display "inline-block"
-                  :text-align "center"}}
+                  :text-align "center"
+                  :text-decoration "none"}}
       label]]]])
 
 (defn render [{:keys [post site] lst :list :as opts}]
@@ -86,20 +90,33 @@
     [:style (-> (io/resource "com/platypub/themes/default/email.css")
                 slurp
                 (str/replace "$ACCENT_COLOR" (or (:accent-color site) "#06c"))
+                (str/replace "$LINK_COLOR" (or (:link-color site) "inherit"))
                 raw-string)]
     [:meta {:http-equiv "Content-Type" :content "text/html; charset=utf-8"}]
     [:meta {:name "viewport" :content "width=device-width,initial-scale=1"}]]
    [:body
     (centered
-     [:div {:style {:margin "10px 0"}}
-      [:a {:href (:url site)} (:title lst)]]
-     (let [title [:h1.title {:style {:font-size "2.25rem"
+     (if-some [img (not-empty (:logo-image site))]
+       [:a {:href (:url site)
+            :style {:text-decoration "none"}}
+        [:div
+         {:style {:background-color (:primary-color site)
+                  :padding "0.5rem 1rem"
+                  :margin-bottom "1.5rem"}}
+         [:img {:src img
+                :style {:max-height "30px"
+                        :display "block"}
+                :alt (:title lst)}]]]
+       [:div {:style {:margin "10px 0"}}
+      [:a {:href (:url site)} (:title lst)]])
+     (let [title [:h1.title {:style {:font-size "2.75rem"
                                      :margin "0"
                                      :color "black"
                                      :line-height "1.15"}}
                   (:title post)]]
        (if (-> post :slug not-empty)
-         [:a {:href (post-url opts)} title]
+         [:a {:href (post-url opts)
+              :style {:text-decoration "none"}} title]
          title))
      (space 15)
      (byline opts)
@@ -107,16 +124,15 @@
      [:div.post-content (raw-string (:html post))]
      (space 15)
      (when (comments-enabled? opts)
-       (list
-        (button {:bg-color (:primary-color site)
-                 :href (comments-url opts)
-                 :label "View comments"})
-        (space 25)))
+       (button {:bg-color (:primary-color site)
+                :href (comments-url opts)
+                :label "Discuss this post"}))
+     (space 25)
      [:hr]
      (space 8)
      [:div {:style {:font-size "85%"}}
       (:mailing-address lst) ". "
-      [:a {:href "%mailing_list_unsubscribe_url%"} "Unsubscribe."]])]])
+      [:a {:href "%mailing_list_unsubscribe_url%"} "Unsubscribe"] "."])]])
 
 (defn -main []
   (let [opts (common/derive-opts (edn/read-string (slurp *in*)))]

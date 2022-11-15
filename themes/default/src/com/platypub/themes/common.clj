@@ -70,7 +70,7 @@
    [:meta {:name "msapplication-TileColor", :content "#da532c"}]
    [:meta {:name "theme-color", :content "#ffffff"}]))
 
-(defn base-html [{:base/keys [head path] :keys [site] :as opts} & body]
+(defn base-html [{:base/keys [head path body-style] :keys [site] :as opts} & body]
   (let [[title
          description
          image
@@ -113,11 +113,12 @@
         (raw-string html))
       head]
      [:body
-      {:style {:position "absolute"
-               :width "100%"
-               :min-height "100%"
-               :display "flex"
-               :flex-direction "column"}}
+      {:style (merge {:position "absolute"
+                      :width "100%"
+                      :min-height "100%"
+                      :display "flex"
+                      :flex-direction "column"}
+                     body-style)}
       body]]))
 
 (defn atom-feed* [{:keys [posts path site] :as opts}]

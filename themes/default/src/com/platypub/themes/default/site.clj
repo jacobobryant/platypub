@@ -76,13 +76,15 @@
    [:div {:style {:width "0.75rem"}}]
    [:div
     [:div {:style {:line-height "1.25"}}
-     [:a.hover:underline
-      {:class (if card
-                "text-[2.5rem]"
-                "text-blue-600")
-       :href (:author-url site)
-       :target "_blank"}
-      (:author-name site)]]
+     (if-some [url (not-empty (:author-url site))]
+       [:a.hover:underline
+        {:class (if card
+                  "text-[2.5rem]"
+                  "text-blue-600")
+         :href url
+         :target "_blank"}
+        (:author-name site)]
+       (:author-name site))]
     [:div {:class (if card "text-[2.2rem]" "text-[90%]")
            :style {:line-height "1"
                    :color "#4b5563"}}
@@ -176,7 +178,10 @@
        [:div.h-3]
        (byline opts)
        [:div.h-5]
-       [:div.post-content (raw-string (:html post))]
+       [:div.post-content
+        (when-some [color (:link-color site)]
+          [:style (raw-string ".post-content a { color: " color "; }")])
+        (raw-string (:html post))]
        [:div.h-5]
        (when-some [forum-url (not-empty (:discourse-url site))]
          (list
@@ -254,27 +259,39 @@
      footer-text]))
 
 (defn about-section [{:keys [about site] :as opts}]
-  [:div.mx-auto.px-6.lg:px-12.pb-6.text-lg.flex-grow.w-full.max-w-screen-md
+  (let [image (fn [class]
+                [:img
+                 {:src (common/cached-img-url {:url (:author-image site)
+                                               :w 240 :h 240})
+                  :class class
+                  :height "120px"
+                  :width "120px"
+                  :style {:border-radius "50%"}}])]
+    [:div.mx-auto.px-6.lg:px-12.pb-6.text-lg.flex-grow.w-full.max-w-screen-md
    {:style {:margin-top "-63px"}}
    [:div
-    [:a.block.bg-black.inline-block
-     {:href (:author-url site) :target "_blank"
-      :style {:border-radius "50%"
-              :border "3px solid white"}}
-     [:img.hover:opacity-80
-      {:src (common/cached-img-url {:url (:author-image site)
-                                    :w 240 :h 240})
-       :height "120px"
-       :width "120px"
-       :style {:border-radius "50%"}}]]]
-   [:a.text-2xl.block.font-bold.hover:underline {:href (:author-url site) :target "_blank"} (:author-name site)]
+    (if-some [url (not-empty (:author-url site))]
+      [:a.block.bg-black.inline-block
+       {:href url :target "_blank"
+        :style {:border-radius "50%"
+                :border "3px solid white"}}
+       (image "hover:opacity-80")]
+      [:div.bg-black.inline-block
+       {:style {:border-radius "50%"
+                :border "3px solid white"}}
+       (image "")])]
+   (if-some [url (not-empty (:author-url site))]
+     [:a.text-2xl.block.font-bold.hover:underline {:href url :target "_blank"} (:author-name site)]
+     [:div.text-2xl.font-bold (:author-name site)])
    [:div.h-6]
-   [:div.post-content (raw-string (:html about))]])
+   [:div.post-content
+    (raw-string (:html about))]]))
 
 (defn landing-page [{:keys [posts site about] lst :list :as opts}]
   (common/base-html
     (assoc opts :base/title (:title lst))
-    (navbar (assoc opts :navbar/show-logo (empty? (:home-logo site))))
+    (when (empty? (:home-logo site))
+      (navbar (assoc opts :navbar/show-logo (empty? (:home-logo site)))))
     (subscribe-form opts)
     (when about
       [:div.h-6 {:style {:background-color (:primary-color site)}}])
@@ -312,8 +329,7 @@
       [:h1.font-bold.leading-none
        {:class "text-[6rem]"}
        (str/replace (:title post) #"^\[draft\] " "")]
-      [:div {:class "h-[2.5rem]"}]
-      (byline (assoc opts :byline/card true))]]))
+      [:div {:class "h-[2.5rem]"}]]]))
 
 (defn cards! [{:keys [posts] :as opts}]
   ;; In Firefox, you can inspect element -> screenshot node, then use as the
@@ -333,6 +349,7 @@
 
 (defn -main []
   (let [opts (common/derive-opts (edn/read-string (slurp "input.edn")))
+        opts (assoc opts :base/body-style {:background-color (get-in opts [:site :bg-color])})
         sitemap-exclude (->> (:posts opts)
                              (filter #((:tags %) "unlisted"))
                              (map (fn [post]

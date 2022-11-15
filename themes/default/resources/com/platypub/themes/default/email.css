@@ -8,23 +8,22 @@ body {
   max-width: 100%;
   border: 1px solid #666;
   display: block;
-  margin: 32px auto;
+  margin: 3rem auto;
 }
 
 hr {
   border-width: 0.5px;
-  margin: 32px 0;
+  margin: 0;
   border-color: #a3a3a3;
 }
 
-a {
-  text-decoration: none;
-  color: $ACCENT_COLOR;
+.post-content hr {
+  margin: 4rem 0;
 }
 
-.post-content a {
+a {
   text-decoration: underline;
-  color: inherit;
+  color: $LINK_COLOR;
 }
 
 p, li {
@@ -33,6 +32,10 @@ p, li {
 
 li {
   margin-bottom: 12px;
+}
+
+.post-content {
+  font-size: 17px;
 }
 
 .post-content .webonly {
@@ -46,4 +49,22 @@ blockquote {
   background-color: inherit;
   color: inherit;
   border-radius: 0;
+}
+
+.post-content h1 {
+  @apply font-bold leading-tight text-gray-900 text-4xl;
+}
+
+.post-content h2 {
+  font-size: 1.875rem;
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+  line-height: 1;
+}
+
+.post-content h3 {
+  font-size: 1.5rem;
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+  line-height: 1;
 }
