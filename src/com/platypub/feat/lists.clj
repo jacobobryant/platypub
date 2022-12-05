@@ -57,14 +57,16 @@
   {:status 303
    :headers {"location" "/newsletters"}})
 
-(defn list-subscriber-item [{:keys [address joined-at]}]
+(defn list-subscriber-item [{:keys [address joined-at referrer href]}]
   (let [joined-at (some-> joined-at
                           java.time.Instant/parse
                           java.util.Date/from
                           (util/format-date "yyyy-MM-dd"))]
     [:tr
      [:td.pr-3 address]
-     [:td joined-at]]))
+     [:td.pr-3 joined-at]
+     [:td.pr-3 referrer]
+     [:td href]]))
 
 (defn subscriber-record [item]
   (let [{:keys [address vars]} item
@@ -96,7 +98,11 @@
       [:div.pt-4.pb-3 "Subscribers: " biff/nbsp (count items)]
       [:table
        [:thead.text-sm
-        [:tr [:th.text-left "Email address"] [:th "Joined"]]]
+        [:tr.text-left
+         [:th "Email address"]
+         [:th "Joined"]
+         [:th "Referrer"]
+         [:th "Page"]]]
        [:tbody
         (map list-subscriber-item items)]]])))
 

@@ -229,7 +229,8 @@
                     :h:Reply-To (:reply-to lst)
                     :subject (:title welcome)
                     :html (:html welcome)}
-     :recaptchaSecret (:recaptcha/secret account)}))
+     :recaptchaSecret (:recaptcha/secret account)
+     :siteUrl (:url site)}))
   (safe-copy (io/resource "com/platypub/themes/common/subscribe.js")
              "netlify/functions/subscribe.js"))
 

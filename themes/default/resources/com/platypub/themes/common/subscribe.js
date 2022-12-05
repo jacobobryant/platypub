@@ -49,7 +49,7 @@ exports.handler = async function (event, context) {
   const params = qs.parse(event.body);
   const email = (params.email || "").toLowerCase().trim();
   let error;
-  if (!verify_recaptcha(params['g-recaptcha-response'])) {
+  if (!await verify_recaptcha(params['g-recaptcha-response'])) {
     error = 'recaptcha-failed';
   } else if (!await verify_address(email)) {
     error = 'invalid-email';
@@ -66,7 +66,11 @@ exports.handler = async function (event, context) {
   }
   let url;
   if (error) {
-    url = new URL(params.href);
+    try {
+      url = new URL(params.href);
+    } catch (e) {
+      url = new URL(config.siteUrl);
+    }
     url.searchParams.set('error', error);
   } else {
     url = new URL(config.subscribeRedirect);
