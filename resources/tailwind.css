@@ -39,3 +39,18 @@
     @apply text-amber-700 dark:text-amber-600 hover:underline;
   }
 }
+
+.tox-tinymce {
+  border-radius: 0 !important;
+}
+.tox:not(.tox-tinymce-inline) .tox-editor-header,
+.tox .tox-menubar,
+.tox .tox-toolbar, .tox .tox-toolbar__overflow, .tox .tox-toolbar__primary,
+.tox .tox-menu,
+.tox .tox-statusbar {
+  @apply dark:bg-stone-600;
+}
+
+.tox .tox-tbtn--bespoke {
+  @apply dark:bg-stone-700;
+}
