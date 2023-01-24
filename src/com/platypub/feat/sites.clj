@@ -77,7 +77,8 @@
 
       ;; copy theme code to new directory
       (if (fs/which "rsync")
-        (do (biff/sh "rsync" "-a" "--delete"
+        (do (io/make-parents dir)
+            (biff/sh "rsync" "-a" "--delete"
                      (str (io/file "themes" theme) "/")
                      (str dir "/"))
             (fs/delete-tree (str dir "/public")))
@@ -98,7 +99,6 @@
                (keep not-empty)
                (run! #(log/info %)))
       (spit (io/file dir "_hash") _hash))))
-
 
 (defn preview [{:keys [biff/db path-params params site] :as sys}]
   (let [dir (io/file "storage/previews" (str (:xt/id site)))
