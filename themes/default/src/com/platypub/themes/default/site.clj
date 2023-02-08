@@ -311,10 +311,25 @@
     [:div.text-white {:style {:background-color (:primary-color site)}}
      footer-text]))
 
+(defn not-found-page [{:keys [posts site about] lst :list :as opts}]
+  (common/base-html
+    (assoc opts :base/title "Page not found")
+    (navbar opts)
+    [:div.h-full.flex-grow.flex.flex-col
+     [:style {:background-color (:tertiary-color site)}]
+     [:div.h-5]
+     [:div.max-w-screen-md.mx-auto.px-3.w-full
+      [:h1.font-bold.text-2xl "Page not found"]
+      [:div.h-1]
+      [:div "Try the "
+       [:a.link {:href "/"} "home page "]
+       "instead."]]]))
+
 (def pages
   {"/" landing-page
    "/archive/" archive-page
-   "/subscribe/" subscribe-page})
+   "/subscribe/" subscribe-page
+   "/404.html" not-found-page})
 
 (defn render-card [{:keys [site post] :as opts}]
   (common/base-html
