@@ -10,13 +10,18 @@
             :com.platypub.site/redirects      {:label "Redirects"
                                                :type :textarea}
             :com.platypub.site/primary-color  {:label "Primary color"
-                                               :default "#181917"}
+                                               :default "#181917"
+                                               :type :color}
             :com.platypub.site/accent-color   {:label "Accent color"
-                                               :default "#d97706"}
+                                               :default "#d97706"
+                                               :type :color}
             :com.platypub.site/tertiary-color {:label "Tertiary color"
-                                               :default "#f3f4f6"}
-            :com.platypub.site/link-color     {:label "Link color"}
-            :com.platypub.site/bg-color       {:label "Background color"}
+                                               :default "#f3f4f6"
+                                               :type :color}
+            :com.platypub.site/link-color     {:label "Link color"
+                                               :type :color}
+            :com.platypub.site/bg-color       {:label "Background color"
+                                               :type :color}
             :com.platypub.site/logo-image     {:label "Navbar logo image URL"
                                                :description "Suggested dimensions: 320x60 px"
                                                :type :image}
