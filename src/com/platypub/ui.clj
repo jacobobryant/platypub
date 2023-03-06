@@ -271,6 +271,16 @@
                    "checked")}]
       [:span.ml-2 label]])))
 
+(defn color [{:keys [id label value description] :as opts}]
+  (let [text-input-opts (assoc (dissoc opts :label :description) :_ "on blur tell the previous <input[type=color] /> set your value to my value")]
+    (list
+     [:label.block.text-sm.mb-1 {:for id} label]
+     [:.flex {:id id}
+      [:input {:_ "on change tell the next <input[type=text] /> set your value to my value" :type "color" :value value :class "mr-2" :style {:height "42px" :width "42px"}}]
+      (text-input text-input-opts)]
+     (when description
+       [:.text-sm.text-gray-600.dark:text-gray-400 description]))))
+
 (def not-found-response
   {:status 404
    :headers {"content-type" "text/html"}
@@ -310,4 +320,5 @@
                 [:.mt-3.flex.justify-center
                  [:img {:src value
                         :style {:max-height "10rem"}}]]))
+      :color (color opts)
       (text-input opts))))
