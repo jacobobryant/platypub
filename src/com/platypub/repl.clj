@@ -1,12 +1,13 @@
 (ns com.platypub.repl
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.netlify :as netlify]
+            [com.platypub :as main]
             [clj-http.client :as http]
             [xtdb.api :as xt]
             [babashka.fs :as fs]))
 
 (defn get-sys []
-  (biff/assoc-db @biff/system))
+  (biff/assoc-db @main/system))
 
 (defn migrate! [email]
   (let [{:keys [biff/db biff.xtdb/node]} (get-sys)
@@ -93,6 +94,7 @@
   (biff/fix-print (biff/refresh))
 
   (let [{:keys [biff/db] :as sys} (get-sys)]
+    ((:biff/secret sys) :recaptcha/secret-key)
     )
 
   (sort (keys @biff/system)))

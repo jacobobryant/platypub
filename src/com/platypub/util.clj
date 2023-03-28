@@ -66,18 +66,6 @@
                 (str/replace (str "/" (str/join "/" args)) #"/+" "/")
                 (apply concat query)))))
 
-(defn slurp-config [path]
-  (when (.exists (io/file path))
-    (let [env (keyword (or (System/getenv "BIFF_ENV") "prod"))
-          env->config (edn/read-string (slurp path))
-          config-keys (concat (get-in env->config [env :merge]) [env])
-          config (apply merge (map env->config config-keys))]
-      config)))
-
-(defn get-secret [sys k]
-  (or (get sys k)
-      (get (slurp-config "secrets.edn") k)))
-
 (defmacro else->> [& forms] `(->> ~@(reverse forms)))
 
 (defn split-by [pred coll]
@@ -125,7 +113,8 @@
       (.read in out)
       out)))
 
-(defn s3 [{:keys [s3/base-url
+(defn s3 [{:keys [biff/secret
+                  s3/base-url
                   s3/bucket
                   s3/access-key]
            :as sys}
@@ -151,7 +140,7 @@
                              (str k ":" v "\n")))
                       (apply str))
         string-to-sign (str method "\n" md5 "\n" content-type "\n" date "\n" headers' path)
-        signature (hmac-sha1-base64 (get-secret sys :s3/secret-key) string-to-sign)
+        signature (hmac-sha1-base64 (secret :s3/secret-key) string-to-sign)
         auth (str "AWS " access-key ":" signature)]
     (http/request {:method method
                    :url (str base-url path)
@@ -204,7 +193,7 @@
     (boolean (not-empty x))
     (some? x)))
 
-(defn get-render-opts [{:keys [biff/db user site item] :as sys}]
+(defn get-render-opts [{:keys [biff/secret biff/db user site item] :as sys}]
   (let [defaults (->> site
                       :site.config/fields
                       (map (fn [[k v]]
@@ -221,8 +210,8 @@
                       (:site.config/site-fields site))]
     (into {:account (-> sys
                         (select-keys [:mailgun/domain :recaptcha/site])
-                        (assoc :mailgun/api-key (get-secret sys :mailgun/api-key))
-                        (assoc :recaptcha/secret (get-secret sys :recaptcha/secret)))
+                        (assoc :mailgun/api-key (secret :mailgun/api-key))
+                        (assoc :recaptcha/secret (secret :recaptcha/secret-key)))
            :site site'
            :lists (q db
                      '{:find (pull lst [*])
@@ -237,9 +226,9 @@
              (->> (q-items db user site item-spec)
                   (map #(rename-ns % 'item.custom nil)))]))))
 
-(defn enable-recaptcha? [sys]
-  (and (some? (:com.platypub/enable-email-signin sys))
-       (some? (get-secret sys :recaptcha/secret))))
+(defn enable-recaptcha? [{:keys [biff/secret com.platypub/enable-email-signin]}]
+  (and enable-email-signin
+       (some? (secret :recaptcha/secret))))
 
 (defn last-edited [db id]
   (:xtdb.api/valid-time (first (xt/entity-history db id :desc))))

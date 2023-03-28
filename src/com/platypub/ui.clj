@@ -1,10 +1,13 @@
 (ns com.platypub.ui
-  (:require [clojure.java.io :as io]
+  (:require [cheshire.core :as cheshire]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
             [clojure.set :as set]
             [com.biffweb :as biff]
             [com.platypub.util :as util]
+            [com.platypub.settings :as settings]
+            [ring.middleware.anti-forgery :as csrf]
             [rum.core :as rum]))
 
 (def interpunct " · ")
@@ -37,16 +40,19 @@
     (str "/css/main.css?t=" (.lastModified f))
     "/css/main.css"))
 
-(defn base [opts & body]
+(defn base [{:keys [::recaptcha] :as opts} & body]
   (apply
    biff/base-html
    (-> opts
-       (merge #:base{:title "Platypub"
+       (merge #:base{:title settings/app-name
                      :lang "en-US"
-                     :description ""})
+                     :description (str settings/app-name " Description")})
        (update :base/head (fn [head]
                             (concat [[:script {:src "https://unpkg.com/htmx.org@1.7.0"}]
                                      [:script {:src "https://unpkg.com/hyperscript.org@0.9.5"}]
+                                     (when recaptcha
+                                       [:script {:src "https://www.google.com/recaptcha/api.js"
+                                                 :async "async" :defer "defer"}])
                                      [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
                                      [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
                                      [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
@@ -178,8 +184,14 @@
 (defn page [opts & body]
   (base
    opts
+   [:.flex-grow]
    [:.p-3.mx-auto.max-w-screen-sm.w-full
-    body]))
+    (when (bound? #'csrf/*anti-forgery-token*)
+      {:hx-headers (cheshire/generate-string
+                    {:x-csrf-token csrf/*anti-forgery-token*})})
+    body]
+   [:.flex-grow]
+   [:.flex-grow]))
 
 (defn input [{:keys [id label description element type]
                    :or {element :input type "text"}

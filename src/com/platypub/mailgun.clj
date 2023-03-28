@@ -5,10 +5,10 @@
 
 (def base-url "https://api.mailgun.net/v3")
 
-(defn mailgun [sys method endpoint params]
+(defn mailgun [{:keys [biff/secret] :as sys} method endpoint params]
   (http/request (merge {:method method
                         :url (str base-url endpoint)
-                        :basic-auth ["api" (util/get-secret sys :mailgun/api-key)]}
+                        :basic-auth ["api" (secret :mailgun/api-key)]}
                        params)))
 
 (defn create! [sys address]

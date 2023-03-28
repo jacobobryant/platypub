@@ -11,7 +11,11 @@
         ;; serious. You can uncomment the following to use managed postgres
         ;; instead.
         ;; :biff.xtdb/topology :jdbc
-        ;; :biff.xtdb.jdbc/jdbcUrl "postgresql://user:password@host:port/dbname?sslmode=require"
+        ;; :biff.xtdb.jdbc/user "user"
+        ;; :biff.xtdb.jdbc/password "JDBC_PASSWORD" ; Leave this as-is, and update secrets.env
+        ;; :biff.xtdb.jdbc/host "host"
+        ;; :biff.xtdb.jdbc/port 5432
+        ;; :biff.xtdb.jdbc/dbname "dbname"
         :biff/base-url "https://example.com"
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
@@ -31,8 +35,19 @@
         :recaptcha/site ""}
  :dev {:merge [:prod]
        :com.platypub/enable-beholder true
-        :com.platypub/copy-theme-npm-deps false
+       :com.platypub/copy-theme-npm-deps false
        :biff/host "0.0.0.0"
        :biff/base-url "http://localhost:8080"
        :biff.xtdb/topology :standalone
-       :biff.middleware/secure false}}
+       :biff.middleware/secure false}
+ :tasks {;; Set this if the auto-detection doesn't work
+         ;; Possible values: macos-x64, macos-arm64, linux-x64, linux-arm64
+         :biff.tasks/tailwind-build nil
+         :biff.tasks/clj-args ["-J-XX:-OmitStackTraceInFastThrow"
+                               "-J-XX:+CrashOnOutOfMemoryError"
+                               "-M" "-m" "com.platypub"
+                               "--port" "7888"
+                               "--middleware" "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"]
+         :biff.tasks/soft-deploy-fn com.platypub/on-save
+         :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
+         :biff.tasks/server "example.com"}}

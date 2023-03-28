@@ -1,6 +1,4 @@
-(ns com.platypub.schema
-  (:require [malli.core :as malc]
-            [malli.registry :as malr]))
+(ns com.platypub.schema)
 
 (defn doc [{:keys [id required optional]}]
   (vec (concat [:map {:closed true}
@@ -62,4 +60,5 @@
                           :list/theme
                           :list/tags]})})
 
-(def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})
+(def plugin
+  {:schema schema})

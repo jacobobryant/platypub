@@ -1,4 +1,4 @@
-(ns com.platypub.feat.sites
+(ns com.platypub.sites
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.middleware :as mid]
             [com.platypub.netlify :as netlify]
@@ -141,10 +141,10 @@
              :headers {"content-type" "text/html"}
              :body "<h1>Not found.</h1>"})))
 
-(defn publish [{:keys [biff/db path-params site] :as sys}]
+(defn publish [{:keys [biff/secret biff/db path-params site] :as sys}]
   (let [dir (io/file "storage/deploys" (str (random-uuid)))]
     (generate! (assoc sys :dir dir))
-    (netlify/deploy! {:api-key (util/get-secret sys :netlify/api-key)
+    (netlify/deploy! {:api-key (secret :netlify/api-key)
                       :site-id (:site/netlify-id site)
                       :dir (str dir)})
     (fs/delete-tree (str dir))
@@ -244,21 +244,21 @@
                           :target "_blank"}
       "Export"]]]])
 
-(defn sites-page [{:keys [sites] :as sys}]
+(defn sites-page [{:keys [biff/secret sites] :as sys}]
   (ui/nav-page
    (merge sys {:current :sites})
    (biff/form
     {:action "/sites"}
-    (when (nil? (util/get-secret sys :netlify/api-key))
+    (when (nil? (secret :netlify/api-key))
       [:p "You need to enter a Netlify API key"])
     [:button.btn {:type "submit"
-                  :disabled (nil? (util/get-secret sys :netlify/api-key))} "New site"])
+                  :disabled (nil? (secret :netlify/api-key))} "New site"])
    [:.h-6]
    (->> sites
         (sort-by :site/title)
         (map site-list-item))))
 
-(def features
+(def plugin
   {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/sites" {:get sites-page
                        :post new-site}]
