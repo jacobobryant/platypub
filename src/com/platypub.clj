@@ -23,6 +23,7 @@
    home/plugin
    lists/plugin
    items/plugin
+   schema/plugin
    sites/plugin])
 
 (def routes [["" {:middleware [biff/wrap-site-defaults]}
