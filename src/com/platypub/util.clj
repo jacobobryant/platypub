@@ -150,20 +150,27 @@
                                    headers)
                    :body (some-> file file->bytes)})))
 
-(defn q-sites [db user]
+(defn resolve-theme [{:keys [com.platypub/themes]} theme-str]
+  (some->> (map str themes)
+           (some #{theme-str})
+           symbol
+           requiring-resolve
+           deref))
+
+(defn merge-site-config [ctx site]
+  (merge site
+         (select-ns-as
+          (resolve-theme ctx (:site/theme site))
+          nil
+          'site.config)))
+
+(defn q-sites [{:keys [biff/db] :as ctx} user]
   (->> (q db
           '{:find (pull site [*])
             :in [user]
             :where [[site :site/user user]]}
           (:xt/id user))
-       (map (fn [site]
-              (merge site
-                     (select-ns-as
-                      (biff/catchall
-                       (edn/read-string
-                        (slurp (str "themes/" (:site/theme site) "/config.edn"))))
-                      nil
-                      'site.config))))))
+       (map #(merge-site-config ctx %))))
 
 (defn serve-static-file [file]
   {:status 200
@@ -209,7 +216,7 @@
                       site'
                       (:site.config/site-fields site))]
     (into {:account (-> sys
-                        (select-keys [:mailgun/domain :recaptcha/site])
+                        (select-keys [:mailgun/domain :recaptcha/site-key])
                         (assoc :mailgun/api-key (secret :mailgun/api-key))
                         (assoc :recaptcha/secret (secret :recaptcha/secret-key)))
            :site site'
@@ -225,10 +232,6 @@
             [(:key item-spec)
              (->> (q-items db user site item-spec)
                   (map #(rename-ns % 'item.custom nil)))]))))
-
-(defn enable-recaptcha? [{:keys [biff/secret com.platypub/enable-email-signin]}]
-  (and enable-email-signin
-       (some? (secret :recaptcha/secret))))
 
 (defn last-edited [db id]
   (:xtdb.api/valid-time (first (xt/entity-history db id :desc))))
@@ -264,8 +267,9 @@
   (when (not-empty date-string)
     (edn/read-string (str "#inst" "\"" date-string "\""))))
 
-(defn params->custom-fields [{:keys [site item-spec params]}]
-  (let [[prefix ks] (if item-spec
+(defn params->custom-fields [{:keys [site item-spec params] :as ctx}]
+  (let [theme (resolve-theme ctx (:site/theme site))
+        [prefix ks] (if item-spec
                       ["item.custom." (:fields item-spec)]
                       ["site.custom." (:site.config/site-fields site)])]
     (for [k ks
@@ -287,20 +291,3 @@
           (params (keyword (name (second default)))))
 
          :else value)])))
-
-(defn run-theme-cmd [cmd dir]
-  (let [[file & args] cmd
-        path (str (.getAbsolutePath (io/file "bin")) ":" (System/getenv "PATH"))]
-    (when (and (str/starts-with? file "./")
-               (.exists (io/file dir file)))
-      ;; can we assume render-site/render-email is already executable?
-      ;; this is just for backwards compatibility anyway
-      (biff/sh "chmod" "+x" (str (io/file dir file))))
-    ;; TODO figure out why this is sometimes necessary
-    (time (biff/sh "bb" "--force" "-e" "nil" :dir dir))
-    (apply shell/sh (concat cmd [:dir dir :env {"PATH" path}]))))
-
-(defn installed-themes []
-  (->> (.listFiles (io/file "themes"))
-       (map #(.getName %))
-       sort))

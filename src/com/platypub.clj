@@ -47,6 +47,7 @@
   (biff/add-libs)
   (biff/eval-files! sys)
   (generate-assets! sys)
+  (reset! (:com.platypub/code-last-modified sys) (java.util.Date.))
   ;; Uncomment this if we add any real tests.
   #_(test/run-all-tests #"com.platypub.test.*"))
 
@@ -67,7 +68,8 @@
    biff/use-beholder])
 
 (def initial-system
-  {:biff/send-email #'email/send-email
+  {:com.platypub/code-last-modified (atom (java.util.Date.))
+   :biff/send-email #'email/send-email
    :biff/plugins #'plugins
    :biff/tx-fns biff/tx-fns
    :biff/handler #'handler
@@ -94,6 +96,7 @@
   (doseq [f (:biff/stop @system)]
     (log/info "stopping:" (str f))
     (f))
+  (reset! system {})
   (tn-repl/refresh :after `start))
 
 (comment

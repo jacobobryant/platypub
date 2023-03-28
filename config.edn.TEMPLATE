@@ -2,6 +2,8 @@
 {:prod {:com.platypub/enable-web true
         :com.platypub/enable-worker true
         :com.platypub/copy-theme-npm-deps true
+        :com.platypub/themes [com.platypub.themes.default/plugin]
+        :biff/eval-paths []
         ;; Uncomment these if you'd like to deploy Platypub on the web.
         ;; :com.platypub/allowed-users #{"hello@example.com"}
         ;; :com.platypub/enable-email-signin true
@@ -19,6 +21,7 @@
         :biff/base-url "https://example.com"
         :biff.middleware/cookie-secret nil
         :biff/jwt-secret nil
+        :biff.beholder/enabled false
         ;; S3 is used for hosting images that you upload in the CMS. It's
         ;; intended that site themes can either copy the images to Netlify or
         ;; just link to S3.
@@ -34,7 +37,8 @@
         ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
         :recaptcha/site ""}
  :dev {:merge [:prod]
-       :com.platypub/enable-beholder true
+       :biff.beholder/enabled true
+       :biff.beholder/paths ["src" "resources" "themes"]
        :com.platypub/copy-theme-npm-deps false
        :biff/host "0.0.0.0"
        :biff/base-url "http://localhost:8080"

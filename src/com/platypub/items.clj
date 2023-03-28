@@ -28,12 +28,8 @@
       (str/replace ")" " )")))
 
 (defn render-email [{:keys [biff/db params site] lst :list :as sys}]
-  (let [dir (str "themes/" (:site/theme site))
-        cmd (concat (:site.config/render-email site ["./render-email"])
-                    [:in (pr-str (util/get-render-opts sys))])
-        render-result (util/run-theme-cmd cmd dir)
-        _ (some-> render-result :err not-empty log/error)
-        msg (merge (edn/read-string (:out render-result))
+  (let [theme (util/resolve-theme sys (:site/theme site))
+        msg (merge ((:render-email theme) (util/get-render-opts sys))
                    {:to (:list/address lst)
                     :from (str (:list/title lst) " <doreply@" (:mailgun/domain sys) ">")
                     :h:Reply-To (:list/reply-to lst)})]

@@ -12,7 +12,7 @@
   (fn [{:keys [biff/db session path-params params] :as req}]
     (let [params (merge params path-params)
           user (xt/entity db (:uid session))
-          sites (delay (util/q-sites db user))
+          sites (delay (util/q-sites req user))
           site (delay (->> @sites
                            (filter #(= (:site-id params) (str (:xt/id %))))
                            first))

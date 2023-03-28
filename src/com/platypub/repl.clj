@@ -94,7 +94,6 @@
   (biff/fix-print (biff/refresh))
 
   (let [{:keys [biff/db] :as sys} (get-sys)]
-    ((:biff/secret sys) :recaptcha/secret-key)
     )
 
   (sort (keys @biff/system)))

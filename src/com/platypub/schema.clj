@@ -15,18 +15,18 @@
 
    :site/id :uuid
    :site [:map
-          [:xt/id :site/id]
-          [:site/user :user/id]
+          [:xt/id           :site/id]
+          [:site/user       :user/id]
           [:site/netlify-id :string]
-          [:site/url :string]
-          [:site/title :string]
-          [:site/theme :string]]
+          [:site/url        :string]
+          [:site/title      :string]
+          [:site/theme      :string]]
 
    :item/id :uuid
    ;; todo only allow additional keys if they start with a certain prefix
    :item [:map
-          [:xt/id :item/id]
-          [:item/user :user/id]
+          [:xt/id      :item/id]
+          [:item/user  :user/id]
           [:item/sites [:set :site/id]]]
 
    :image/id :uuid
