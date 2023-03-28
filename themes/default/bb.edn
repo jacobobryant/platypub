@@ -1,4 +1,4 @@
-{:deps {local/deps {:local/root "."}}
+{:deps {com.platypub.themes.default/tasks {:local/root "."}}
  :tasks {dev          com.platypub.themes.common.tasks/dev
          build        com.platypub.themes.common.tasks/build
          clean        com.platypub.themes.common.tasks/clean

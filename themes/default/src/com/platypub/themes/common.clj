@@ -126,21 +126,26 @@
         posts (remove #(contains? (:tags %) "unlisted") posts)]
     [:feed {:xmlns "http://www.w3.org/2005/Atom"}
      [:title (:title site)]
-     [:id (url-encode feed-url)]
+     [:id feed-url]
      [:updated (format-date (:published-at (first posts)))]
+     (when-some [url (not-empty (:icon site))]
+       (list
+        [:icon url]
+        [:logo url]))
      [:link {:rel "self" :href feed-url :type "application/atom+xml"}]
      [:link {:href (:url site)}]
      (for [post (take 10 posts)
            :let [url (str (:url site) "/p/" (:slug post) "/")]]
        [:entry
         [:title {:type "html"} (:title post)]
-        [:id (url-encode url)]
+        [:id url]
         [:updated (format-date (:published-at post))]
         [:content {:type "html"} (:html post)]
         [:link {:href url}]
         [:author
          [:name (:author-name site)]
-         [:uri (:author-url site)]]])]))
+         (when-some [url (not-empty (:author-url site))]
+           [:uri url])]])]))
 
 (defn embed-discourse [{:keys [forum-url page-url]}]
   (list

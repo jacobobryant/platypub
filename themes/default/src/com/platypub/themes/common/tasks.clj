@@ -43,7 +43,7 @@
   (fs/copy "main.css" "public/css/main.css" {:replace-existing true}))
 
 (defn -on-save []
-  (spit "config.edn" (:out (shell/sh "bb" "config")))
+  (spit "config.edn" (:out (shell/sh "bb" "--force" "config")))
   (clean)
   (shell "bb run render-site")
   (css))

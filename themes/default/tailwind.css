@@ -20,19 +20,12 @@
     padding-left: 2.5rem;
   }
 
-  blockquote {
-    margin: 1.25em 0;
-    padding: 0 1em;
-    color: #6a737d;
-    border-left: .25em solid #dfe2e5;
-  }
-
   code, kbd, pre, samp {
     font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace
   }
 
-  .post-content a {
-    @apply underline;
+  .post-content p {
+    @apply my-4;
   }
 
   .post-content img {
@@ -45,15 +38,15 @@
   }
 
   .post-content h1 {
-    @apply font-bold leading-tight text-gray-900 text-4xl;
+    @apply font-bold leading-tight text-gray-900 text-3xl;
   }
 
   .post-content h2 {
-    @apply font-bold leading-tight text-gray-900 text-3xl mt-12 mb-6;
+    @apply font-bold leading-tight text-gray-900 text-2xl mt-12 mb-6;
   }
 
   .post-content h3 {
-    @apply font-bold leading-tight text-gray-900 text-2xl mt-12 mb-6;
+    @apply font-bold leading-tight text-gray-900 text-xl mt-12 mb-6;
   }
 
   .post-content hr {

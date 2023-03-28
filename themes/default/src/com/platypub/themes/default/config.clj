@@ -26,10 +26,19 @@
             :com.platypub.site/home-logo      {:label "Home logo image URL"
                                                :description "Optional. A larger logo to display on the home page."
                                                :type :image}
+            :com.platypub.site/banner         {:label "Banner image URL"
+                                               :description "Optional. A wide banner image to display on the home page."
+                                               :type :image}
+            :com.platypub.site/icon           {:label "Icon image URL"
+                                               :description "Optional. A smallish square image."
+                                               :type :image}
             :com.platypub.site/author-name    {:label "Author name"}
             :com.platypub.site/author-url     {:label "Author URL"}
             :com.platypub.site/author-image   {:label "Author image URL"
                                                :type :image}
+            :com.platypub.site/author-bio     {:label "Author bio"
+                                               :description "Optional. Some HTML to display in the article bylines."
+                                               :type :textarea}
             :com.platypub.site/comments-url   {:label "Comments URL"
                                                :description "Optional. Adds a \"View comments\" button to your emails. Takes precedence over `Discourse forum URL`."}
             :com.platypub.site/discourse-url  {:label "Discourse forum URL"
@@ -72,9 +81,12 @@
                  :com.platypub.site/logo-image
                  :com.platypub.site/logo-url
                  :com.platypub.site/home-logo
+                 :com.platypub.site/banner
+                 :com.platypub.site/icon
                  :com.platypub.site/author-name
                  :com.platypub.site/author-url
                  :com.platypub.site/author-image
+                 :com.platypub.site/author-bio
                  :com.platypub.site/comments-url
                  :com.platypub.site/discourse-url
                  :com.platypub.site/embed-html

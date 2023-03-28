@@ -41,8 +41,10 @@
                :or {show-logo true} :as opts}]
   (let [nav-links (parse-nav-links opts)]
     (when (or show-logo (not-empty nav-links))
-      (list
-       [:div.py-2 {:style {:background-color (:primary-color site)}}
+      [:div {:style {:background-color (:primary-color site)
+                     :background-image (when-some [url (not-empty (:banner site))]
+                                         (str "url('" url "')"))}}
+       [:div.py-4
         [:div.flex.mx-auto.items-center.text-white.gap-4.text-lg.flex-wrap.px-3
          {:class (or max-w "max-w-screen-md")}
          (when show-logo (logo opts))
@@ -51,53 +53,68 @@
            [:a.hover:underline.hidden.sm:block
             {:href href}
             label])
-         (when (not-empty nav-links)
-           hamburger-icon)]]
+         #_(when (not-empty nav-links)
+             hamburger-icon)]]
        (when (not-empty nav-links)
-         [:div#nav-menu.px-5.py-2.text-white.text-lg.hidden.transition-all.ease-in-out.sm:hidden
-          {:style {:background-color (:primary-color site)}}
+         [:div#nav-menu.px-5.pb-2.text-white.text-lg.sm:hidden
           (for [[href label] (parse-nav-links opts)]
-            [:div.my-2 [:a.hover:underline.text-lg {:href href} label]])])))))
+            [:div.mb-2 [:a.hover:underline.text-lg {:href href} label]])])])))
 
-(defn byline [{:keys [post site byline/card] :as opts}]
+(defn byline [{:keys [post site] :as opts}]
   [:div
    {:style {:display "flex"
             :align-items "center"}}
-   [:img (if card
-           {:src (:author-image site)
-            :width "115px"
-            :height "115px"
-            :style {:border-radius "50%"}}
-           {:src (common/cached-img-url {:url (:author-image site)
-                                         :w 200 :h 200})
-            :width "50px"
-            :height "50px"
-            :style {:border-radius "50%"}})]
-   [:div {:style {:width "0.75rem"}}]
-   [:div
-    [:div {:style {:line-height "1.25"}}
-     (if-some [url (not-empty (:author-url site))]
-       [:a.hover:underline
-        {:class (if card
-                  "text-[2.5rem]"
-                  "text-blue-600")
-         :href url
-         :target "_blank"}
-        (:author-name site)]
-       (:author-name site))]
-    [:div {:class (if card "text-[2.2rem]" "text-[90%]")
-           :style {:line-height "1"
-                   :color "#4b5563"}}
-     (common/format-date "d MMM yyyy" (:published-at post))]]])
+   [:img {:src (common/cached-img-url {:url (:author-image site)
+                                       :w 200 :h 200})
+          :width "50px"
+          :height "50px"
+          :style {:border-radius "50%"}}]
+   (if (:author-bio site)
+     (list
+      #_[:div {:style {:margin "0 0.75rem"
+                     :flex-shrink "0"
+                     :border-left-width "1px"
+                     :border-color (:primary-color site)
+                     :height "50px"}}]
+      [:div {:class '[post-content
+                      italic
+                      pl-3
+                      ml-3
+                      border-l
+                      flex
+                      items-center]
+             :style {:font-size "0.95rem"
+                     :line-height "1.25rem"
+                     :min-height "50px"
+                     :border-color "#9ca3af"}}
+       [:span (raw-string (:author-bio site))]])
+     (list
+      [:div {:style {:width "0.75rem"}}]
+      [:div
+       [:div {:style {:line-height "1.25"}}
+        (if-some [url (not-empty (:author-url site))]
+          [:a.hover:underline
+           {:class "text-blue-600"
+            :href url
+            :target "_blank"}
+           (:author-name site)]
+          (:author-name site))]
+       [:div {:class "text-[90%]"
+              :style {:line-height "1"
+                      :color "#4b5563"}}
+        (common/format-date "d MMM yyyy" (:published-at post))]]))])
 
 (def errors
   {"invalid-email" "It looks like that email is invalid. Try a different one."
    "recaptcha-failed" "reCAPTCHA check failed. Try again."
    "unknown" "There was an unexpected error. Try again."})
 
-(defn subscribe-form [{:keys [site account show-read-more] lst :list}]
+(defn subscribe-form [{:keys [::style site account show-read-more] lst :list}]
   [:div.flex.flex-col.items-center.text-center.px-3.text-white
-   {:style {:background-color (:primary-color site)}}
+   {:style (merge {:background-color (:primary-color site)
+                   :background-image (when-some [url (not-empty (:banner site))]
+                                       (str "url('" url "')"))}
+                  style)}
    (if (not-empty (:home-logo site))
      (list
       [:div.h-16]
@@ -172,15 +189,20 @@
       [:div.mx-auto.p-3.text-lg.flex-grow.w-full
        {:class width}
        [:div.h-2]
+       (when (:author-bio site) [:div.text-sm (common/format-date "d MMM yyyy" (:published-at post))])
        [:h1.font-bold.leading-tight.text-gray-900
-        {:style {:font-size "2.75rem"}}
+        {:style {:font-size "1.875rem"}}
         (:title post)]
        [:div.h-3]
        (byline opts)
        [:div.h-5]
        [:div.post-content
         (when-some [color (:link-color site)]
-          [:style (raw-string ".post-content a { color: " color "; }")])
+          [:style (-> (io/resource "com/platypub/themes/default/web.css")
+                      slurp
+                      (str/replace "$ACCENT_COLOR" (or (:accent-color site) "#06c"))
+                      (str/replace "$LINK_COLOR" (or (:link-color site) "inherit"))
+                      raw-string)])
         (raw-string (:html post))]
        [:div.h-5]
        (when-some [forum-url (not-empty (:discourse-url site))]
@@ -189,20 +211,33 @@
            (common/embed-discourse {:forum-url forum-url
                                     :page-url (str (:url site) path)})
            [:div.h-5]))]
-      (subscribe-form opts)
-      [:div
-       {:style {:background-color (:primary-color site)}}
-       [:div.text-white footer-text]])))
+      [:div {:style {:background-color (:primary-color site)
+                     :background-image (when-some [url (not-empty (:banner site))]
+                                         (str "url('" url "')"))}}
+       (subscribe-form (assoc opts
+                              ::style (when (not-empty (:banner site))
+                                        {:background-image nil
+                                         :background-color nil})))
+       [:div
+        {:style (when-not (not-empty (:banner site))
+                  {:background-color (:primary-color site)})}
+        [:div.text-white footer-text]]])))
 
 (defn render-page [{:keys [site page account] :as opts}]
   (common/base-html
     opts
     (navbar opts)
-    [:div.mx-auto.px-3.pb-3.text-lg.flex-grow.w-full.max-w-screen-md
-     [:div.post-content (raw-string (:html page))]]))
+    [:div.mx-auto.p-3.text-lg.flex-grow.w-full.max-w-screen-md
+     [:div.post-content
+      [:style (-> (io/resource "com/platypub/themes/default/web.css")
+                  slurp
+                  (str/replace "$ACCENT_COLOR" (or (:accent-color site) "#06c"))
+                  (str/replace "$LINK_COLOR" (or (:link-color site) "inherit"))
+                  raw-string)]
+      (raw-string (:html page))]]))
 
 (defn post-list-item [post]
-  [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full
+  [:a.block.mb-5.bg-white.rounded.p-3.cursor-pointer.w-full.shadow
    {:href (str "/p/" (:slug post) "/")
     :class "hover:bg-white/50"}
    [:div.text-sm.text-gray-800 (common/format-date "d MMM yyyy" (:published-at post))]
@@ -211,20 +246,25 @@
 
 (defn archive-page [{:keys [posts site] lst :list :as opts}]
   (common/base-html
-    (assoc opts :base/title "Archive")
-    (navbar opts)
-    [:div.h-full.flex-grow.flex.flex-col
-     {:style {:background-color (:tertiary-color site)}}
-     [:div.h-5]
-     [:div.max-w-screen-md.mx-auto.px-3.w-full
-      (->> posts
-           (remove #((:tags %) "unlisted"))
-           (map post-list-item))]
-     [:div.flex-grow]]
-    (subscribe-form opts)
-    [:div
-     {:style {:background-color (:primary-color site)}}
-     [:div.text-white footer-text]]))
+   (assoc opts :base/title "Archive")
+   (navbar opts)
+   [:div.h-full.flex-grow.flex.flex-col
+    {:style {:background-color (:tertiary-color site)}}
+    [:div.h-5]
+    [:div.max-w-screen-md.mx-auto.px-3.w-full
+     (->> posts
+          (remove #((:tags %) "unlisted"))
+          (map post-list-item))]
+    [:div.flex-grow]]
+   [:div.flex.flex-col
+    {:style {:background-color (:primary-color site)
+             :background-image (when-some [url (not-empty (:banner site))]
+                                 (str "url('" url "')"))}}
+    (subscribe-form (assoc opts
+                           ::style (when (not-empty (:banner site))
+                                     {:background-image nil
+                                      :background-color nil})))
+    [:div.text-white footer-text]]))
 
 (defn landing-page-posts [{:keys [posts site] :as opts}]
   (let [posts (remove #((:tags %) "unlisted") posts)
@@ -237,7 +277,7 @@
 
      (when (not-empty featured)
        (list
-        [:div.text-2xl.text-center "Featured"]
+        [:div.text-2xl.text-center.font-semibold "Featured"]
         [:div.h-6]
         [:div.max-w-screen-md.mx-auto.w-full
          (map post-list-item featured)]
@@ -245,7 +285,7 @@
 
      (when (not-empty recent)
        (list
-        [:div.text-2xl.text-center "Recent"]
+        [:div.text-2xl.text-center.font-semibold "Recent"]
         [:div.h-6]
         [:div.max-w-screen-md.mx-auto.w-full
          (map post-list-item recent)]))
@@ -283,8 +323,13 @@
    (if-some [url (not-empty (:author-url site))]
      [:a.text-2xl.block.font-bold.hover:underline {:href url :target "_blank"} (:author-name site)]
      [:div.text-2xl.font-bold (:author-name site)])
-   [:div.h-6]
    [:div.post-content
+    (when-some [color (:link-color site)]
+      [:style (-> (io/resource "com/platypub/themes/default/web.css")
+                  slurp
+                  (str/replace "$ACCENT_COLOR" (or (:accent-color site) "#06c"))
+                  (str/replace "$LINK_COLOR" (or (:link-color site) "inherit"))
+                  raw-string)])
     (raw-string (:html about))]]))
 
 (defn landing-page [{:keys [posts site about] lst :list :as opts}]
@@ -292,9 +337,8 @@
     (assoc opts :base/title (:title lst))
     (when (empty? (:home-logo site))
       (navbar (assoc opts :navbar/show-logo (empty? (:home-logo site)))))
-    (subscribe-form opts)
-    (when about
-      [:div.h-6 {:style {:background-color (:primary-color site)}}])
+    (subscribe-form (assoc opts ::style (when about
+                                          {:padding-bottom "1.5rem"})))
     (if about
       [:div.lg:grid.grid-cols-2
        (about-section opts)
@@ -304,12 +348,19 @@
 (defn subscribe-page [{:keys [posts site about] lst :list :as opts}]
   (common/base-html
     (assoc opts :base/title (str "Subscribe to " (:title lst)))
-    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
-    (subscribe-form (assoc opts :show-read-more true))
-    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
-    [:div.flex-grow {:style {:background-color (:primary-color site)}}]
-    [:div.text-white {:style {:background-color (:primary-color site)}}
-     footer-text]))
+    [:div.flex-grow.flex.flex-col
+     {:style {:background-color (:primary-color site)
+              :background-image (when-some [url (not-empty (:banner site))]
+                                  (str "url('" url "')"))}}
+     [:div.flex-grow]
+     (subscribe-form (assoc opts
+                            :show-read-more true
+                            ::style (when (not-empty (:banner site))
+                                      {:background-image nil
+                                       :background-color nil})))
+     [:div.flex-grow]
+     [:div.flex-grow]
+     [:div.text-white footer-text]]))
 
 (def pages
   {"/" landing-page
@@ -319,17 +370,23 @@
 (defn render-card [{:keys [site post] :as opts}]
   (common/base-html
     opts
-    [:div.mx-auto.border.border-black
-     {:style "width:1202px;height:620px"}
+    [:div.mx-auto.border.border-black.text-white
+     {:style {:width "1202px"
+              :height "620px"
+              :background-color (:primary-color site)
+              :background-image (when-some [url (not-empty (:banner site))]
+                                  (str "url('" url "')"))}}
      [:div.flex.flex-col.justify-center.h-full.p-12
-      [:div [:img {:src "/images/card-logo.png"
-             :alt "Logo"
-             :style {:max-height "60px"}}]]
-      [:div {:class "h-[1.5rem]"}]
+      [:div [:img {:src 
+                   "https://platypub.sfo3.cdn.digitaloceanspaces.com/ee48a748-cdbd-45b7-b0f7-7c19dd57b08c"
+                   ;(:logo-image site)
+                   :alt "Logo"
+                   :style {:max-height "60px"}}]]
+      [:div {:class "flex-grow"}]
       [:h1.font-bold.leading-none
        {:class "text-[6rem]"}
        (str/replace (:title post) #"^\[draft\] " "")]
-      [:div {:class "h-[2.5rem]"}]]]))
+      [:div {:class "flex-grow-[1.5]"}]]]))
 
 (defn cards! [{:keys [posts] :as opts}]
   ;; In Firefox, you can inspect element -> screenshot node, then use as the

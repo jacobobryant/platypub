@@ -1,14 +1,14 @@
 body {
-  font-family: sans-serif;
+  font-family: ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
   font-size: 16px;
   line-height: 140%;
 }
 
 .post-content img {
   max-width: 100%;
-  border: 1px solid #666;
   display: block;
   margin: 3rem auto;
+  box-shadow: 0 0 5px 1px #0000004d;
 }
 
 hr {
@@ -22,7 +22,7 @@ hr {
 }
 
 a {
-  text-decoration: underline;
+  text-decoration: none;
   color: $LINK_COLOR;
 }
 
@@ -43,7 +43,8 @@ li {
 }
 
 blockquote {
-  border-left: 2px solid $ACCENT_COLOR;
+  border-left: 4px solid $ACCENT_COLOR;
+  font-style: italic;
   margin: 32px 0;
   padding: 0 24px;
   background-color: inherit;
@@ -51,20 +52,43 @@ blockquote {
   border-radius: 0;
 }
 
-.post-content h1 {
-  @apply font-bold leading-tight text-gray-900 text-4xl;
+
+.post-content h1,
+.post-content h2,
+.post-content h3 {
+  line-height: 1.25;
+  color: #111827;
+  font-weight: bold;
 }
 
-.post-content h2 {
+.post-content h1 {
   font-size: 1.875rem;
   margin-top: 3rem;
   margin-bottom: 2rem;
-  line-height: 1;
+}
+
+.post-content h2 {
+  font-size: 1.5rem;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .post-content h3 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   margin-top: 3rem;
-  margin-bottom: 2rem;
-  line-height: 1;
+  margin-bottom: 1.5rem;
 }
+
+.callout {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  margin: 2rem 0;
+  padding: 1px 1rem 1px 1.5rem;
+  background: $ACCENT_COLOR18;
+  border-left: 0.25rem solid $ACCENT_COLOR;
+}
+
+.post-content .callout a {
+  text-decoration: underline;
+}
+/*  */
