@@ -1,6 +1,6 @@
 {:paths ["src" "resources" "target/resources"]
  :deps {com.biffweb/biff {:git/url "https://github.com/jacobobryant/biff"
-                          :sha "e6cffb29dfdb40ab247e32fa2ff1830512e37954"}
+                          :sha "c52ff2f4c6cc1ea8414c1c136b80db1b8e34c533"}
         io.github.furstenheim/copy_down {:mvn/version "1.0"}
         org.slf4j/slf4j-simple {:mvn/version "2.0.0-alpha5"}
         org.clojure/clojure {:mvn/version "1.11.1"}

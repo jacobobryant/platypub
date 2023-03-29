@@ -7,6 +7,7 @@
             [com.platypub.sites :as sites]
             [com.platypub.schema :as schema]
             [com.platypub.util :as util]
+            [com.platypub.plugins]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
             [clojure.string :as str]
@@ -40,14 +41,14 @@
   (when (:com.platypub/enable-web sys)
     (biff/export-rum static-pages "target/resources/public")
     (biff/delete-old-files {:dir "target/resources/public"
-                            :exts [".html"]})
-    (log/info :done)))
+                            :exts [".html"]})))
 
 (defn on-save [sys]
   (biff/add-libs)
   (biff/eval-files! sys)
   (generate-assets! sys)
   (reset! (:com.platypub/code-last-modified sys) (java.util.Date.))
+  :done
   ;; Uncomment this if we add any real tests.
   #_(test/run-all-tests #"com.platypub.test.*"))
 
