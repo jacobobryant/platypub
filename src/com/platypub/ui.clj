@@ -255,7 +255,7 @@
                         border-gray-300
                         py-1
                         px-2
-                        pr-6
+                        pr-10
                         rounded
                         leading-tight
                         focus:outline-none
