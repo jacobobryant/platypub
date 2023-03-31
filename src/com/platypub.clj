@@ -48,7 +48,7 @@
   (biff/eval-files! sys)
   (generate-assets! sys)
   (reset! (:com.platypub/code-last-modified sys) (java.util.Date.))
-  :done
+  (log/info :done)
   ;; Uncomment this if we add any real tests.
   #_(test/run-all-tests #"com.platypub.test.*"))
 

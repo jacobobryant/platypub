@@ -7,4 +7,5 @@
         babashka/fs {:mvn/version "0.1.11"}
 
         ;; themes
-        co.tfos/theme {:local/root "themes/tfos"}}}
+        co.tfos/theme {:local/root "themes/tfos"}
+        com.biffweb/theme {:local/root "themes/biffweb2"}}}

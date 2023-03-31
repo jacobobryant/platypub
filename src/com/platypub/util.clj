@@ -218,7 +218,8 @@
     (into {:account (-> sys
                         (select-keys [:mailgun/domain :recaptcha/site-key])
                         (assoc :mailgun/api-key (secret :mailgun/api-key))
-                        (assoc :recaptcha/secret (secret :recaptcha/secret-key)))
+                        (assoc :recaptcha/secret (secret :recaptcha/secret-key))
+                        (assoc :recaptcha/secret-key (secret :recaptcha/secret-key)))
            :site site'
            :lists (q db
                      '{:find (pull lst [*])
