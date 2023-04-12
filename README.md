@@ -1,5 +1,7 @@
 # Platypub
 
+**ALPHA NOTICE:** Platypub is still in an early state and is in need of a rearchitecture. Breaking changes imminent.
+
 A blogging + newsletter platform. Platypub is basically (1) a CMS, with (2) integrations for Netlify (for hosting your site) and Mailgun (for sending your newsletter) and (3) an extremely flexible theme system. Platypub can run as a multi-tenant managed service (e.g. as opposed to Ghost/Wordpress, where each user must have their own instance), or you can self-host it or even run it locally. It's meant to combine the convenience of e.g. Substack with the flexibility of a static site generator. I also want to add data import/export integrations, so you can e.g. publish your social media posts on your website, or automatically cross-post your articles to social media.
 
 Platypub is not ready for general use yet. When it is, I'll host a public instance of it (with usage-based pricing and a free tier).
