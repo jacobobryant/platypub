@@ -19,8 +19,15 @@
             [ring.middleware.anti-forgery :as anti-forgery]
             [nrepl.cmdline :as nrepl-cmd]))
 
+(defn email-valid? [{:keys [com.platypub/allowed-users]} email]
+  (if allowed-users
+    (contains? allowed-users email)
+    (and email
+         (re-matches #".+@.+\..+" email)
+         (not (re-find #"\s" email)))))
+
 (def plugins
-  [(biff/authentication-plugin {})
+  [(biff/authentication-plugin {:biff.auth/email-validator email-valid?})
    home/plugin
    lists/plugin
    items/plugin

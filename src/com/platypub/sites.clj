@@ -14,7 +14,8 @@
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
             [lambdaisland.uri :as uri]
-            [babashka.fs :as fs]))
+            [babashka.fs :as fs])
+  (:import [org.jsoup Jsoup]))
 
 (defn edit-site [{:keys [site params] :as sys}]
   (biff/submit-tx sys
@@ -70,6 +71,13 @@
       ((:render-site theme') (assoc render-opts :dir dir))
       (spit (io/file dir "_hash") _hash))))
 
+(defn update-urls [html f]
+  (let [doc (Jsoup/parse html)]
+    (doseq [attr ["href" "src"]
+            element (.select doc (str "[" attr "]"))]
+      (.attr element attr (f (.attr element attr))))
+    (.outerHtml doc)))
+
 (defn preview [{:keys [biff/db path-params params site] :as sys}]
   (let [dir (io/file "storage/previews" (str (:xt/id site)))
         _ (generate! (assoc sys :dir dir))
@@ -91,10 +99,7 @@
         [mime body] (cond
                       (some-> file (.getPath) (str/ends-with? ".html"))
                       ["text/html"
-                       (str/replace (slurp file)
-                                    #"(href|src)=\"([^\"]+)\""
-                                    (fn [[_ attr href]]
-                                      (str attr "=\"" (rewrite-url href) "\"")))]
+                       (update-urls (slurp file) rewrite-url)]
 
                       (some-> file (.getPath) (str/ends-with? ".css"))
                       ["text/css"
@@ -156,7 +161,7 @@
                   :label "Theme"
                   :value (:site/theme site)
                   :options (for [t themes]
-                             {:label (:label @(requiring-resolve t)) :value t})
+                             {:label (:label @(requiring-resolve t)) :value (str t)})
                   :default (first themes)
                   :hx-trigger "change"
                   :hx-get (str "/sites/" (:xt/id site) "/custom-config")
