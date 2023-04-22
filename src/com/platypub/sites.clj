@@ -1,4 +1,4 @@
-(ns com.platypub.feat.sites
+(ns com.platypub.sites
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.middleware :as mid]
             [com.platypub.netlify :as netlify]
@@ -14,7 +14,8 @@
             [ring.util.io :as ring-io]
             [ring.util.mime-type :as mime]
             [lambdaisland.uri :as uri]
-            [babashka.fs :as fs]))
+            [babashka.fs :as fs])
+  (:import [org.jsoup Jsoup]))
 
 (defn edit-site [{:keys [site params] :as sys}]
   (biff/submit-tx sys
@@ -59,46 +60,23 @@
              "content-disposition" "attachment; filename=\"input.edn\""}
    :body (pr-str (util/get-render-opts sys))})
 
-(defn generate! [{:keys [biff/db dir site params] :as sys}]
+(defn generate! [{:keys [com.platypub/code-last-modified biff/db dir site params] :as sys}]
   (let [render-opts (util/get-render-opts sys)
         theme (:site/theme site)
-        theme-last-modified (->> (file-seq (io/file "themes" theme))
-                                 (filter #(.isFile %))
-                                 (map ring-io/last-modified-date)
-                                 (apply max-key inst-ms))
-        _hash (str (hash [render-opts theme-last-modified]))]
+        theme' (util/resolve-theme sys (:site/theme site))
+        _hash (str (hash [render-opts @code-last-modified]))]
     (when (or (:force params)
               (not= (biff/catchall (slurp (io/file dir "_hash"))) _hash))
-      ;; preinstall npm deps
-      (when (and (:com.platypub/copy-theme-npm-deps sys)
-                 (.exists (io/file "themes" theme "package.json"))
-                 (not (.exists (io/file "themes" theme "node_modules"))))
-        (biff/sh "npm" "install" :dir (str (io/file "themes" theme))))
-
-      ;; copy theme code to new directory
-      (if (fs/which "rsync")
-        (do (io/make-parents dir)
-            (biff/sh "rsync" "-a" "--delete"
-                     (str (io/file "themes" theme) "/")
-                     (str dir "/"))
-            (fs/delete-tree (str dir "/public")))
-        (do (fs/delete-tree (str dir))
-            (io/make-parents dir)
-            (fs/copy-tree (str (io/file "themes" theme)) (str dir) {:copy-attributes true})))
-
-      ;; install npm deps in new directory
-      (when-not (:com.platypub/copy-theme-npm-deps sys)
-        (fs/delete-tree (str dir "/node_modules"))
-        (when (.exists (io/file dir "package.json"))
-          (biff/sh "npm" "install" :dir (str dir))))
-
-      ;; render
-      (spit (io/file dir "input.edn") (pr-str render-opts))
-      (some->> (util/run-theme-cmd (:site.config/render-site site ["./render-site"]) dir)
-               ((juxt :out :err))
-               (keep not-empty)
-               (run! #(log/info %)))
+      (fs/delete-tree dir)
+      ((:render-site theme') (assoc render-opts :dir dir))
       (spit (io/file dir "_hash") _hash))))
+
+(defn update-urls [html f]
+  (let [doc (Jsoup/parse html)]
+    (doseq [attr ["href" "src"]
+            element (.select doc (str "[" attr "]"))]
+      (.attr element attr (f (.attr element attr))))
+    (.outerHtml doc)))
 
 (defn preview [{:keys [biff/db path-params params site] :as sys}]
   (let [dir (io/file "storage/previews" (str (:xt/id site)))
@@ -121,10 +99,7 @@
         [mime body] (cond
                       (some-> file (.getPath) (str/ends-with? ".html"))
                       ["text/html"
-                       (str/replace (slurp file)
-                                    #"(href|src)=\"([^\"]+)\""
-                                    (fn [[_ attr href]]
-                                      (str attr "=\"" (rewrite-url href) "\"")))]
+                       (update-urls (slurp file) rewrite-url)]
 
                       (some-> file (.getPath) (str/ends-with? ".css"))
                       ["text/css"
@@ -141,34 +116,30 @@
              :headers {"content-type" "text/html"}
              :body "<h1>Not found.</h1>"})))
 
-(defn publish [{:keys [biff/db path-params site] :as sys}]
+(defn publish [{:keys [biff/secret biff/db path-params site] :as sys}]
   (let [dir (io/file "storage/deploys" (str (random-uuid)))]
     (generate! (assoc sys :dir dir))
-    (netlify/deploy! {:api-key (util/get-secret sys :netlify/api-key)
+    (netlify/deploy! {:api-key (secret :netlify/api-key)
                       :site-id (:site/netlify-id site)
                       :dir (str dir)})
-    (fs/delete-tree (str dir))
+    (fs/delete-tree dir)
     {:status 303
      :headers {"location" "/sites"}}))
 
 (defn custom-config [{:keys [path-params biff/db user site params] :as sys}]
   (let [{:keys [theme]} params
-        site (if (contains? (set (util/installed-themes)) theme)
-               (merge (xt/entity db (:xt/id site))
-                      (util/select-ns-as
-                       (biff/catchall
-                        (edn/read-string
-                         (slurp (str "themes/" theme "/config.edn"))))
-                       nil
-                       'site.config))
-               site)]
+        site (if (util/resolve-theme sys theme)
+               (util/merge-site-config sys (assoc (xt/entity db (:xt/id site))
+                                                  :site/theme theme))
+               site)
+        sys (assoc sys :site site)]
     [:div#custom-config
      (for [k (:site.config/site-fields site)]
-       (list
+       [:<>
         (ui/custom-field sys k)
-        [:.h-3]))]))
+        [:.h-3]])]))
 
-(defn edit-site-page [{:keys [path-params biff/db user site] :as sys}]
+(defn edit-site-page [{:keys [com.platypub/themes path-params biff/db user site] :as sys}]
   (ui/nav-page
    (merge sys
           {:base/head [[:script (biff/unsafe (slurp (io/resource "darkmode.js")))]]
@@ -189,9 +160,9 @@
                   :name "theme"
                   :label "Theme"
                   :value (:site/theme site)
-                  :options (for [t (util/installed-themes)]
-                             {:label t :value t})
-                  :default (:site/theme site)
+                  :options (for [t themes]
+                             {:label (:label @(requiring-resolve t)) :value (str t)})
+                  :default (first themes)
                   :hx-trigger "change"
                   :hx-get (str "/sites/" (:xt/id site) "/custom-config")
                   :hx-target "#custom-config"
@@ -230,10 +201,6 @@
                           :target "_blank"}
       "Preview"]
      ui/interpunct
-     [:a.hover:underline {:href (str "/sites/" id "/preview?force=true&path=/")
-                          :target "_blank"}
-      "Force refresh"]
-     ui/interpunct
      (biff/form
       {:method "POST"
        :action (str "/sites/" id "/publish")
@@ -244,21 +211,21 @@
                           :target "_blank"}
       "Export"]]]])
 
-(defn sites-page [{:keys [sites] :as sys}]
+(defn sites-page [{:keys [biff/secret sites] :as sys}]
   (ui/nav-page
    (merge sys {:current :sites})
    (biff/form
     {:action "/sites"}
-    (when (nil? (util/get-secret sys :netlify/api-key))
+    (when (nil? (secret :netlify/api-key))
       [:p "You need to enter a Netlify API key"])
     [:button.btn {:type "submit"
-                  :disabled (nil? (util/get-secret sys :netlify/api-key))} "New site"])
+                  :disabled (nil? (secret :netlify/api-key))} "New site"])
    [:.h-6]
    (->> sites
         (sort-by :site/title)
         (map site-list-item))))
 
-(def features
+(def plugin
   {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/sites" {:get sites-page
                        :post new-site}]

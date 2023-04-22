@@ -9,6 +9,8 @@
 
 (defn deploy! [{:keys [api-key site-id dir draft]}]
   (when (.exists (io/file dir "netlify/functions"))
+    (println "Installing NPM deps...")
+    (biff/sh "npm" "install" :dir dir)
     (println "Preparing functions...")
     (biff/sh "npx" "zip-it-and-ship-it" "netlify/functions" "functions-dist" :dir dir))
   (let [path->file (->> (file-seq (io/file dir "public"))
@@ -58,12 +60,12 @@
     (println "Done.")
     response))
 
-(defn create! [sys]
+(defn create! [{:keys [biff/secret]}]
   (http/post (str base-url "/sites")
-             {:oauth-token (util/get-secret sys :netlify/api-key)
+             {:oauth-token (secret :netlify/api-key)
               :as :json}))
 
-(defn delete! [sys {:keys [site-id]}]
+(defn delete! [{:keys [biff/secret]} {:keys [site-id]}]
   (http/delete (str base-url "/sites/" site-id)
-               {:oauth-token (util/get-secret sys :netlify/api-key)
+               {:oauth-token (secret :netlify/api-key)
                 :as :json}))

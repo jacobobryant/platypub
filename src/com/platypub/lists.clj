@@ -1,4 +1,4 @@
-(ns com.platypub.feat.lists
+(ns com.platypub.lists
   (:require [com.biffweb :as biff :refer [q]]
             [com.platypub.mailgun :as mailgun]
             [com.platypub.middleware :as mid]
@@ -162,7 +162,7 @@
       ui/interpunct)
     (-> sites first :site/title)]])
 
-(defn lists-page [{:keys [session biff/db] :as req}]
+(defn lists-page [{:keys [session biff/secret biff/db] :as req}]
   (let [{:user/keys [email]} (xt/entity db (:uid session))
         lists (q db
                  '{:find (pull list [* {:list/sites [*]}])
@@ -175,16 +175,16 @@
              :email email})
      (biff/form
       {:action "/newsletters"}
-      (when (nil? (util/get-secret req :mailgun/api-key))
+      (when (nil? (secret :mailgun/api-key))
         [:p "You need to enter a Mailgun API key"])
       [:button.btn {:type "submit"
-                    :disabled (nil? (util/get-secret req :mailgun/api-key))} "New newsletter"])
+                    :disabled (nil? (secret :mailgun/api-key))} "New newsletter"])
      [:.h-6]
      (->> lists
           (sort-by :list/title)
           (map list-list-item)))))
 
-(def features
+(def plugin
   {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/newsletters" {:get lists-page
                              :post new-list}]

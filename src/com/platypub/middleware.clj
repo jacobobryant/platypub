@@ -12,7 +12,7 @@
   (fn [{:keys [biff/db session path-params params] :as req}]
     (let [params (merge params path-params)
           user (xt/entity db (:uid session))
-          sites (delay (util/q-sites db user))
+          sites (delay (util/q-sites req user))
           site (delay (->> @sites
                            (filter #(= (:site-id params) (str (:xt/id %))))
                            first))
@@ -37,6 +37,13 @@
                      (update-vals force))]
       (cond
        (nil? user) {:status 303
-                    :headers {"location" "/"}}
+                    :headers {"location" "/signin?error=not-signed-in"}}
        (some nil? (vals params)) ui/not-found-response
        :else (handler (merge req {:user user :sites @sites} params))))))
+
+(defn wrap-redirect-signed-in [handler]
+  (fn [{:keys [session] :as req}]
+    (if (some? (:uid session))
+      {:status 303
+       :headers {"location" "/app"}}
+      (handler req))))

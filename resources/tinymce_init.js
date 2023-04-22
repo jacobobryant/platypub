@@ -40,21 +40,21 @@ const image_upload_handler = (blobInfo, progress) => new Promise((resolve, rejec
 });
 
 tinymce.init({ selector: '#content',
-  plugins: 'code autosave lists anchor link autolink codesample emoticons fullscreen nonbreaking preview wordcount image autoresize',
-  //toolbar: 'code',
+  plugins: 'code autosave lists anchor link autolink codesample emoticons fullscreen nonbreaking wordcount image',
   images_upload_handler: image_upload_handler,
   toolbar_sticky: true,
+  height: '100vh',
   menu: {
     file: { title: 'File', items: 'restoredraft' },
     edit: { title: 'Edit', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
-    view: { title: 'View', items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
+    view: { title: 'View', items: 'code | visualaid visualchars visualblocks | spellchecker | fullscreen | showcomments' },
     insert: { title: 'Insert', items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
     format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
     tools: { title: 'Tools', items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
     table: { title: 'Table', items: 'inserttable | cell row column | advtablesort | tableprops deletetable' },
     help: { title: 'Help', items: 'help' }
   },
-  toolbar: 'undo redo styles image link bold italic numlist bullist alignleft aligncenter alignright alignjustify outdent indent code',
+  toolbar: 'styles image link bold italic numlist bullist outdent indent code',
   codesample_languages: [
     { text: 'Clojure', value: 'clojure' },
     { text: 'HTML/XML', value: 'markup' },
@@ -70,6 +70,10 @@ tinymce.init({ selector: '#content',
   ],
   codesample_global_prismjs: true,
   skin: (darkModeOn ? 'oxide-dark' : 'oxide'),
-  content_css: (darkModeOn ? 'dark' : 'default'),
-  content_style: "body {font-size: 18px;} img {max-width: 100%;}",
+  content_css: [
+    '/css/tinymce.css',
+    (darkModeOn ? 'dark' : 'default'),
+    (darkModeOn ? '/css/tinymce-dark.css' : '/css//tinymce-light.css')
+  ],
+
 });

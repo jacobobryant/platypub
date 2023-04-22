@@ -1,4 +1,19 @@
-body.mceContentBody {
-  background-color: black;
-  color: white;
+body {
+  font-size: 18px
+}
+img {
+  max-width: 100%;
+}
+.callout {
+  margin: 1rem 0;
+  padding: .5rem 1rem .5rem 1.5rem;
+  background: #fef3c7;
+  border-radius: 5px;
+}
+.callout p {
+  margin: 0;
+}
+.mce-content-body [contentEditable=false] [contentEditable=true]:hover,
+.mce-content-body [contentEditable=false] [contentEditable=true]:focus {
+  outline: none;
 }

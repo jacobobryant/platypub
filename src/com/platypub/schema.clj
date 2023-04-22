@@ -1,6 +1,4 @@
-(ns com.platypub.schema
-  (:require [malli.core :as malc]
-            [malli.registry :as malr]))
+(ns com.platypub.schema)
 
 (defn doc [{:keys [id required optional]}]
   (vec (concat [:map {:closed true}
@@ -17,18 +15,18 @@
 
    :site/id :uuid
    :site [:map
-          [:xt/id :site/id]
-          [:site/user :user/id]
+          [:xt/id           :site/id]
+          [:site/user       :user/id]
           [:site/netlify-id :string]
-          [:site/url :string]
-          [:site/title :string]
-          [:site/theme :string]]
+          [:site/url        :string]
+          [:site/title      :string]
+          [:site/theme      :string]]
 
    :item/id :uuid
    ;; todo only allow additional keys if they start with a certain prefix
    :item [:map
-          [:xt/id :item/id]
-          [:item/user :user/id]
+          [:xt/id      :item/id]
+          [:item/user  :user/id]
           [:item/sites [:set :site/id]]]
 
    :image/id :uuid
@@ -62,4 +60,5 @@
                           :list/theme
                           :list/tags]})})
 
-(def malli-opts {:registry (malr/composite-registry malc/default-registry schema)})
+(def plugin
+  {:schema schema})

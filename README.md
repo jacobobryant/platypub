@@ -20,19 +20,44 @@ Prerequisites:
  - JDK 11 or higher
  - [clj](https://clojure.org/guides/getting_started)
  - [Babashka](https://github.com/babashka/babashka#quickstart) (`bb` should be on your path)
- - (Optional) API keys for Netlify, S3, Mailgun, and Recaptcha (see `config.edn` and `secrets.edn`). You can run Platypub without these, but
+ - (Optional) API keys for Netlify, S3, Mailgun, and Recaptcha (see `config.edn` and `secrets.env`). You can run Platypub without these, but
  most of the features won't be available.
 
 Run the following:
 
 ```
 cp config.edn.TEMPLATE config.edn
-cp secrets.edn.TEMPLATE secrets.edn
-cp config.sh.TEMPLATE config.sh
+cp secrets.env.TEMPLATE secrets.env
+cp themes/deps.edn.TEMPLATE themes/deps.edn
 ```
-Then you can start Platypub with `./task dev`. After you see a `System started` message, the app will be running on `localhost:8080`.
+
+Run `bb generate-secrets` and paste the output into `secrets.env`. Also edit `config.edn` and `secrets.env` as needed.
+
+Then you can start Platypub with `bb dev`. After you see a `System started` message, the app will be running on `localhost:8080`.
 Once you've signed in, you can create a site, a newsletter,
 and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
+
+### Create a website
+
+1. Go to Sites and click "New site"
+2. Go to Newsletters and click "New newsletter"
+3. Create the following pages for the new site:
+  - One with path: `/` (home page)
+  - One with path: `/subscribed` (page shown to people after they subscribe to your newsletter)
+  - One with path: `/about` (page linked to in the navigation bar by default)
+  - One with path: `/welcome` and tags: `welcome` (email sent to people after they subscribe to your newsletter)
+
+Then you can go to Sites and click "preview." If you want to set a custom domain, you'll need to do it from Netlify's website,
+then update the URL field on the site config page.
+
+### Create a custom theme
+
+1. Copy `themes/default` to `themes/mytheme` (or whatever)
+2. Edit/move all the files under `themes/mytheme` so they use a unique namespace instead of `com/platypub/themes/default`
+3. Edit the `default.clj` file (or whatever you renamed it to) and change the `:label` key at the bottom to something unique.
+4. Edit `themes/deps.edn` and add `themes/mytheme` as a local dependency.
+5. Edit `config.edn` and add the fully-qualified symbol for your theme's plugin var to `:com.platypub/themes`
+6. Go to Sites -> click on your website, then change the theme setting to your new theme.
 
 ## Deployment
 
@@ -41,57 +66,3 @@ will be hosted externally on Netlify anyway. However if you'd like to deploy it 
 uncomment the `:com.platypub/allowed-users` and `:com.platypub/enable-email-sigin` config keys first.
 
 See [the Biff docs](https://biffweb.com/docs/#production) for deployment instructions.
-
-## Commands
-
-### `./task dev`
-
-Starts the app locally. After running, wait for the `System started` message.
-Connect your editor to nrepl port 7888. Whenever you save a file, Biff will:
-
- - Evaluate any changed Clojure files
- - Regenerate static HTML and CSS files
- - Run tests
-
-### `./task format`
-
-Format the code with cljfmt
-
-### `./task clean`
-
-Deletes generated files.
-
-### `./task deploy`
-
-`rsync`s config files to the server, deploys code via `git push`, and restarts
-the app process on the server (via git push hook). You must set up a server
-first. See [Production](https://biffweb.com/docs/#production).
-
-### `./task soft-deploy`
-
-`rsync`s config and code to the server, then `eval`s any changed files and
-regenerates HTML and CSS files. Does not refresh or restart.
-
-### `./task refresh`
-
-Reloads code and restarts the system via `clojure.tools.namespace.repl/refresh`
-(on the server). To do this in local development, evaluate
-`(com.biffweb/refresh)` with your editor.
-
-### `./task restart`
-
-Restarts the app process via `systemctl restart app` (on the server).
-
-### `./task logs`
-
-Tail the server's application logs.
-
-### `./task prod-repl`
-
-Open an SSH tunnel so you can connect to the server via nREPL.
-
-### `./task prod-dev`
-
-Runs `./task logs` and `./task prod-repl`. In addition, whenever you save a
-file, it will be copied to the server (via rsync) and evaluated, after which
-HTML and CSS will be regenerated.

@@ -1,6 +1,0 @@
-# vim: ft=sh
-MAIN_NS=com.platypub
-SOFT_DEPLOY_FN=com.platypub/on-save
-DEPLOY_FROM=master
-DEPLOY_TO=prod
-SERVER=example.com

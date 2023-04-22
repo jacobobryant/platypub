@@ -16,17 +16,6 @@ async function verify_address(email) {
     return false;
   }
   return true;
-  // Turns out this requires a paid Mailgun account.
-  // try {
-  //   const {result, risk} = (await axios.post(
-  //     "https://api.mailgun.net/v4/address/validate",
-  //     qs.stringify({address: email}),
-  //     {auth: {username: "api", password: config.mailgunKey}}
-  //   )).data;
-  //   return risk != "high" && (result == "catch_all" || result == "deliverable");
-  // } catch (e) {
-  //   return false;
-  // }
 }
 
 function send_welcome(email) {
@@ -72,6 +61,7 @@ exports.handler = async function (event, context) {
       url = new URL(config.siteUrl);
     }
     url.searchParams.set('error', error);
+    url.hash = "recaptcha-form";
   } else {
     url = new URL(config.subscribeRedirect);
   }

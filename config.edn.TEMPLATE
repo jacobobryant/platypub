@@ -1,7 +1,6 @@
 ;; vim: ft=clojure
-{:prod {:com.platypub/enable-web true
-        :com.platypub/enable-worker true
-        :com.platypub/copy-theme-npm-deps true
+{:prod {:com.platypub/themes [com.platypub.themes.default/plugin]
+        :biff/eval-paths []
         ;; Uncomment these if you'd like to deploy Platypub on the web.
         ;; :com.platypub/allowed-users #{"hello@example.com"}
         ;; :com.platypub/enable-email-signin true
@@ -11,10 +10,17 @@
         ;; serious. You can uncomment the following to use managed postgres
         ;; instead.
         ;; :biff.xtdb/topology :jdbc
-        ;; :biff.xtdb.jdbc/jdbcUrl "postgresql://user:password@host:port/dbname?sslmode=require"
+        ;; :biff.xtdb.jdbc/user "user"
+        ;; :biff.xtdb.jdbc/password "JDBC_PASSWORD" ; Leave this as-is, and update secrets.env
+        ;; :biff.xtdb.jdbc/host "host"
+        ;; :biff.xtdb.jdbc/port 5432
+        ;; :biff.xtdb.jdbc/dbname "dbname"
         :biff/base-url "https://example.com"
-        :biff.middleware/cookie-secret nil
-        :biff/jwt-secret nil
+        :biff.middleware/cookie-secret "COOKIE_SECRET"
+        :biff/jwt-secret "JWT_SECRET"
+        :biff.beholder/enabled false
+        :netlify/api-key "NETLIFY_API_KEY"
+        :tinycloud/api-key "TINYCLOUD_API_KEY"
         ;; S3 is used for hosting images that you upload in the CMS. It's
         ;; intended that site themes can either copy the images to Netlify or
         ;; just link to S3.
@@ -25,14 +31,30 @@
         :s3/bucket "platypub"
         :s3/cdn "https://platypub.sfo3.cdn.digitaloceanspaces.com"
         :s3/access-key "..."
+        :s3/secret-key "S3_SECRET_KEY"
         :mailgun/domain "..."
+        :mailgun/api-key "MAILGUN_API_KEY"
         ;; Used for stopping bot form submissions on generated websites.
         ;; Go to https://www.google.com/recaptcha/admin and create a "v2 Invisible" token.
+        :recaptcha/secret-key "RECAPTCHA_SECRET_KEY"
+        :recaptcha/site-key ""
+        ;; In the middle of renaming this to :recaptcha/site-key -- will delete soon
         :recaptcha/site ""}
  :dev {:merge [:prod]
-       :com.platypub/enable-beholder true
-        :com.platypub/copy-theme-npm-deps false
+       :biff.beholder/enabled true
+       :biff.beholder/paths ["src" "resources" "themes"]
        :biff/host "0.0.0.0"
        :biff/base-url "http://localhost:8080"
        :biff.xtdb/topology :standalone
-       :biff.middleware/secure false}}
+       :biff.middleware/secure false}
+ :tasks {;; Set this if the auto-detection doesn't work
+         ;; Possible values: macos-x64, macos-arm64, linux-x64, linux-arm64
+         :biff.tasks/tailwind-build nil
+         :biff.tasks/clj-args ["-J-XX:-OmitStackTraceInFastThrow"
+                               "-J-XX:+CrashOnOutOfMemoryError"
+                               "-M" "-m" "com.platypub"
+                               "--port" "7888"
+                               "--middleware" "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]"]
+         :biff.tasks/on-soft-deploy "\"(com.platypub/on-save @com.platypub/system)\""
+         :biff.tasks/deploy-cmd ["git" "push" "prod" "master"]
+         :biff.tasks/server "example.com"}}
