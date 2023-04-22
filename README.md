@@ -59,6 +59,8 @@ then update the URL field on the site config page.
 5. Edit `config.edn` and add the fully-qualified symbol for your theme's plugin var to `:com.platypub/themes`
 6. Go to Sites -> click on your website, then change the theme setting to your new theme.
 
+While developing your theme, you'll need to do `cd themes/mytheme; bb css` to make the css file update.
+
 ## Deployment
 
 You don't need to deploy Platypub to use it. You can run it locally, since any sites you create
