@@ -3,58 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-  p {
-    @apply mb-4;
-  }
-
-  ul {
-    list-style-type: disc;
-  }
-
-  ol {
-    list-style-type: decimal;
-  }
-
-  ul, ol {
-    margin-bottom: 1rem;
-    padding-left: 2.5rem;
-  }
-
-  code, kbd, pre, samp {
-    font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace
-  }
-
-  .post-content p {
-    @apply my-4;
-  }
-
-  .post-content img {
-    @apply my-12 mx-auto;
+  article img {
+    @apply mx-auto;
     box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.3);
-  }
-
-  .post-content li {
-    @apply mt-2;
-  }
-
-  .post-content h1 {
-    @apply font-bold leading-tight text-gray-900 text-3xl;
-  }
-
-  .post-content h2 {
-    @apply font-bold leading-tight text-gray-900 text-2xl mt-12 mb-6;
-  }
-
-  .post-content h3 {
-    @apply font-bold leading-tight text-gray-900 text-xl mt-12 mb-6;
-  }
-
-  .post-content hr {
-    @apply my-16 border-neutral-400;
-  }
-
-  .post-content .emailonly {
-    @apply hidden;
   }
 }
 

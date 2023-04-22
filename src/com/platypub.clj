@@ -7,7 +7,6 @@
             [com.platypub.sites :as sites]
             [com.platypub.schema :as schema]
             [com.platypub.util :as util]
-            [com.platypub.plugins]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
             [clojure.string :as str]

@@ -1,9 +1,2 @@
-{:deps {com.platypub.themes.default/tasks {:local/root "."}}
- :tasks {dev          com.platypub.themes.common.tasks/dev
-         build        com.platypub.themes.common.tasks/build
-         clean        com.platypub.themes.common.tasks/clean
-         css          com.platypub.themes.common.tasks/css
-         -on-save     com.platypub.themes.common.tasks/-on-save
-         render-site  com.platypub.themes.default.site/-main
-         render-email com.platypub.themes.default.email/-main
-         config       com.platypub.themes.default.config/-main}}
+{:deps {com.platypub.themes.default/tasks {:local/root "tasks"}}
+ :tasks {css com.platypub.themes.default.tasks/css}}

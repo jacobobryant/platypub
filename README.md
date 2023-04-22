@@ -26,6 +26,7 @@ Run the following:
 ```
 cp config.edn.TEMPLATE config.edn
 cp secrets.env.TEMPLATE secrets.env
+cp themes/deps.edn.TEMPLATE themes/deps.edn
 ```
 
 Run `bb generate-secrets` and paste the output into `secrets.env`. Also edit `config.edn` and `secrets.env` as needed.
@@ -33,6 +34,28 @@ Run `bb generate-secrets` and paste the output into `secrets.env`. Also edit `co
 Then you can start Platypub with `bb dev`. After you see a `System started` message, the app will be running on `localhost:8080`.
 Once you've signed in, you can create a site, a newsletter,
 and some posts as described in the [default theme setup](https://github.com/jacobobryant/platypub/tree/master/themes/default#setup).
+
+### Create a website
+
+1. Go to Sites and click "New site"
+2. Go to Newsletters and click "New newsletter"
+3. Create the following pages for the new site:
+  - One with path: `/` (home page)
+  - One with path: `/subscribed` (page shown to people after they subscribe to your newsletter)
+  - One with path: `/about` (page linked to in the navigation bar by default)
+  - One with path: `/welcome` and tags: `welcome` (email sent to people after they subscribe to your newsletter)
+
+Then you can go to Sites and click "preview." If you want to set a custom domain, you'll need to do it from Netlify's website,
+then update the URL field on the site config page.
+
+### Create a custom theme
+
+1. Copy `themes/default` to `themes/mytheme` (or whatever)
+2. Edit/move all the files under `themes/mytheme` so they use a unique namespace instead of `com/platypub/themes/default`
+3. Edit the `default.clj` file (or whatever you renamed it to) and change the `:label` key at the bottom to something unique.
+4. Edit `themes/deps.edn` and add `themes/mytheme` as a local dependency.
+5. Edit `config.edn` and add the fully-qualified symbol for your theme's plugin var to `:com.platypub/themes`
+6. Go to Sites -> click on your website, then change the theme setting to your new theme.
 
 ## Deployment
 
