@@ -283,7 +283,8 @@
                         :keys [dev]
                         :as ctx}]
   (when dev
-    (io/copy (io/file "resources/com/platypub/live.js") (doto (io/file "public/js/live.js") io/make-parents))
+    (io/copy (io/file (io/resource "com/platypub/live.js"))
+             (doto (io/file "public/js/live.js") io/make-parents))
     (cards! ctx render-card)
     (emails! ctx render-email))
   (fs/copy-tree (io/file "resources/public") (io/file "public") {:replace-existing true})

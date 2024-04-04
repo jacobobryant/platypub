@@ -4,6 +4,9 @@
         cheshire/cheshire                               {:mvn/version "5.12.0"}
         cider/cider-nrepl                               {:mvn/version "0.28.3"}
         clj-commons/clj-yaml                            {:mvn/version "1.0.27"}
+        com.biffweb/cljrun                              {:git/url "https://github.com/jacobobryant/cljrun"
+                                                         :git/tag "v1.0.0"
+                                                         :git/sha "4f9bb38"}
         com.lambdaisland/hiccup                         {:mvn/version "0.7.42"}
         com.nextjournal/beholder                        {:mvn/version "1.0.2"}
         hato/hato                                       {:mvn/version "0.9.0"}
