@@ -1,9 +1,17 @@
-{:paths ["src" "resources" "target/resources"]
- :deps {com.biffweb/biff {:git/url "https://github.com/jacobobryant/biff"
-                          :tag "v0.7.4"
-                          :sha "3ff1256"}
-        io.github.furstenheim/copy_down {:mvn/version "1.0"}
-        org.slf4j/slf4j-simple {:mvn/version "2.0.0-alpha5"}
-        org.clojure/clojure {:mvn/version "1.11.1"}
-        babashka/fs {:mvn/version "0.1.11"}
-        com.platypub/themes {:local/root "themes"}}}
+{:paths ["src" "resources"]
+ :deps {babashka/fs                                     {:mvn/version "0.5.20"}
+        babashka/process                                {:mvn/version "0.5.21"}
+        cheshire/cheshire                               {:mvn/version "5.12.0"}
+        cider/cider-nrepl                               {:mvn/version "0.28.3"}
+        clj-commons/clj-yaml                            {:mvn/version "1.0.27"}
+        com.lambdaisland/hiccup                         {:mvn/version "0.7.42"}
+        com.nextjournal/beholder                        {:mvn/version "1.0.2"}
+        hato/hato                                       {:mvn/version "0.9.0"}
+        markdown-clj/markdown-clj                       {:mvn/version "1.12.1"}
+        nrepl/nrepl                                     {:mvn/version "1.0.0"}
+        org.clojure/tools.namespace                     {:mvn/version "1.4.4"}
+        org.commonmark/commonmark                       {:mvn/version "0.21.0"}
+        org.commonmark/commonmark-ext-gfm-strikethrough {:mvn/version "0.21.0"}
+        org.commonmark/commonmark-ext-heading-anchor    {:mvn/version "0.21.0"}
+        org.commonmark/commonmark-ext-image-attributes  {:mvn/version "0.21.0"}
+        org.jsoup/jsoup                                 {:mvn/version "1.17.2"}}}

@@ -1,294 +1,328 @@
 (ns com.platypub.util
-  (:require [buddy.core.mac :as mac]
-            [clj-http.client :as http]
+  (:require [lambdaisland.hiccup :as h]
+            [babashka.fs :as fs]
+            [cheshire.core :as cheshire]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.java.shell :as shell]
             [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [com.biffweb :as biff :refer [q]]
-            [lambdaisland.uri :as uri]
-            [ring.util.io :as ring-io]
-            [ring.util.mime-type :as mime]
-            [ring.util.time :as ring-time]
-            [xtdb.api :as xt]))
+            [clj-yaml.core :as yaml])
+  (:import [org.commonmark.node Node]
+           [org.commonmark.parser Parser]
+           [org.commonmark.renderer.html HtmlRenderer]
+           [org.commonmark.ext.heading.anchor HeadingAnchorExtension]
+           [org.commonmark.ext.gfm.strikethrough StrikethroughExtension]
+           [org.commonmark.ext.image.attributes ImageAttributesExtension]))
 
-(defn add-prefix [prefix k]
-  (keyword (str prefix (namespace k)) (name k)))
+(let [extensions [(HeadingAnchorExtension/create)
+                  (StrikethroughExtension/create)
+                  (ImageAttributesExtension/create)]
+      parser (.. (Parser/builder)
+                 (extensions extensions)
+                 (build))
+      renderer (.. (HtmlRenderer/builder)
+                   (extensions extensions)
+                   (build))]
+  (defn md-to-html [md]
+    (.render renderer (.parse parser md))))
 
-(defn join [sep xs]
-  (rest (mapcat vector (repeat sep) xs)))
+(defn safe-spit [f & args]
+  (io/make-parents f)
+  (apply spit f args))
 
-;; fix bug in select-ns-as
+(defn url-encode [s]
+  (java.net.URLEncoder/encode (str s) "UTF-8"))
 
-(defn ns-parts [nspace]
-  (if (empty? (str nspace))
-    []
-    (str/split (str nspace) #"\.")))
-
-(defn select-ns [m nspace]
-  (let [parts (ns-parts nspace)]
-    (->> (keys m)
-         (filter (fn [k]
-                   (= parts (take (count parts) (ns-parts (namespace k))))))
-         (select-keys m))))
-
-(defn select-ns-as [m ns-from ns-to]
-  (->> (select-ns m ns-from)
+(defn map->query [m]
+  (->> m
        (map (fn [[k v]]
-              (let [new-ns-parts (->> (ns-parts (namespace k))
-                                      (drop (count (ns-parts ns-from)))
-                                      (concat (ns-parts ns-to)))]
-                [(if (empty? new-ns-parts)
-                   (keyword (name k))
-                   (keyword (str/join "." new-ns-parts) (name k)))
-                 v])))
-       (into {})))
+              (str (url-encode (name k)) "=" (url-encode v))))
+       (str/join "&")))
 
-;;;;
+(def rfc3339 "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
 
-(defn dissoc-ns [m nspace]
-  (let [parts (ns-parts nspace)]
-    (->> (keys m)
-         (remove (fn [k]
-                   (= parts (take (count parts) (ns-parts (namespace k))))))
-         (select-keys m))))
+(def interpunct " · ")
 
-(defn rename-ns [m ns-from ns-to]
-  (merge (dissoc-ns m ns-from)
-         (select-ns-as m ns-from ns-to)))
+(defn cached-img-url [opts]
+  (str "https://images.weserv.nl/?" (map->query opts)))
 
-(defn make-url [& args]
-  (let [[args query] (if (map? (last args))
-                       [(butlast args) (last args)]
-                       [args {}])]
-    (str (apply uri/assoc-query
-                (str/replace (str "/" (str/join "/" args)) #"/+" "/")
-                (apply concat query)))))
+(defn format-date
+  [date fmt timezone]
+  (.. (java.time.format.DateTimeFormatter/ofPattern fmt)
+        (withLocale java.util.Locale/ENGLISH)
+        (withZone (java.time.ZoneId/of timezone))
+        (format (.toInstant date))))
 
-(defmacro else->> [& forms] `(->> ~@(reverse forms)))
+(defn parse-date [date-str fmt timezone]
+  (.parse (doto (java.text.SimpleDateFormat. fmt)
+            (.setTimeZone (java.util.TimeZone/getTimeZone timezone))) date-str))
 
-(defn split-by [pred coll]
-  [(remove pred coll)
-   (filter pred coll)])
+(def emdash [:span [::h/unsafe-html "&mdash;"]])
 
-(defn sha-hex [file algo]
-  (with-open [f (java.io.FileInputStream. file)]
-    (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance algo)]
-      (loop [nread (.read f buffer)]
-        (if (pos? nread)
-          (do (.update md buffer 0 nread)
-              (recur (.read f buffer)))
-          (apply str (map #(format "%02x" (bit-and % 0xff)) (.digest md))))))))
+(def endash [:span [::h/unsafe-html "&#8211;"]])
 
-(defn sha1-hex [file]
-  (sha-hex file "SHA-1"))
+(def nbsp [:span [::h/unsafe-html "&nbsp;"]])
 
-(defn sha256-hex [file]
-  (sha-hex file "SHA-256"))
+(defn recaptcha-disclosure [{:keys [link-class]}]
+  [:span "This site is protected by reCAPTCHA and the Google "
+   [:a {:href "https://policies.google.com/privacy"
+        :target "_blank"
+        :class link-class}
+    "Privacy Policy"] " and "
+   [:a {:href "https://policies.google.com/terms"
+        :target "_blank"
+        :class link-class}
+    "Terms of Service"] " apply."])
 
-(defn hmac-sha1-base64 [secret s]
-  (-> (mac/hash s {:key secret :alg :hmac+sha1})
-      biff/base64-encode))
+;; From https://realfavicongenerator.net
+(def favicon-settings
+  (list
+   [:link {:rel "apple-touch-icon", :sizes "180x180", :href "/apple-touch-icon.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "32x32", :href "/favicon-32x32.png"}]
+   [:link {:rel "icon", :type "image/png", :sizes "16x16", :href "/favicon-16x16.png"}]
+   [:link {:rel "manifest", :href "/site.webmanifest"}]
+   [:link {:rel "mask-icon", :href "/safari-pinned-tab.svg", :color "#5bbad5"}]
+   [:meta {:name "msapplication-TileColor", :content "#da532c"}]
+   [:meta {:name "theme-color", :content "#ffffff"}]))
 
-(defn md5-base64 [file]
-  (with-open [f (java.io.FileInputStream. file)]
-    (let [buffer (byte-array 1024)
-          md (java.security.MessageDigest/getInstance "MD5")]
-      (loop [nread (.read f buffer)]
-        (if (pos? nread)
-          (do (.update md buffer 0 nread)
-              (recur (.read f buffer)))
-          (biff/base64-encode (.digest md)))))))
+(defn base-html [{:keys [dev base/path base/head] :as opts} & body]
+  (let [[title
+         description
+         image
+         base-url] (for [k ["title" "description" "image" "url"]]
+                     (or (get opts (keyword "base" k))
+                         (get-in opts [:post (keyword k)])
+                         (get-in opts [:page (keyword k)])
+                         (get opts (keyword "site" k))))]
+    [:html
+     {:lang "en-US"
+      :style {:min-height "100%"
+              :height "auto"}}
+     [:head
+      [:title title]
+      [:meta {:charset "UTF-8"}]
+      [:meta {:name "description" :content description}]
+      [:meta {:content title :property "og:title"}]
+      [:meta {:content description :property "og:description"}]
+      (when image
+        (list
+         [:meta {:content "summary_large_image" :name "twitter:card"}]
+         [:meta {:content image :name "twitter:image"}]
+         [:meta {:content image :property "og:image"}]))
+      [:meta {:content (str base-url path) :property "og:url"}]
+      [:link {:ref "canonical" :href (str base-url path)}]
+      [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+      [:meta {:charset "utf-8"}]
+      [:link {:href "/feed.xml",
+              :title (str "Feed for " (:site/title opts)),
+              :type "application/atom+xml",
+              :rel "alternate"}]
+      favicon-settings
+      head
+      (when dev
+        [:script {:src "/js/live.js"}])
+      [:link {:rel "stylesheet" :href "/css/main.css"}]]
+     [:body
+      {:style {:position "absolute"
+               :width "100%"
+               :min-height "100%"
+               :display "flex"
+               :flex-direction "column"}}
+      body
+      (when-some [html (:site/embed-html opts)]
+        [::h/unsafe-html html])]]))
 
-(defn format-date [date & [format]]
-  (.format (doto (new java.text.SimpleDateFormat (or format biff/rfc3339))
-             (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
-           date))
+(defn atom-feed* [{:keys [posts
+                          path
+                          site/author-name
+                          site/icon
+                          site/author-name
+                          site/author-url]
+                   site-url :site/url
+                   site-title :site/title}]
+  (let [feed-url (str site-url path)
+        posts (remove (comp (some-fn :unlisted :nofeed) :tags) posts)]
+    [:feed {:xmlns "http://www.w3.org/2005/Atom"}
+     [:title site-title]
+     [:id feed-url]
+     [:updated (format-date (:published (first posts)) rfc3339 "UTC")]
+     (when (not-empty icon)
+       (list [:icon icon]
+             [:logo icon]))
+     [:link {:rel "self" :href feed-url :type "application/atom+xml"}]
+     [:link {:href site-url}]
+     (for [{:keys [slug published html]
+            post-title :title} (take 10 posts)
+           :let [post-url (str site-url "/p/" slug "/")]]
+       [:entry
+        [:title {:type "html"} post-title]
+        [:id post-url]
+        [:updated (format-date published rfc3339 "UTC")]
+        [:content {:type "html"} html]
+        [:link {:href post-url}]
+        [:author
+         [:name author-name]
+         (when (not-empty author-url)
+           [:uri author-url])]])]))
 
-(defn file->bytes [file]
-  (let [out (byte-array (.length file))]
-    (with-open [in (java.io.FileInputStream. file)]
-      (.read in out)
-      out)))
+(defn render! [path hiccup & [doctype]]
+  (safe-spit (io/file "public" (-> path
+                                   (str/replace #"/$" "/index.html")
+                                   (str/replace #"^/" "")))
+             (if doctype
+               (str doctype "\n" (h/render hiccup {:doctype? false}))
+               (h/render hiccup))))
 
-(defn s3 [{:keys [biff/secret
-                  s3/base-url
-                  s3/bucket
-                  s3/access-key]
-           :as sys}
-          {:keys [method
-                  key
-                  file
-                  headers]}]
-  ;; See https://docs.aws.amazon.com/AmazonS3/latest/userguide/RESTAuthentication.html
-  ;; We should upgrade to v4 at some point, maybe.
-  (let [date (format-date (java.util.Date.) "EEE, dd MMM yyyy HH:mm:ss Z")
-        path (str "/" bucket "/" key)
-        md5 (some-> file md5-base64)
-        headers' (->> headers
-                      (map (fn [[k v]]
-                             [(str/trim (str/lower-case k)) (str/trim v)]))
-                      (into {}))
-        content-type (get headers' "content-type")
-        headers' (->> headers'
-                      (filter (fn [[k v]]
-                                (str/starts-with? k "x-amz-")))
-                      (sort-by first)
-                      (map (fn [[k v]]
-                             (str k ":" v "\n")))
-                      (apply str))
-        string-to-sign (str method "\n" md5 "\n" content-type "\n" date "\n" headers' path)
-        signature (hmac-sha1-base64 (secret :s3/secret-key) string-to-sign)
-        auth (str "AWS " access-key ":" signature)]
-    (http/request {:method method
-                   :url (str base-url path)
-                   :headers (merge {"Authorization" auth
-                                    "Date" date
-                                    "Content-MD5" md5}
-                                   headers)
-                   :body (some-> file file->bytes)})))
+(defn atom-feed! [opts]
+  (render! "/feed.xml" (atom-feed* (assoc opts :path "/feed.xml")) "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"))
 
-(defn resolve-theme [{:keys [com.platypub/themes]} theme-str]
-  (some->> (map str themes)
-           (some #{theme-str})
-           symbol
-           requiring-resolve
-           deref))
+(defn custom-pages! [opts pages]
+  (doseq [[path render-fn] pages]
+    (render! path (render-fn (assoc opts :base/path path)))))
 
-(defn merge-site-config [ctx site]
-  (merge site
-         (select-ns-as
-          (resolve-theme ctx (:site/theme site))
-          nil
-          'site.config)))
+(defn posts! [{:keys [posts] :as opts} render-fn]
+  (doseq [post posts
+          :let [path (str "/p/" (:slug post) "/")]]
+    (render! path (render-fn (assoc opts :base/path path :post post)))))
 
-(defn q-sites [{:keys [biff/db] :as ctx} user]
-  (->> (q db
-          '{:find (pull site [*])
-            :in [user]
-            :where [[site :site/user user]]}
-          (:xt/id user))
-       (map #(merge-site-config ctx %))))
+(defn cards! [{:keys [posts] :as opts} render-fn]
+  (doseq [post posts
+          :let [path (str "/p/" (:slug post) "/card/")]]
+    (render! path (render-fn (assoc opts :base/path path :post post)))))
 
-(defn serve-static-file [file]
-  {:status 200
-   :headers {"content-length" (str (.length file))
-             "last-modified" (ring-time/format-date (ring-io/last-modified-date file))
-             "content-type" (mime/ext-mime-type (.getName file))}
-   :body file})
+(defn emails! [{:keys [posts] :as opts} render-fn]
+  (doseq [post posts
+          :let [path (str "/p/" (:slug post) "/email/")]]
+    (render! path (render-fn (assoc opts :post post)))))
 
-(defn q-items [db user site item-spec]
-  (q db
-     {:find '(pull item [*])
-      :in '[user site]
-      :where (->> (:query item-spec)
-                  (map (fn [x]
-                         (let [[k & rst] (if (keyword? x)
-                                           [x]
-                                           x)
-                               k (keyword (str "item.custom." (namespace k)) (name k))]
-                           (into ['item k] rst))))
-                  (into '[[item :item/user user]
-                          [item :item/sites site]]))}
-     (:xt/id user)
-     (:xt/id site)))
+(defn pages! [{:keys [pages] :as opts} render-fn]
+  (doseq [page (:pages opts)
+          :let [path (-> (:path page)
+                         (str/replace #"^pages/" "")
+                         (str/replace #"\.md$" "")
+                         (#(str "/" % "/"))
+                         (str/replace #"/+" "/"))]]
+    (render! path (render-fn (assoc opts :base/path path :page page)))))
 
-(defn something? [x]
-  (if (or (coll? x) (string? x))
-    (boolean (not-empty x))
-    (some? x)))
+(defn netlify-subscribe-fn! [{:keys [site/url
+                                     list/address
+                                     list/title
+                                     list/reply-to
+                                     mailgun/domain
+                                     mailgun/api-key
+                                     recaptcha/secret-key
+                                     emails]}]
+  (let [welcome-email (first (filter (comp #{"emails/welcome.md"} :path) emails))]
+    (safe-spit (io/file "netlify/functions/config.json")
+               (cheshire/generate-string
+                {:subscribeRedirect (str url "/subscribed/")
+                 :listAddress address
+                 :mailgunDomain domain
+                 :mailgunKey (api-key)
+                 :welcomeEmail {:from (str title " <doreply@" domain ">")
+                                :h:Reply-To reply-to
+                                :subject (:subject welcome-email)
+                                :html (:html welcome-email)}
+                 :recaptchaSecret (secret-key)
+                 :siteUrl url}))
+    (io/copy (io/file (io/resource "com/platypub/subscribe.js"))
+             (doto (io/file "netlify/functions/subscribe.js") io/make-parents))))
 
-(defn get-render-opts [{:keys [biff/secret biff/db user site item] :as sys}]
-  (let [defaults (->> site
-                      :site.config/fields
-                      (map (fn [[k v]]
-                             [k (:default v)]))
-                      (into {}))
-        site' (-> site
-                  (dissoc-ns 'site.config)
-                  (rename-ns 'site.custom nil))
-        site' (reduce (fn [m k]
-                        (if (something? (m k))
-                          m
-                          (assoc m k (defaults k))))
-                      site'
-                      (:site.config/site-fields site))]
-    (into {:account (-> sys
-                        (select-keys [:mailgun/domain :recaptcha/site-key])
-                        (assoc :mailgun/api-key (secret :mailgun/api-key))
-                        (assoc :recaptcha/secret (secret :recaptcha/secret-key))
-                        (assoc :recaptcha/secret-key (secret :recaptcha/secret-key)))
-           :site site'
-           :lists (q db
-                     '{:find (pull lst [*])
-                       :in [user site]
-                       :where [[lst :list/user user]
-                               [lst :list/sites site]]}
-                     (:xt/id user)
-                     (:xt/id site))
-           :item (rename-ns item 'item.custom nil)}
-          (for [item-spec (:site.config/items site)]
-            [(:key item-spec)
-             (->> (q-items db user site item-spec)
-                  (map #(rename-ns % 'item.custom nil)))]))))
+(defn redirects! [{:keys [site/redirects]}]
+  (safe-spit (io/file "public/_redirects")
+             (->> redirects (mapv #(str/join " " %)) (str/join "\n"))))
 
-(defn last-edited [db id]
-  (:xtdb.api/valid-time (first (xt/entity-history db id :desc))))
+(defn sitemap! [_]
+  (let [root (io/file "public")]
+    (->> (file-seq root)
+         (filterv #(.isFile %))
+         (mapv #(.getPath %))
+         (filterv #(str/ends-with? % "index.html"))
+         (mapv (fn [path]
+                 (-> path
+                     (subs (count (.getPath root)))
+                     (str/replace #"index.html$" ""))))
+         (str/join "\n")
+         (safe-spit (io/file "public/sitemap.txt")))))
 
-(defn order-by-fn [order-by-spec]
-  (let [order-by-spec (for [[k dir] order-by-spec]
-                        [(add-prefix "item.custom." k) dir])]
-    (fn [a b]
-      (or (->> order-by-spec
-               (map (fn [[k direction]]
-                      (cond-> (compare (k a) (k b))
-                        (= direction :desc) (* -1))))
-               (remove zero?)
-               first)
-          0))))
+(defn read-md-file [{:keys [site/timezone]} f]
+  (let [root (io/file "content")
+        content (slurp f)
+        [front-matter content] (->> (str/split content #"---" 3)
+                                    (keep (comp not-empty str/trim)))
+        {:keys [tags published content-type]
+         :or {content-type "markdown"}
+         :as front-matter} (some-> front-matter yaml/parse-string)
+        html (case content-type
+               "markdown" (some-> content md-to-html)
+               "html" content)
+        path (subs (.getPath f) (inc (count (.getPath root))))
+        doc-type (keyword (first (str/split path #"/" 2)))]
+    (merge {:path path
+            :doc-type doc-type
+            :html html}
+           front-matter
+           (when (not-empty tags)
+             {:tags (into #{} (map keyword tags))})
+           (when (some? published)
+             {:published (parse-date published "yyyy-MM-dd'T'HH:mm:ss a" timezone)}))))
 
-(defn match? [spec item]
-  (if (= :not (first spec))
-    (not (match? (second spec) item))
-    (every? (fn [[k v]]
-              (= (get item (add-prefix "item.custom." k)) v))
-            spec)))
+(defn read-content [config]
+  (let [root (io/file "content")]
+    (->> (file-seq root)
+         (filterv #(.isFile %))
+         (mapv #(read-md-file config %))
+         (remove :draft)
+         (sort-by :published #(compare %2 %1))
+         (group-by :doc-type))))
 
-(defn slugify [title]
-  (-> title
-      str/lower-case
-      ; RFC 3986 reserved or unsafe characters in url
-      (str/replace #"[/|]" "-")
-      (str/replace #"[:?#\[\]@!$&'()*+,;=\"<>%{}\\^`]" "")
-      (str/replace #"\s+" "-")))
+(defn render-default! [{::keys [custom-pages
+                                render-post
+                                render-page
+                                render-card
+                                render-email]
+                        :keys [dev]
+                        :as ctx}]
+  (when dev
+    (io/copy (io/file "resources/com/platypub/live.js") (doto (io/file "public/js/live.js") io/make-parents))
+    (cards! ctx render-card)
+    (emails! ctx render-email))
+  (fs/copy-tree (io/file "resources/public") (io/file "public") {:replace-existing true})
+  (custom-pages! ctx custom-pages)
+  (posts! ctx render-post)
+  (pages! ctx render-page)
+  (redirects! ctx)
+  (netlify-subscribe-fn! ctx)
+  (atom-feed! ctx)
+  (sitemap! ctx))
 
-(defn date-time-string->java-Date [date-string]
-  (when (not-empty date-string)
-    (edn/read-string (str "#inst" "\"" date-string "\""))))
+;; Algorithm adapted from dotenv-java:
+;; https://github.com/cdimascio/dotenv-java/blob/master/src/main/java/io/github/cdimascio/dotenv/internal/DotenvParser.java
+;; Wouldn't hurt to take a more thorough look at Ruby dotenv's algorithm:
+;; https://github.com/bkeepers/dotenv/blob/master/lib/dotenv/parser.rb
+(defn parse-env-var [line]
+  (let [line (str/trim line)
+        [_ _ k v] (re-matches #"^\s*(export\s+)?([\w.\-]+)\s*=\s*(['][^']*[']|[\"][^\"]*[\"]|[^#]*)?\s*(#.*)?$"
+                              line)]
+    (when-not (or (str/starts-with? line "#")
+                  (str/starts-with? line "////")
+                  (empty? v))
+      (let [v (str/trim v)
+            v (if (or (re-matches #"^\".*\"$" v)
+                      (re-matches #"^'.*'$" v))
+                (subs v 1 (dec (count v)))
+                v)]
+        [k v]))))
 
-(defn params->custom-fields [{:keys [site item-spec params] :as ctx}]
-  (let [theme (resolve-theme ctx (:site/theme site))
-        [prefix ks] (if item-spec
-                      ["item.custom." (:fields item-spec)]
-                      ["site.custom." (:site.config/site-fields site)])]
-    (for [k ks
-          :let [value (get params (keyword (name k)))
-                {:keys [type default]} (get-in site [:site.config/fields k])]]
-      [(add-prefix prefix k)
-       (cond
-         (= type :instant) (date-time-string->java-Date value)
-         (= type :boolean) (= value "on")
-         (= type :tags) (->> (str/split value #"\s+")
-                             (remove empty?)
-                             distinct
-                             vec)
-         (and (empty? value)
-              (instance? clojure.lang.PersistentVector default))
-         ((case (first default)
-            :slugify slugify
-            (constantly nil))
-          (params (keyword (name (second default)))))
+(defn get-env []
+  (reduce into
+          {}
+          [(some->> (try (slurp "config.env") (catch Exception _))
+                    str/split-lines
+                    (keep parse-env-var))
+           (System/getenv)]))
 
-         :else value)])))
+(defn read-config []
+  (let [env (get-env)]
+    (edn/read-string {:readers {'secret (fn [env-var]
+                                          (constantly (get env (str env-var))))}}
+                     (slurp "resources/config.edn"))))
