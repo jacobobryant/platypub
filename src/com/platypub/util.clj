@@ -194,13 +194,16 @@
           :let [path (str "/p/" (:slug post) "/email/")]]
     (render! path (render-fn (assoc opts :post post)))))
 
+(defn page-dir [path]
+  (-> path
+      (str/replace #"^pages/" "")
+      (str/replace #"\.md$" "")
+      (#(str "/" % "/"))
+      (str/replace #"/+" "/")))
+
 (defn pages! [{:keys [pages] :as opts} render-fn]
   (doseq [page (:pages opts)
-          :let [path (-> (:path page)
-                         (str/replace #"^pages/" "")
-                         (str/replace #"\.md$" "")
-                         (#(str "/" % "/"))
-                         (str/replace #"/+" "/"))]]
+          :let [path (page-dir (:path page))]]
     (render! path (render-fn (assoc opts :base/path path :page page)))))
 
 (defn netlify-subscribe-fn! [{:keys [site/url
@@ -285,7 +288,7 @@
   (when dev
     (io/copy (io/file (io/resource "com/platypub/live.js"))
              (doto (io/file "public/js/live.js") io/make-parents))
-    (cards! ctx render-card)
+    (when render-card (cards! ctx render-card))
     (emails! ctx render-email))
   (fs/copy-tree (io/file "resources/public") (io/file "public") {:replace-existing true})
   (custom-pages! ctx custom-pages)

@@ -1,7 +1,6 @@
 (ns com.platypub.cli.email
   (:require [com.platypub.util :as util]
             [clojure.java.io :as io]
-            [lambdaisland.hiccup :as h]
             [hato.client :as hato]))
 
 (defn send-email [path address]
@@ -13,11 +12,11 @@
     (println "Sending" (pr-str (:title post)) "to" (pr-str address))
     (hato/post (str "https://api.mailgun.net/v3/" domain "/messages")
                {:basic-auth {:user "api" :pass (api-key)}
-                :form-params {:html (h/render html)
+                :form-params {:html html
                               :subject (:title post)
                               :to address
                               :from (str list-title " <doreply@" domain ">")
                               :h:Reply-To reply-to}})))
 
 (defn publish-email [path]
-  #_(send-email path (:list/address (util/read-config))))
+  (send-email path (:list/address (util/read-config))))

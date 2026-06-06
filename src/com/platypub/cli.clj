@@ -13,7 +13,7 @@
 (defn test-email
   "Sends a test email to the given address.
 
-   cljrun email [post path] [address]
+   cljrun test-email [post path] [address]
 
    Example:
 
@@ -32,8 +32,24 @@
   [path]
   ((requiring-resolve 'com.platypub.cli.email/publish-email) path))
 
+(defn subscribers
+  "Prints your subscribers list.
+
+   cljrun subs"
+  []
+  ((requiring-resolve 'com.platypub.cli.subscribers/subscribers)))
+
+(defn clean-list
+  "Unsubscribes people who have hard bounced or complained.
+
+   cljrun clean-list"
+  []
+  ((requiring-resolve 'com.platypub.cli.subscribers/clean)))
+
 (def tasks
   {"watch" #'watch
    "publish" #'publish
    "test-email" #'test-email
-   "publish-email" #'publish-email})
+   "publish-email" #'publish-email
+   "subs" #'subscribers
+   "clean-list" #'clean-list})
