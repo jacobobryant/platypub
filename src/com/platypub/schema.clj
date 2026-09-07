@@ -1,64 +1,48 @@
 (ns com.platypub.schema)
 
-(defn doc [{:keys [id required optional]}]
-  (vec (concat [:map {:closed true}
-                [:xt/id id]]
-               required
-               (for [k optional]
-                 [k {:optional true}]))))
+(def ? {:optional true})
 
-(def schema
-  {:user/id :uuid
-   :user/email :string
-   :user (doc {:id :user/id
-               :required [:user/email]})
+(def tab-state-schema
+  [:map
+   [:tab/background-color ? [:enum :white :red :blue :green]]])
 
-   :site/id :uuid
-   :site [:map
-          [:xt/id           :site/id]
-          [:site/user       :user/id]
-          [:site/netlify-id :string]
-          [:site/url        :string]
-          [:site/title      :string]
-          [:site/theme      :string]]
+(def columns
+  {:tab-state/id   {:type :uuid :primary-key true}
+   :tab-state/data {:type :edn :extra-schema tab-state-schema}
 
-   :item/id :uuid
-   ;; todo only allow additional keys if they start with a certain prefix
-   :item [:map
-          [:xt/id      :item/id]
-          [:item/user  :user/id]
-          [:item/sites [:set :site/id]]]
+   :user/id           {:type :uuid :primary-key true}
+   :user/email        {:type :text :required true :unique true}
+   :user/joined-at    {:type :inst :required true :index true}
+   :user/display-name {:type :text}})
 
-   :image/id :uuid
-   :image/user :user/id
-   :image/url :string
-   :image/filename :string
-   :image/uploaded-at inst?
-   :image (doc {:id :image/id
-                :required [:image/user
-                           :image/url
-                           :image/filename
-                           :image/uploaded-at]})
+;; Strings added here will be appended to resources/schema.sql
+(def extra-init-sql [])
 
-   :list/id :uuid
-   :list/user :user/id
-   :list/address :string
-   :list/title :string
-   :list/theme :string
-   :list/reply-to :string
-   :list/tags [:sequential :string]
-   :list/mailing-address :string
-   :list/sites [:vector :site/id]
-   :list (doc {:id :list/id
-               :required [:list/user
-                          :list/address
-                          :list/title
-                          :list/reply-to]
-               :optional [:list/mailing-address
-                          :list/sites
-                          ;; deprecated
-                          :list/theme
-                          :list/tags]})})
+;; Add new columns here that you want users to be able to edit (e.g. settings).
+(def editable-user-fields [:user/display-name])
 
-(def plugin
-  {:schema schema})
+(defn only-fields-edited? [before after fields]
+  (= (apply dissoc before fields)
+     (apply dissoc after fields)))
+
+(defn authorize-entry [{{:keys [uid]} :session
+                        :keys         [biff.datastar/tab-id]}
+                       {:keys [table op before after]}]
+  (case table
+    :user
+    (and (every? #{uid} (keep :user/id [before after]))
+         (case op
+           :create false
+           :update (only-fields-edited? before after editable-user-fields)
+           :delete true))
+
+    :tab-state
+    (every? #{tab-id} (keep :tab-state/id [before after]))
+
+    false))
+
+;; These authorization rules apply when using biff.sqlite/authorized-write and
+;; are meant as an extra layer of protection.
+(defn authorize
+  [ctx diff]
+  (every? #(authorize-entry ctx %) diff))

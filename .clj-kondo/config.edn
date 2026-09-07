@@ -1,0 +1,5 @@
+{:linters
+ {:biff/impl-visibility {:level :error}
+  :line-length          {:level           :warning
+                         :max-line-length 100
+                         :exclude-urls    true}}}

@@ -1,7 +1,4 @@
-{:indentation?                    true
- :remove-surrounding-whitespace?  true
- :remove-trailing-whitespace?     true
- :remove-consecutive-blank-lines? true
- :insert-missing-whitespace?      true
- :align-associative?              false
- :indents                         {submit-tx [[:inner 0]]}}
+{:align-form-columns?             true
+ :align-map-columns?              true
+ :extra-aligned-forms             {let #{0}}
+ :blank-lines-separate-alignment? true}
