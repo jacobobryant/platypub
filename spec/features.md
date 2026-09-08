@@ -6,7 +6,9 @@ functionality to an existing blog that they host elsewhere.
 ## Signup
 
 The first user to sign up is put on the "admin" tier. The admin has access to a
-dashboard that lets them edit the tier of other users (and themselves).
+dashboard that lets them edit the tier of other users (and themselves). After a
+user has been moved from the waitlist to another tier, they cannot be moved back
+on to the waitlist.
 
 An environment config setting controls whether the app has a waitlist. If set,
 new users (other than the admin user) are put on the "waitlist" tier. Waitlist
@@ -41,8 +43,8 @@ For the author information, we look only at the overall feed information, not
 individual post information.
 
 A new publication starts with zero subscribers. Importing subscribers is not
-supported for free users. Users can change publication settings after creating
-it:
+supported for free users, except via admin imports. Users can change publication
+settings after creating it:
 
 - feed URL (we convert this to a feed ID transparently, fetching the feed and
   saving/updating posts using the same logic as when creating the publication)
@@ -66,11 +68,18 @@ immediately on the HTTP request thread as described above. For any post entities
 in the feed that we've already created, we update `present as of` to the current
 time.
 
+### Feed details
+
+When the user enters a website or feed URL, we always use the final resolved URL
+(e.g. after redirects).
+
+We support RSS, Atom, and JSON feed.
+
 ## Importing subscribers
 
-Admin users have a dashboard where they can search for a publication and then
-import subscribers for a selected publication. Publications are not shown until
-the admin enters a search query.
+Admin users have a dashboard where they can search for a publication (owned by
+any user) and then import subscribers for a selected publication. Publications
+are not shown until the admin enters a search query.
 
 To import subscribers, the admin uploads CSV containing an `email` column.
 We skip emails for which the publication already has a subscriber (active or
@@ -83,7 +92,7 @@ After signing in, users see a list of their publications. After navigating to a
 particular publication, they see a list of posts for that publication (the
 "publication page"). Posts are shown if:
 
-- they were previously sent to subscribers, OR
+- they are part of a send for this publication, OR
     - they are part of the publication's current feed, AND
     - the post's `present as of` value is >= the publication's `feed ID updated
       at` value.
@@ -111,7 +120,7 @@ converting to lower case.
   to the value of the publication's `require confirmation` attribute.
 - If the subscriber entity already exists, `unsubscribed at` is set, and
   `suppressed` is not set, then clear the `unsubscribed at` and `confirmed at`
-  attributes and set `require confirmation = true`.
+  attributes and set `require confirmation = true`. Also update `subscribed at`.
 - Otherwise, do not update the database, except as described for confirmation
   emails.
 
@@ -165,6 +174,7 @@ batch of publications. The thread determines which publications are ready for an
 automatic send. A publication is ready if:
 
 - automatic sending is enabled.
+- there are no pending sends for that publication.
 - the most recent send (manual or automatic) for that publication started at
   least 24 hours ago OR there are no previous sends.
 - the publication has at least one visible post that (1) was fetched after the
@@ -178,7 +188,6 @@ For each ready publication, a send is created (with `status = pending` and
 `provenance = automatic`) and placed on the send processing queue. The send
 includes the posts that match the criteria described above.
 
-
 If (1) `automatic send threshold` is already set and the publication's feed
 changes, or (2) automatic sending is re-enabled after being disabled, then
 `automatic send threshold` is set to the current time.
@@ -191,7 +200,7 @@ priority than sends with `provenance = automatic`. The consuming thread queries
 for:
 
 - all the active subscribers
-- who joined before this send was created
+- who subscribed before this send was created
 - and who do not yet have a send attempt for this send
 
 The thread then sends each subscriber an email with our email service provider's
@@ -282,12 +291,7 @@ Each publication page has a "subscribers" button that takes you to a paginated,
 searchable page showing the subscribers for that publication, more recent
 subscribers first. The subscribers are shown on a table with columns for email,
 subscribed at, and unsubscribed at. No other data is shown. There is a dropdown
-for each row with a single "unsubscribe" button. It is gated by a confirmation
-modal that explains the action cannot be undone. Each row also has a checkbox so
-you can select multiple subscribers and unsubscribe them at once (e.g. in case
-you get a bunch of spam subscribes). The table has a sticky header row with an
-unsubscribe button that becomes enabled when you have at least one subscriber
-selected.
+for each row with a single "unsubscribe" or "re-subscribe" button.
 
 ## Email providers
 

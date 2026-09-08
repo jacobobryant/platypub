@@ -44,7 +44,8 @@ Required:
 Optional:
 
 - `automatic send threshold`. When set, posts fetched after this time
-  are sent automatically. Default `created at`.
+  are sent automatically. Default `created at`. When set, automatic sending is
+  enabled.
 - `description`. Text shown on the subscribe form.
 - `intro`. Text placed before email text content e.g. to remind subscribers what
   this publication is.
@@ -71,7 +72,8 @@ GET request to get posts.
 Required:
 
 - `created at`
-- `fetched at`
+- `fetched at`. The latest time we attempted to fetch this feed, successfully or
+  not.
 - `url`
 - `failed syncs`. The number of times we have attempted and failed to fetch this
   feed since the last successful fetch (or since the feed was added). Default 0.
@@ -158,7 +160,7 @@ Represents the sending of a post(s) to a publication.
 Required:
 
 - `publication ID`
-- `started at`
+- `started at`. The time at which this send was created.
 - `progress at`. The last time progress was reported for this send. Default
   `started at`.
 - `status` (enum: pending or finished).
