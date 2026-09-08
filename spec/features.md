@@ -72,6 +72,11 @@ Admin users have a dashboard where they can search for a publication and then
 import subscribers for a selected publication. Publications are not shown until
 the admin enters a search query.
 
+To import subscribers, the admin uploads CSV containing an `email` column.
+We skip emails for which the publication already has a subscriber (active or
+not). For all the new imported subscribers, we set `require confirmation =
+false`. Invalid rows are skipped.
+
 ## Viewing posts
 
 After signing in, users see a list of their publications. After navigating to a
@@ -107,7 +112,8 @@ converting to lower case.
 - If the subscriber entity already exists, `unsubscribed at` is set, and
   `suppressed` is not set, then clear the `unsubscribed at` and `confirmed at`
   attributes and set `require confirmation = true`.
-- Otherwise, do not update the database.
+- Otherwise, do not update the database, except as described for confirmation
+  emails.
 
 In all cases, the subscribe form should show the same message afterward (even if
 that message is inaccurate, like "we've sent you a confirmation email") since we
@@ -133,14 +139,19 @@ for 24 hours. If the user clicks the link and the token is still valid,
 ### Welcome email
 
 A welcome email is sent when someone who was not previously an active subscriber
-becomes an active subscriber.
+becomes an active subscriber, except when an admin imports subscribers. Imported
+subscribers do not receive a welcome email.
 
 ### Unsubscribing
 
 Send emails (i.e. not welcome or confirmation emails) always include an
 unsubscribe link at the bottom. They also set whatever unsubscribe headers are
 allowed by the email provider for the current plan. When a user unsubscribes,
-`unsubscribe at` is set to the current time.
+`unsubscribed at` is set to the current time. The unsubscribe links/headers
+contain a JWT that's valid for 30 days. A signing secret is provided as an
+environment config setting. For GET requests, an unsubscribe confirmation page
+is shown with the user's email address and a button to confirm. For POST
+requests, the unsubscribe is processed immediately.
 
 ## Sending emails
 
@@ -158,8 +169,8 @@ automatic send. A publication is ready if:
   least 24 hours ago OR there are no previous sends.
 - the publication has at least one visible post that (1) was fetched after the
   most recent send, manual or automatic (if one exists) AND after `automatic
-  sending threshold`; and (2) has `filter tag` in its tags if set; and (3) does
-  not have `remove tag` in its tags if set. Tags are not case-sensitive, and
+  send threshold`; and (2) has `filter tag` in its tags if set; and (3) does not
+  have `remove tag` in its tags if set. Tags are not case-sensitive, and
   whitespace is trimmed.
 - the publication has at least one active subscriber.
 
@@ -167,9 +178,10 @@ For each ready publication, a send is created (with `status = pending` and
 `provenance = automatic`) and placed on the send processing queue. The send
 includes the posts that match the criteria described above.
 
-`automatic send threshold` should be bumped to the current time when a
-publication's feed changes and when automatic sending is re-enabled after being
-disabled.
+
+If (1) `automatic send threshold` is already set and the publication's feed
+changes, or (2) automatic sending is re-enabled after being disabled, then
+`automatic send threshold` is set to the current time.
 
 ### Send processing queue
 
@@ -206,14 +218,15 @@ sends are added to the send processing queue.
 ### Manual sending
 
 The publication page includes a "Send" button. It is only enabled if there is at
-least one post that hasn't already been sent. After clicking, the user selects
-which post(s) to include in the send. Only posts not already sent can be
-selected. The user sees a preview of the full HTML that will be sent and also
-the from name and subject. After the user confirms, a send is created (with
-`status = pending` and `provenance = manual`) and is placed on the send
-processing queue. Email content is rendered and stored at that time.
-In case the feed/posts were updated after the preview was rendered, the email is
-rendered using the same data used to render the preview.
+least one post that isn't already associated with a send and if there's at least
+one active subscriber. After clicking, the user selects which post(s) to include
+in the send. Only posts not already associated with a send can be selected. The
+user sees a preview of the full HTML that will be sent and also the from name
+and subject. After the user confirms, a send is created (with `status = pending`
+and `provenance = manual`) and is placed on the send processing queue. Email
+content is rendered and stored at that time. In case the feed/posts were updated
+after the preview was rendered, the email is rendered using the same data used
+to render the preview.
 
 ## Feed syncing
 
@@ -234,7 +247,8 @@ threads. The thread pool fetches feeds and updates the feed and post entities.
 Feeds are fetched using the `etag` and `last modified` attributes/headers
 properly to avoid requesting data unnecessarily. Timeout setting for the HTTP
 client library are also set appropriately. We set the user agent to `platypub`.
-After a feed is fetched, its publication is placed on the send readiness queue.
+After a feed is fetched, all of its publications are placed on the send
+readiness queue.
 
 On the publication page, there is a "Sync feed" button that puts the
 publication's feed on the queue immediately with a priority higher than the
@@ -251,18 +265,16 @@ publication's feed to it.
 ### Matching posts
 
 When fetching feeds, a post in the feed matches a post entity we've already
-created if:
+created for that feed if:
 
-- the posts have the same feed
 - `GUID` is set and it matches, OR
-- `GUID` is not set, but `URL` is set and it matches, OR
-- `GUID` and `URL` are not set but `content hash` matches.
+- `GUID` is not set on the parsed feed, but `URL` is set and it matches, OR
+- `GUID` and `URL` are not set on the parsed feed but `content hash` matches.
 
-any of the attributes `GUID`, `title`, or `URL` are non-empty and have the same
-values. When a post matches, we update any fields that have changed instead of
-creating a new post. We do not update `present as of` for existing posts; that
-attribute is only updated in response to a publication being created/updated. We
-do set `present as of` to `fetched at` when creating posts.
+When a post matches, we update any fields that have changed instead of creating
+a new post. We do not update `present as of` for existing posts; that attribute
+is only updated in response to a publication being created/updated. We do set
+`present as of` to `fetched at` when creating posts.
 
 ## Subscriber management
 
@@ -290,24 +302,32 @@ Every 6 hours, a scheduled task should use the email provider's API to get a
 list of email addresses who have complained or hard bounced in the past 24
 hours. `suppressed` should be set for these email addresses on all publications.
 
+These limitations are acceptable for now:
+
+- Suppression doesn't apply to future subscriptions on other publications.
+- Complaint/hard bounce events could be missed if polling is interrupted for
+  over 24 hours.
+
 ## Email rendering
 
-Posts in an email are ordered first by `fetched at` (oldest first), then by
-`published at` (oldest first, unset last), then by post ID (ordering doesn't
-matter as long as its stable).
+Posts in an email are ordered first by if they have a URL or not (posts with
+URLs come first), then by `fetched at` (oldest first), then by `published at`
+(oldest first, unset last), then by post ID (ordering doesn't matter as long as
+its stable).
 
 The From address is hardcoded in the email provider settings (on their website)
 or via an environment config setting if we need to include a value in our API
 calls. The From name and Reply-To name are the publication title. The Reply-To
 address is the user's `email`. The subject is the title of the first post that
 has a title. If no posts have a title, the subject is the first 40 characters of
-the first post's content, with an ellipsis if the content is longer than 40
-characters.
+the first post's plain text content, with an ellipsis if the content is longer
+than 40 characters.
 
 Each post is rendered with its title, URL, author information, and
 content/excerpt. If there is only one post, then we render the post's full
 content. If there are multiple posts, we render the `excerpt` instead of the
-full content and we also render `published at` if set.
+full content and we also render `published at` if set. However, if a post has no
+URL, we always render the full content, not the `excerpt`.
 
 If there is only one post and it has a URL, the URL is rendered as a "Read
 online" link. If there are multiple posts, each post's URL is rendered as the
@@ -315,17 +335,23 @@ link target for `published at` if set and as a "Read online" link if not.
 
 If a post doesn't have an `author name` and the publication does have a `default
 author name`, the post uses the `default author name`, `default author URL`, and
-`default image URL` from the publication as its author information. The defaults
-are all-or-nothing; the publication's `default author name` would not be used
-with the post's `author URL` for example. If the post doesn't have an author
-name (whether from the post or the publication), the other author information is
-ignored.
+`default author image URL` from the publication as its author information. The
+defaults are all-or-nothing; the publication's `default author name` would not
+be used with the post's `author URL` for example. If the post doesn't have an
+author name (whether from the post or the publication), the other author
+information is ignored.
 
 If there are multiple posts, author information is rendered along with each
 post. Except that if each post has the same author information, the author
 information is rendered once at the top of the email.
 
 The intro is rendered in italics if set.
+
+When creating the send and rendering the content to be stored, the unsubscribe
+URL is rendered as a template value that will be replaced.
+If the email provider has a way to provide email content as a template and
+supply per-subscriber values to be inserted, do that. Otherwise, we should
+supply separate content for each subscriber with the unsubscribe URL rendered.
 
 ## Notes
 

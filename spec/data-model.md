@@ -43,22 +43,20 @@ Required:
 
 Optional:
 
-- `automatic sending threshold`. When set, posts fetched after this time
+- `automatic send threshold`. When set, posts fetched after this time
   are sent automatically. Default `created at`.
 - `description`. Text shown on the subscribe form.
 - `intro`. Text placed before email text content e.g. to remind subscribers what
   this publication is.
 - `banner image URL`. An image placed at at the top of emails and on the
   subscribe form.
-- `default author name`. Placed in email content if the post author name isn't
-  set.
-- `default author URL`. Placed in email content if the post author URL isn't
-  set.
-- `default author image URL`. Placed in email content if the post author image
-  isn't set.
+- `default author name`. Used in email content.
+- `default author URL`. Used in email content.
+- `default author image URL`. Used in email content.
 - `filter tag`. Text. If set, posts are not automatically sent if they don't
   have this tag.
-- `remove tag`. Text. If set, posts are not sent if they have this tag.
+- `remove tag`. Text. If set, posts are not automatically sent if they have this
+  tag.
 
 Details:
 
@@ -130,7 +128,7 @@ Required:
 - `email`
 - `publication ID`
 - `subscribed at`
-- `confirmation required`. The value of the publication's `require confirmation`
+- `require confirmation`. The value of the publication's `require confirmation`
   setting at the time of `subscribed at`. If the subscriber previously
   unsubscribed and is attempting to re-subscribe, this field is set to true
   regardless of the publication setting.
@@ -147,8 +145,6 @@ Optional:
   was submitted.
 - `query params` (JSON blob). The query parameters from when the subscribe form
   was submitted.
-- `confirmed at`. The time at which the subscriber clicked the link in a
-  confirmation email.
 - `unsubscribed at`. The time at which the subscriber unsubscribed from this
   publication.
 - `suppressed`. Set if the subscriber marks the publication's email as spam or
