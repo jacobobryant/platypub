@@ -25,6 +25,9 @@ Required:
 - `feed ID`. The feed containing the content for this publication. This can
   change.
 - `feed ID updated at`
+- `title`. Text used on the subscribe form and as the "From" name on emails.
+  When creating a publication, if the feed doesn't have a title, this defaults
+  to the feed URL.
 - `padding color`. Color to use for the space around email content and around
   the subscribe form. Default off-white.
 - `background color`. Color to use for the backgrund of email content and the
@@ -33,8 +36,6 @@ Required:
   black.
 - `primary color`. Color to use for links and buttons in emails and on the
   subscribe form. Default blue.
-- `automatic sending enabled at`. When enabled, posts fetched after this time
-  are sent automatically. Default `created at`.
 - `welcome html`. Content for the welcome email. Defaults to "Thanks for
   subscribing."
 - `require confirmation`. If true, new subscribers must confirm their
@@ -42,19 +43,21 @@ Required:
 
 Optional:
 
-- `title`. Text used on the subscribe form and as the "From" name on emails.
+- `automatic sending threshold`. When set, posts fetched after this time
+  are sent automatically. Default `created at`.
 - `description`. Text shown on the subscribe form.
 - `intro`. Text placed before email text content e.g. to remind subscribers what
   this publication is.
 - `banner image URL`. An image placed at at the top of emails and on the
   subscribe form.
-- `default author name`. Placed in email content if the post author ID isn't
+- `default author name`. Placed in email content if the post author name isn't
   set.
 - `default author URL`. Placed in email content if the post author URL isn't
   set.
 - `default author image URL`. Placed in email content if the post author image
   isn't set.
-- `filter tag`. Text. If set, posts are not sent if they don't have this tag.
+- `filter tag`. Text. If set, posts are not automatically sent if they don't
+  have this tag.
 - `remove tag`. Text. If set, posts are not sent if they have this tag.
 
 Details:
@@ -104,6 +107,7 @@ Optional, taken mostly verbatim from the feed:
 - `url`
 - `content ID`. object storage foreign key. content is json with keys `html`
   and/or `text`.
+- `content hash`. A hash of the object referenced by `content ID`.
 - `tags`
 - `author name`
 - `author url`
@@ -126,13 +130,17 @@ Required:
 - `email`
 - `publication ID`
 - `subscribed at`
-- `require confirmation`. The value of the publication's `require confirmation`
+- `confirmation required`. The value of the publication's `require confirmation`
   setting at the time of `subscribed at`. If the subscriber previously
   unsubscribed and is attempting to re-subscribe, this field is set to true
   regardless of the publication setting.
 
 Optional:
 
+- `confirmation triggered at`. The time at which a confirmation email was sent.
+- `confirmation token` (blob). A randomly generated token used for confirmation.
+- `confirmed at`. The time at which the subscriber successfully confirmed their
+  subscription.
 - `headers` (JSON blob). The HTTP request headers from when the subscribe form
   was submitted.
 - `form params` (JSON blob). The form parameters from when the subscribe form
@@ -155,7 +163,8 @@ Required:
 
 - `publication ID`
 - `started at`
-- `last sent at`. The time at which the most recent send attempt was made.
+- `progress at`. The last time progress was reported for this send. Default
+  `started at`.
 - `status` (enum: pending or finished).
 - `from name`
 - `subject`.

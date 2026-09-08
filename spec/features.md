@@ -26,7 +26,7 @@ and that it contains at least one post. If so, we check if there is already a
 feed entity with the same URL. If so we use that feed ID; otherwise we create a
 new feed. We save/update posts from the feed. Then we create a publication. The
 feeds posts' `present as of` is set to the same value as the publication's `feed
-ID updated at` value.
+ID updated at` value (only for posts in the feed response we just fetched).
 
 We attempt to use values from the feed to populate these publication attributes:
 
@@ -47,6 +47,7 @@ it:
 - feed URL (we convert this to a feed ID transparently, fetching the feed and
   saving/updating posts using the same logic as when creating the publication)
 - automatic sending
+- require confirmation
 - title, description, intro
 - banner image
 - default author info
@@ -90,7 +91,7 @@ Posts are sorted (first by `fetched at`, then by `published at`, then by ID) and
 paginated (20 per page). The list view shows if and when a post was sent (the
 send's `started at` value). There is no page to view an individual post.
 
-## Subscribe form
+## Subscribing
 
 The publication page shows a URL for the subscribe form (hosted page, with
 publication ID as a URL path param) and an html snippet for embedding the
@@ -112,6 +113,35 @@ In all cases, the subscribe form should show the same message afterward (even if
 that message is inaccurate, like "we've sent you a confirmation email") since we
 don't want to expose any information about the subscriber's state.
 
+### Confirmation emails
+
+A confirmation email is sent when:
+
+- someone successfully submits the signup form
+- `suppressed` is not set
+- `require confirmation` is true
+- `confirmed at` is not set
+
+When sending a confirmation email, a random token is stored in `confirmation
+token` and `confirmation triggered at` is set to the current time. The
+confirmation email includes a link with the token embedded in a path parameter
+(email clients sometimes remove or alter query parameters). The token is valid
+for 24 hours. If the user clicks the link and the token is still valid,
+`confirmed at` is set to the current time, and `confirmation triggered at` and
+`confirmation token` are both cleared.
+
+### Welcome email
+
+A welcome email is sent when someone who was not previously an active subscriber
+becomes an active subscriber.
+
+### Unsubscribing
+
+Send emails (i.e. not welcome or confirmation emails) always include an
+unsubscribe link at the bottom. They also set whatever unsubscribe headers are
+allowed by the email provider for the current plan. When a user unsubscribes,
+`unsubscribe at` is set to the current time.
+
 ## Sending emails
 
 Every 10 minutes, a scheduled task queries for all the publications and puts
@@ -124,34 +154,53 @@ batch of publications. The thread determines which publications are ready for an
 automatic send. A publication is ready if:
 
 - automatic sending is enabled.
-- the most recent send for that publication started at least 24 hours ago.
-- the publication has at least one post that was fetched after the most recent
-  send.
-- the publication has at least one eligible subscriber.
+- the most recent send (manual or automatic) for that publication started at
+  least 24 hours ago OR there are no previous sends.
+- the publication has at least one visible post that (1) was fetched after the
+  most recent send, manual or automatic (if one exists) AND after `automatic
+  sending threshold`; and (2) has `filter tag` in its tags if set; and (3) does
+  not have `remove tag` in its tags if set. Tags are not case-sensitive, and
+  whitespace is trimmed.
+- the publication has at least one active subscriber.
 
 For each ready publication, a send is created (with `status = pending` and
 `provenance = automatic`) and placed on the send processing queue. The send
-includes all posts for the publication that were fetched after the most recent
-prior send.
+includes the posts that match the criteria described above.
+
+`automatic send threshold` should be bumped to the current time when a
+publication's feed changes and when automatic sending is re-enabled after being
+disabled.
 
 ### Send processing queue
 
 Emails are sent by a single thread that consumes an in-memory priority queue.
 Each queue item includes a send ID. Sends with `provenance = manual` get higher
 priority than sends with `provenance = automatic`. The consuming thread queries
-for all the eligible subscribers that do not yet have a send attempt for this
-send and then sends them an email with our email service provider's API. Prior
-to each API call, we create a send attempt entity for each subscriber included
-in the API call. This ensures "at most once" processing of send attempts.
+for:
 
-The thread must be sure to respect API rate limits. When creating send attempt
-entities, we also update the send's `last sent at` attribute. After all the send
-attempts have been made, we change the send's `status` to `finished`.
+- all the active subscribers
+- who joined before this send was created
+- and who do not yet have a send attempt for this send
+
+The thread then sends each subscriber an email with our email service provider's
+API. Prior to each API call, we create a send attempt entity for each subscriber
+included in the API call. This ensures "at most once" processing of send
+attempts.
+
+The thread must be sure to respect API rate limits, for example, by backing off
+and retrying, and also by throttling our requests to avoid hitting rate limits
+in the first place. When creating send attempt entities, we also update the
+send's `progress at` attribute. After all the send attempts have been made, we
+change the send's `status` to `finished`.
+
+API errors not related to rate limits should result in the send attempts being
+skipped (with the entities still in the database) instead of retried. These
+errors should be logged.
 
 ### Resuming sends
 
 We run another scheduled task every 10 minutes that queries for send entities
-with `status = pending` and a `last sent at` value over 15 minutes ago. These
+with `status = pending` and a `progress at` value over 15 minutes ago. These
 sends are added to the send processing queue.
 
 ### Manual sending
@@ -162,7 +211,9 @@ which post(s) to include in the send. Only posts not already sent can be
 selected. The user sees a preview of the full HTML that will be sent and also
 the from name and subject. After the user confirms, a send is created (with
 `status = pending` and `provenance = manual`) and is placed on the send
-processing queue.
+processing queue. Email content is rendered and stored at that time.
+In case the feed/posts were updated after the preview was rendered, the email is
+rendered using the same data used to render the preview.
 
 ## Feed syncing
 
@@ -189,13 +240,29 @@ On the publication page, there is a "Sync feed" button that puts the
 publication's feed on the queue immediately with a priority higher than the
 feeds put on the queue by the scheduled task.
 
+### Post content
+
+When parsing a feed, if there is no content set but there is a URL, then the
+content is `<a href="{URL}">URL</a>`. If there is no content and no URL, skip
+the post. If the feed does not have any posts with URL or content set, the feed
+does not count as having any posts and is invalid when trying to set a
+publication's feed to it.
+
 ### Matching posts
 
 When fetching feeds, a post in the feed matches a post entity we've already
-created if any of the attributes `GUID`, `title`, or `URL` are non-empty and
-have the same values. When a post matches, we update any fields that have
-changed instead of creating a new post. We do not update `present as of`; that
-attribute is only updated in response to a publication being created/updated.
+created if:
+
+- the posts have the same feed
+- `GUID` is set and it matches, OR
+- `GUID` is not set, but `URL` is set and it matches, OR
+- `GUID` and `URL` are not set but `content hash` matches.
+
+any of the attributes `GUID`, `title`, or `URL` are non-empty and have the same
+values. When a post matches, we update any fields that have changed instead of
+creating a new post. We do not update `present as of` for existing posts; that
+attribute is only updated in response to a publication being created/updated. We
+do set `present as of` to `fetched at` when creating posts.
 
 ## Subscriber management
 
@@ -209,6 +276,56 @@ you can select multiple subscribers and unsubscribe them at once (e.g. in case
 you get a bunch of spam subscribes). The table has a sticky header row with an
 unsubscribe button that becomes enabled when you have at least one subscriber
 selected.
+
+## Email providers
+
+The only supported email provider is https://mailersend.com. Include an
+environment config setting to specify what plan is being used, since some
+features we want to use may only be available on certain plans (like the ability
+to set unsubscribe headers).
+
+## Complaint and bounce handling
+
+Every 6 hours, a scheduled task should use the email provider's API to get a
+list of email addresses who have complained or hard bounced in the past 24
+hours. `suppressed` should be set for these email addresses on all publications.
+
+## Email rendering
+
+Posts in an email are ordered first by `fetched at` (oldest first), then by
+`published at` (oldest first, unset last), then by post ID (ordering doesn't
+matter as long as its stable).
+
+The From address is hardcoded in the email provider settings (on their website)
+or via an environment config setting if we need to include a value in our API
+calls. The From name and Reply-To name are the publication title. The Reply-To
+address is the user's `email`. The subject is the title of the first post that
+has a title. If no posts have a title, the subject is the first 40 characters of
+the first post's content, with an ellipsis if the content is longer than 40
+characters.
+
+Each post is rendered with its title, URL, author information, and
+content/excerpt. If there is only one post, then we render the post's full
+content. If there are multiple posts, we render the `excerpt` instead of the
+full content and we also render `published at` if set.
+
+If there is only one post and it has a URL, the URL is rendered as a "Read
+online" link. If there are multiple posts, each post's URL is rendered as the
+link target for `published at` if set and as a "Read online" link if not.
+
+If a post doesn't have an `author name` and the publication does have a `default
+author name`, the post uses the `default author name`, `default author URL`, and
+`default image URL` from the publication as its author information. The defaults
+are all-or-nothing; the publication's `default author name` would not be used
+with the post's `author URL` for example. If the post doesn't have an author
+name (whether from the post or the publication), the other author information is
+ignored.
+
+If there are multiple posts, author information is rendered along with each
+post. Except that if each post has the same author information, the author
+information is rendered once at the top of the email.
+
+The intro is rendered in italics if set.
 
 ## Notes
 
