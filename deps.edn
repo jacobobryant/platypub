@@ -1,6 +1,6 @@
 {:paths ["src" "resources" "target/resources"]
  :deps  {org.clojure/clojure       {:mvn/version "1.12.6"}
-         com.biffweb/defaults      {:mvn/version "2.0.0-rc26"}
+         com.biffweb/defaults      {:mvn/version "2.0.1-SNAPSHOT"}
          dev.onionpancakes/chassis {:mvn/version "1.0.365"}
          cheshire/cheshire         {:mvn/version "6.2.0"}
          hato/hato                 {:mvn/version "1.0.0"}
@@ -15,5 +15,5 @@
                      "-XX:+CrashOnOutOfMemoryError"]
          :main-opts ["-m" "com.platypub"]}
   :run  {:extra-paths ["test"]
-         :extra-deps  {com.biffweb/tasks {:mvn/version "2.0.0-rc26"}}
+         :extra-deps  {com.biffweb/tasks {:mvn/version "2.0.1-SNAPSHOT"}}
          :main-opts   ["-m" "com.biffweb.tasks.app"]}}}
