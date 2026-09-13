@@ -1,36 +1,59 @@
-{:biff.admin/alert-email   #biff/env ALERT_EMAIL
- :biff.admin/admin-user-id #biff/env ADMIN_USER_ID
+{:biff.admin/admin-user-id #biff/env ADMIN_USER_ID,
+ :biff.admin/alert-email   #biff/env ALERT_EMAIL,
 
- :biff.auth/skip-captcha       #boolean #or [#biff/env SKIP_CAPTCHA
-                                             "false"]
- :biff.auth/turnstile-secret   #biff/secret TURNSTILE_SECRET_KEY
- :biff.auth/turnstile-site-key #biff/env TURNSTILE_SITE_KEY
+ :biff.auth/skip-captcha
+ #boolean #or [#biff/env SKIP_CAPTCHA "false"],
+
+ :biff.auth/turnstile-secret   #biff/secret
+                                TURNSTILE_SECRET_KEY,
+ :biff.auth/turnstile-site-key #biff/env TURNSTILE_SITE_KEY,
 
  :biff.config/system-properties
- {"clojure.main.report"                          "stderr"
-  "org.slf4j.simpleLogger.log.com.zaxxer.hikari" "error"
-  "org.slf4j.simpleLogger.log.org.eclipse.jetty" "error"}
+ {"clojure.main.report"                          "stderr",
+  "org.slf4j.simpleLogger.log.com.zaxxer.hikari" "error",
+  "org.slf4j.simpleLogger.log.org.eclipse.jetty" "error"},
 
- :biff.ring/cookie-secret #biff/secret COOKIE_SECRET
- :biff.ring/host          #or [#biff/env HOST "localhost"]
- :biff.ring/port          #long #or [#biff/env PORT "8080"]
- :biff.ring/secure        #boolean #or [#biff/env SECURE "true"]
+ :biff.ring/cookie-secret   #biff/secret COOKIE_SECRET,
+ :biff.ring/host            #or [#biff/env HOST "localhost"],
+ :biff.ring/port            #long #or [#biff/env PORT "8080"],
+ :biff.ring/secure          #boolean #or [#biff/env SECURE "true"],
+ :biff.sqlite/db-path       #or [#biff/env SQLITE_DB_PATH
+                                 "storage/sqlite/main.db"],
+ :biff.tasks/css-input-path "resources/tailwind.css",
 
- :biff.sqlite/db-path #or [#biff/env SQLITE_DB_PATH "storage/sqlite/main.db"]
-
- :biff.tasks/css-input-path  "resources/tailwind.css"
- :biff.tasks/css-output-path "target/resources/public/css/main.css"
- :biff.tasks/deployment-name #or [#biff/env DEPLOYMENT_NAME "biff-demo"]
+ :biff.tasks/css-output-path
+ "target/resources/public/css/main.css",
 
  :biff.tasks/deploy-untracked-files
  [#ref [:biff.tasks/css-output-path]
-  {:src "config.prod.env" :dest "config.env"}]
+  {:dest "config.env", :src "config.prod.env"}],
 
- :biff.tasks/domain     #biff/env DOMAIN
- :biff.tasks/main-ns    com.platypub
- :biff.tasks/nrepl-port #long #or [#biff/env NREPL_PORT "7888"]
+ :biff.tasks/deployment-name #or [#biff/env DEPLOYMENT_NAME
+                                  "biff-demo"],
+ :biff.tasks/domain          #biff/env DOMAIN,
+ :biff.tasks/main-ns         com.platypub,
+ :biff.tasks/nrepl-port      #long #or [#biff/env NREPL_PORT
+                                        "7888"],
+ :mailersend/api-key         #biff/secret MAILERSEND_API_KEY,
+ :mailersend/base-url        #or [#biff/env MAILERSEND_BASE_URL
+                                  "https://api.mailersend.com"],
+ :mailersend/from            #biff/env MAILERSEND_FROM,
+ :mailersend/from-name       "My Application",
 
- :mailersend/api-key   #biff/secret MAILERSEND_API_KEY
- :mailersend/from      #biff/env MAILERSEND_FROM
- :mailersend/from-name "My Application"
- :mailersend/reply-to  #biff/env MAILERSEND_REPLY_TO}
+ :mailersend/mock-enabled
+ #boolean #or [#biff/env MOCK_MAILERSEND "false"],
+
+ :mailersend/plan     #keyword #or [#biff/env MAILERSEND_PLAN
+                                    "free"],
+ :mailersend/reply-to #biff/env MAILERSEND_REPLY_TO,
+ :platypub/base-url   #or [#biff/env BASE_URL
+                           "http://localhost:8080"],
+
+ :platypub/unsubscribe-secret
+ #or [#biff/secret UNSUBSCRIBE_SECRET
+      #biff/secret COOKIE_SECRET],
+
+ :platypub/waitlist-enabled
+ #boolean #or [#biff/env WAITLIST_ENABLED "false"]
+
+ :biff.tasks/skip-project-files true}
