@@ -14,6 +14,6 @@
                      "-XX:-OmitStackTraceInFastThrow"
                      "-XX:+CrashOnOutOfMemoryError"]
          :main-opts ["-m" "com.platypub"]}
-  :run  {:extra-paths ["test"]
+  :run  {:extra-paths ["dev" "test"]
          :extra-deps  {com.biffweb/tasks {:mvn/version "2.0.1-SNAPSHOT"}}
-         :main-opts   ["-m" "com.biffweb.tasks.app"]}}}
+         :main-opts   ["-m" "tasks"]}}}
