@@ -26,3 +26,12 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - search params are modeled in the graph weirdly, e.g. `:subscriber/search`
   instead of, say, `:request/subscriber-search`
+
+- revisit the custom fx handlers. biff should probably provide handlers for
+  working with atoms. custom handlers should use `platypub.fx` for the namespace.
+
+- need some integration/e2e tests. probably plenty of work to do on the tests in
+  general; I haven't even looked at them.
+
+- I think it'd be nice to have some kind of generated document/visualization of
+  the entire data model including resolvers.
