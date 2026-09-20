@@ -11,6 +11,9 @@ users are not able to use the app. When they sign in, they see only a message
 saying that they're on the waitlist and will be notified when they are given
 access to the application.
 
+For now we don't actually need to implement a notification email for when
+waitlist mode is disabled or when a user is moved off the waitlist.
+
 ## Implementation
 
 A user's tier should be set when that user is created.

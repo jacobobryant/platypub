@@ -2,8 +2,7 @@
 
 The publication page shows a URL for the subscribe form (hosted page, with
 publication ID as a URL path param) and an html snippet for embedding the
-subscribe form. The subscribe form is captcha protected with cloudflare
-turnstile, falling back to hcaptcha if the user is blocking cloudflare.
+subscribe form. The subscribe form is captcha protected.
 
 Email addresses are normalized by trimming whitespace from the ends and
 converting to lower case.
@@ -54,3 +53,9 @@ contain a JWT that's valid for 30 days. A signing secret is provided as an
 environment config setting. For GET requests, an unsubscribe confirmation page
 is shown with the user's email address and a button to confirm. For POST
 requests, the unsubscribe is processed immediately.
+
+## Implementation
+
+For captcha protection, default to cloudflare turnstile, falling back to
+hcaptcha if the user is blocking cloudflare. There is a config option which can
+be set to disable captcha; this flag will be set in dev.

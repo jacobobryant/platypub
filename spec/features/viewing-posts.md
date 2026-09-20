@@ -9,6 +9,13 @@ particular publication, they see a list of posts for that publication (the
     - the post's `present as of` value is >= the publication's `feed ID updated
       at` value.
 
+This does technically mean that the visibility of a post for publication A can
+change if publication B is updated to use the same feed (and if there was a
+historical post that was removed before publication A's feed was set and that
+was restored after publication B's feed was set). This edge case is fine.
+Publication A is still unable to see any historical posts that haven't been
+restored to the feed, which is the main thing.
+
 This spec guarantees that a publication always has at least one post since
 you cannot set a publication's feed to a feed that doesn't have at least one
 post.

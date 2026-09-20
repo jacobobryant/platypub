@@ -4,9 +4,6 @@ Notes:
 
 - Each user entity implicitly has an ID of type UUID v7.
 
-- Although this document describes using object storage, for now we can just
-  store content in the database.
-
 ## User
 
 Required:
