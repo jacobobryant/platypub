@@ -35,3 +35,16 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - I think it'd be nice to have some kind of generated document/visualization of
   the entire data model including resolvers.
+
+- there's some weird stuff in the authorization rules like the idea that a user
+  can own a feed or a post. Maybe should make rules declarative/specified as
+  data so it can be vizualized and/or more easily dictated as part of the spec.
+  and/or maybe wouldn't be that hard to go ahead and just write the rules up as
+  part of the spec without any additional tooling, similar to the data model.
+
+- more structure for tab state. e.g. make the keys namespaced by current page?
+
+- remove vestiges from the starter project.
+
+- pull schema helper functions from schema.clj into a new
+  com.biffweb.sqlite.schema namespace.
