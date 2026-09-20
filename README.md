@@ -22,3 +22,21 @@ as Platypub progresses):
 
 - Custom themes are arbitrary code that ingest your posts and output a pile of
   html etc. Platypub runs the code in a sandbox.
+
+## Status
+
+I've thrown out all the pre-2026 code and have started fresh with Biff 2.
+Not recommended for actual use yet, other than by myself.
+
+This is intended to be mostly LLM-developed via [the specs](specs/) and the
+`biff-code-review` skill (also WIP).
+
+## Developing
+
+Start the app:
+
+```
+clj -M:run dev
+```
+
+See `clj -M:run -h` for other commands.
