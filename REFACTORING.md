@@ -1,0 +1,28 @@
+# Refactoring
+
+These are areas that are known to be ugly/in need of refactoring:
+
+- model.request: attribute parsing is ad-hoc; it would be better if it were more
+  declarative/automatic similar to how reitit routes accepts a malli schema and
+  will coerce parameters into the appropriate types.
+
+- model.request: the attributes that request parameters get placed into are
+  sometimes overly complicated/nested
+
+- lib.middleware: app-access is gross in multiple ways. (1) does a
+  non-primary-key-lookup query; (2) sometimes runs a sqlite transaction; (3)
+  return value is inserted into ctx. Instead we should make :user/tier required
+  and set it when users are created. request handlers that need to know the tier
+  (e.g. is it admin or free) should get that info via biff.graph.
+
+- use remus for parsing feeds
+
+- currently using sqlite for object storage, which honestly is fine for now. But
+  if/when this is deployed in non-waitlist mode, may want to switch to using
+  actual object storage.
+
+- biff.sqlite should autogen more resolvers, like lookup-by-unique-field(s) and
+  back references.
+
+- search params are modeled in the graph weirdly, e.g. `:subscriber/search`
+  instead of, say, `:request/subscriber-search`
