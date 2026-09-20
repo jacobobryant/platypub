@@ -10,3 +10,7 @@ new users (other than the admin user) are put on the "waitlist" tier. Waitlist
 users are not able to use the app. When they sign in, they see only a message
 saying that they're on the waitlist and will be notified when they are given
 access to the application.
+
+## Implementation
+
+A user's tier should be set when that user is created.

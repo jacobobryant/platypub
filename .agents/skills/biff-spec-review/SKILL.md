@@ -1,0 +1,48 @@
+---
+name: biff-spec-review
+description: Review the spec and enumerate unimplemented parts and open questions.
+---
+
+Review the `spec/` folder and then create/overwrite two files:
+
+- `spec/agent/plan.md`: a checklist of changes that need to be made to the
+  codebase to bring it in line with the spec. Each item in the checklist
+  includes file(s) and line numbers from the spec, formatted like `- [ ]
+  [widgets should
+  frobulate](/spec/features/widgets.md#frobulation?lines=12-14)`. Do not include
+  any additional information. If there is nothing to implement, delete the file.
+
+- `spec/agent/questions.md`: a list of questions that the user should clarify
+  (by editing the spec) before implementation. These should address things like
+  contradictions, ambiguities, and under-specification. Include a recommendation
+  with each question. Include files and line numbers similar to `plan.md`. If
+  there are no questions, delete the file.
+
+After you've updated those files, if there are items in both `plan.md` and
+`questions.md`, then output this text to the user:
+
+> spec/agent/plan.md has been updated with items from the spec that need to be
+> implemented. See spec/agent/questions.md for a review of the spec. After
+> you've updated the spec, say `update` and then I'll review the spec again. If
+> my recommendations for all the open questions are good, run the biff-spec-dev
+> skill to implement the spec.
+
+Replace "run the biff-spec-dev skill" with the exact text for running that skill
+in the current agent harness, e.g. "run `$biff-spec-dev`" for Codex, "run
+`/biff-spec-dev`" for Claude, etc. Same for all the text snippets below.
+
+If there are items in `plan.md` but none in `questions.md`, output this text:
+
+> spec/agent/plan.md has been updated with items from the spec that need to be
+> implemented. No open questions. If you update the spec, say `update` and then
+> I'll review it again. Run the biff-spec-dev skill to implement the spec.
+
+If there are are no items in `plan.md`, output this text:
+
+> The codebase already conforms to the spec. If you update the spec, say
+> `update` and then I'll review it again.
+
+Before you start reviewing, take a snapshot of the spec by copying the `spec/`
+folder to a temporary folder. If the user asks you to update the spec, take
+another snapshot and compare (with `diff` etc) against the previous snapshot to
+ensure you notice exactly what changed.

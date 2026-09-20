@@ -45,3 +45,7 @@ When a post matches, we update any fields that have changed instead of creating
 a new post. We do not update `present as of` for existing posts; that attribute
 is only updated in response to a publication being created/updated. We do set
 `present as of` to `fetched at` when creating posts.
+
+## Implementation
+
+Use the Remus clojure library for parsing feeds.
