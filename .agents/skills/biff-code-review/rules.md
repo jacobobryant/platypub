@@ -93,8 +93,13 @@
    should define a vector of state functions and then use the sequence form of
    `defpipeline` like `(def pipeline-fns [...]) (defpipeline my-pipeline (concat
    [...] pipeline-fns [...]))`. For machines, you should do something similar
-   but with maps: `(def machine-fns {...}) (defmachine my-machine (merge
-   machine-fns ...))`.
+   but with maps: `(def state-fns {...}) (defmachine my-machine (merge state-fns
+   {...}))`.
+
+8. As state functions are updated, they should not retain any parameters that
+   aren't passed in by other state functions (or by callers of the
+   machine/pipeline). Tests should be updated to not pass in any parameters that
+   are never passed in by application code.
 
 ## C. biff.graph
 
@@ -182,6 +187,11 @@
 17. Avoid doing multiple biff.graph queries if you can combine them into a
     single query.
 
+18. Resolvers that read parameters from the request must verify that the current
+    user is authorized to read any entities associated with those parameters.
+    (Note that `:biff.datastar/tab-id` is already scoped to the current user, so
+    it is already verified.)
+
 ## D. Authorization rules
 
 1. If the database adapter supports authorization rules (e.g.
@@ -220,6 +230,11 @@
 
 2. `defpath`s referenced from only one file should be defined in that file;
    other paths should be defined in a shared `routes.clj` file.
+
+3. A path must not have multiple params unless none of the params can be
+   inferred inferred from the others. e.g. if there is a one-to-many
+   relationship between a `user` and a `pet`, then `/pet/:pet-id` is sufficient
+   to infer the user ID.
 
 ## F. biff.datastar
 
@@ -296,3 +311,6 @@
 12. Don't break a form pair (let bindings, map entries, cond pairs, etc) on to
     separate lines if it can fit on one line without exceeding the max line
     length (as set in clj-kondo config).
+
+13. Don't separate form pairs with a blank line unless it's needed to prevent
+    exceeding the max line length.

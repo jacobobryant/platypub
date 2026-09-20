@@ -39,14 +39,11 @@
 
         now (tick/instant "2026-01-01T00:00:00Z")
 
-        publication-id (random-uuid)
-
         subscriber-id (random-uuid)]
     (is (= {:status 404} (state {:biff.fx/now now} {})))
     (let [result
           (state {:biff.fx/now now}
-                 {:request/publication {:publication/id publication-id}
-                  :request/subscriber  {:subscriber/id subscriber-id}})]
+                 {:request/subscriber {:subscriber/id subscriber-id}})]
       (is (= :biff.sqlite.fx/authorized-write (get-in result [:_write 0])))
       (is (= now
              (get-in result
@@ -55,9 +52,7 @@
     (is (nil?
          (get-in
           (state {:biff.fx/now now}
-                 {:request/publication {:publication/id publication-id}
-
-                  :request/subscriber
+                 {:request/subscriber
                   {:subscriber/id              subscriber-id
                    :subscriber/unsubscribed-at now}})
           [:_write 1 :set :subscriber/unsubscribed-at])))))

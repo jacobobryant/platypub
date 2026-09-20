@@ -163,14 +163,17 @@
         "")}})
 
 (defresolver admin-publications
-  {:input  [{:request/admin-publication-search [:publication/search]}]
+  {:input  [{:request/user [:user/tier]}
+            {:request/admin-publication-search [:publication/search]}]
    :output [{:request/admin-publications [:publication/id]}]}
   (fn [_ctx input]
     (let [search (get-in input
                          [:request/admin-publication-search
                           :publication/search])]
       {:request/admin-publications
-       (if (seq search)
+       (if (and (= :user.tier/admin
+                   (get-in input [:request/user :user/tier]))
+                (seq search))
          [:biff.sqlite.fx/execute
           {:select   [:publication/id]
            :from     :publication
@@ -221,25 +224,28 @@
                          [:like :subscriber/email (str "%" search "%")]]))]})))
 
 (defresolver subscriber
-  {:input  [{:request/publication [:publication/id]}]
+  {:input  [{:request/user [:user/id]}]
    :output [{:request/subscriber [:subscriber/id]}]}
 
   (fn [ctx input]
-    (when-let [subscriber-id (request/path-uuid ctx :subscriber-id)]
-      {:subscriber-id subscriber-id
+    (let [subscriber-id (request/path-uuid ctx :subscriber-id)
+          user-id       (get-in input [:request/user :user/id])]
+      (when (and subscriber-id user-id)
+        {:subscriber-id subscriber-id
 
-       :subscriber
-       [:biff.sqlite.fx/execute
-        {:select [:subscriber/id]
-         :from   :subscriber
-         :where  [:and
-                  [:= :subscriber/id subscriber-id]
-                  [:= :subscriber/publication-id
-                   (get-in input
-                           [:request/publication :publication/id])]]}]}))
+         :subscriber
+         [:biff.sqlite.fx/execute
+          {:select [:subscriber/id]
+           :from   :subscriber
+           :join   [:publication
+                    [:= :publication/id :subscriber/publication-id]]
+           :where  [:and
+                    [:= :subscriber/id subscriber-id]
+                    [:= :publication/user-id user-id]]}]})))
 
   (fn [_ {:keys [subscriber-id subscriber]}]
-    (when (= subscriber-id (:subscriber/id (first subscriber)))
+    (when (and subscriber-id
+               (= subscriber-id (:subscriber/id (first subscriber))))
       {:request/subscriber {:subscriber/id subscriber-id}})))
 
 (defresolver subscription
@@ -283,10 +289,13 @@
           :request/token      token}}))))
 
 (defresolver admin-user-tier
-  {:output [{:request/admin-user-tier [:user/id :user/tier :request/tier]}]}
+  {:input  [{:request/user [:user/tier]}]
+   :output [{:request/admin-user-tier [:user/id :user/tier :request/tier]}]}
 
-  (fn [ctx _]
-    (when-let [user-id (request/path-uuid ctx :id)]
+  (fn [ctx input]
+    (when-let [user-id (and (= :user.tier/admin
+                               (get-in input [:request/user :user/tier]))
+                            (request/path-uuid ctx :id))]
       {:user-id user-id
        :tier    (request/text (request/value ctx (tier-signal user-id)))
 
@@ -304,10 +313,14 @@
         :request/tier tier}})))
 
 (defresolver admin-publication-import
-  {:output [{:request/admin-publication-import [:publication/id :request/csv]}]}
+  {:input  [{:request/user [:user/tier]}]
+   :output [{:request/admin-publication-import [:publication/id :request/csv]}]}
 
-  (fn [ctx _]
-    (when-let [publication-id (request/path-uuid ctx :id)]
+  (fn [ctx input]
+    (when-let [publication-id
+               (and (= :user.tier/admin
+                       (get-in input [:request/user :user/tier]))
+                    (request/path-uuid ctx :id))]
       (when-let [upload (request/value ctx :request/csv)]
         (let [upload (upload-value upload)]
           (when-not upload
@@ -324,7 +337,8 @@
              :where  [:= :publication/id publication-id]}]}))))
 
   (fn [_ {:keys [publication-id csv publication]}]
-    (when (= publication-id (:publication/id (first publication)))
+    (when (and publication-id
+               (= publication-id (:publication/id (first publication))))
       {:request/admin-publication-import
        {:publication/id publication-id
         :request/csv    csv}})))
@@ -352,25 +366,18 @@
   (publication-settings ctx))
 
 (defresolver send-selection
-  {:input  [{:request/tab [[:? :tab/send-preview]]}]
-   :output [{:request/send-selection [:send/post-ids]}]}
-  [ctx input]
-  (let [post-ids (if (request/signal-present? ctx :send/post-ids)
-                   (request/value ctx :send/post-ids)
-                   (get-in input [:request/tab
-                                  :tab/send-preview
-                                  :send/post-ids]))]
-    {:request/send-selection {:send/post-ids (or (uuid-vector post-ids) [])}}))
-
-(defresolver send-posts
   {:input  [{:request/publication [:publication/id]}
-            {:request/send-selection [:send/post-ids]}]
-   :output [{:request/send-posts [:post/id]}]}
+            {:request/tab [[:? :tab/send-preview]]}]
+   :output [{:request/send-selection [:send/post-ids]}]}
 
-  (fn [_ input]
+  (fn [ctx input]
     (let [publication-id (get-in input [:request/publication :publication/id])
-          post-ids       (get-in input
-                                 [:request/send-selection :send/post-ids])]
+          post-ids       (if (request/signal-present? ctx :send/post-ids)
+                           (request/value ctx :send/post-ids)
+                           (get-in input [:request/tab
+                                          :tab/send-preview
+                                          :send/post-ids]))
+          post-ids       (or (uuid-vector post-ids) [])]
       {:post-ids post-ids
 
        :posts
@@ -398,10 +405,17 @@
                    [:is :send/id nil]]}])}))
 
   (fn [_ {:keys [post-ids posts]}]
-    {:request/send-posts
-     (if (= (set post-ids) (set (map :post/id posts)))
-       posts
-       [])}))
+    {:request/send-selection
+     {:send/post-ids
+      (if (= (set post-ids) (set (map :post/id posts))) post-ids [])}}))
+
+(defresolver send-posts
+  {:input  [{:request/send-selection [:send/post-ids]}]
+   :output [{:request/send-posts [:post/id]}]}
+  [_ input]
+  {:request/send-posts
+   (mapv #(hash-map :post/id %)
+         (get-in input [:request/send-selection :send/post-ids]))})
 
 (defresolver send-preview
   {:input  [{:request/publication [:publication/id]}

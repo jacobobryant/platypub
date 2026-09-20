@@ -96,15 +96,23 @@
          (resolve-resolver
           request/admin-publications
           {}
-          {:request/admin-publication-search {:publication/search ""}})))
+          {:request/user                     {:user/tier :user.tier/admin}
+           :request/admin-publication-search {:publication/search ""}})))
   (is (= {:request/admin-publications [{:publication/id 1}]}
          (resolve-with-effects
           request/admin-publications
           {}
-          {:request/admin-publication-search {:publication/search "news"}}
+          {:request/user                     {:user/tier :user.tier/admin}
+           :request/admin-publication-search {:publication/search "news"}}
           (fn [_ statement]
             (is (= :or (first (:where statement))))
             [{:publication/id 1}]))))
+  (is (= {:request/admin-publications []}
+         (resolve-resolver
+          request/admin-publications
+          {}
+          {:request/user                     {:user/tier :user.tier/free}
+           :request/admin-publication-search {:publication/search "news"}})))
   (is (= {:request/subscriber-search {:subscriber/search "saved"}}
          (resolve-resolver
           request/subscriber-search
@@ -121,18 +129,27 @@
           (fn [_ statement]
             (is (= :and (first (:where statement))))
             [{:subscriber/id 1}]))))
-  (let [subscriber-id (random-uuid)]
+  (let [subscriber-id (random-uuid)
+        user-id       (random-uuid)]
     (is (= {:request/subscriber {:subscriber/id subscriber-id}}
            (resolve-with-effects
             request/subscriber
             {:path-params {:subscriber-id (str subscriber-id)}}
-            {:request/publication {:publication/id 2}}
-            (fn [_ _] [{:subscriber/id subscriber-id}]))))
+            {:request/user {:user/id user-id}}
+            (fn [_ statement]
+              (is (= [:= :publication/user-id user-id]
+                     (get-in statement [:where 2])))
+              [{:subscriber/id subscriber-id}]))))
     (is (nil? (resolve-with-effects
                request/subscriber
                {:path-params {:subscriber-id (str subscriber-id)}}
-               {:request/publication {:publication/id 2}}
-               (fn [_ _] []))))))
+               {:request/user {:user/id user-id}}
+               (fn [_ _] []))))
+    (is (nil? (resolve-with-effects
+               request/subscriber
+               {}
+               {:request/user {:user/id user-id}}
+               (fn [_ _] (throw (Exception. "must not query"))))))))
 
 (deftest public-request-resolvers-test
   (let [token-bytes (byte-array [1 2 3])
@@ -212,9 +229,14 @@
               request/admin-user-tier
               {:path-params           {:id (str user-id)}
                :biff.datastar/signals {tier-key "free"}}
-              {}
+              {:request/user {:user/tier :user.tier/admin}}
               (fn [_ _] [{:user/id   user-id
                           :user/tier :user.tier/waitlist}])))))
+    (is (nil? (resolve-with-effects
+               request/admin-user-tier
+               {:path-params {:id (str user-id)}}
+               {:request/user {:user/tier :user.tier/free}}
+               (fn [_ _] (throw (Exception. "must not query"))))))
     (is (= {:request/admin-publication-import
             {:publication/id publication-id
              :request/csv    "email\nreader@example.com"}}
@@ -223,35 +245,50 @@
             {:path-params {:id (str publication-id)}
 
              :biff.datastar/signals {:request/csv "email\nreader@example.com"}}
-            {}
+            {:request/user {:user/tier :user.tier/admin}}
             (fn [_ _] [{:publication/id publication-id}]))))
+    (is (nil? (resolve-with-effects
+               request/admin-publication-import
+               {:path-params {:id (str publication-id)}
+
+                :biff.datastar/signals
+                {:request/csv "email\nreader@example.com"}}
+               {:request/user {:user/tier :user.tier/free}}
+               (fn [_ _] (throw (Exception. "must not query"))))))
     (is (= {:request/send-selection {:send/post-ids [post-id]}}
-           (resolve-resolver
+           (resolve-with-effects
             request/send-selection
             {}
-            {:request/tab {:tab/send-preview {:send/post-ids [post-id]}}})))
+            {:request/publication {:publication/id publication-id}
+
+             :request/tab
+             {:tab/send-preview {:send/post-ids [post-id]}}}
+            (fn [_ statement]
+              (is (= publication-id (get-in statement [:where 2 2])))
+              [{:post/id post-id}]))))
+    (is (= {:request/send-selection {:send/post-ids []}}
+           (resolve-with-effects
+            request/send-selection
+            {:biff.datastar/signals {:send/post-ids [post-id]}}
+            {:request/publication {:publication/id publication-id}
+             :request/tab         {}}
+            (fn [_ _] []))))
     (is (= {:request/send-selection {:send/post-ids []}}
            (resolve-resolver
             request/send-selection
             {:biff.datastar/signals {:send/post-ids ["invalid"]}}
-            {:request/tab {}})))
+            {:request/publication {:publication/id publication-id}
+             :request/tab         {}})))
     (is (= {:request/send-posts [{:post/id post-id}]}
-           (resolve-with-effects
+           (resolve-resolver
             request/send-posts
             {}
-            {:request/publication    {:publication/id publication-id}
-             :request/send-selection {:send/post-ids [post-id]}}
-            (fn [_ statement]
-              (is (= publication-id
-                     (get-in statement [:where 2 2])))
-              [{:post/id post-id}]))))
+            {:request/send-selection {:send/post-ids [post-id]}})))
     (is (= {:request/send-posts []}
-           (resolve-with-effects
+           (resolve-resolver
             request/send-posts
             {}
-            {:request/publication    {:publication/id publication-id}
-             :request/send-selection {:send/post-ids [post-id]}}
-            (fn [_ _] []))))
+            {:request/send-selection {:send/post-ids []}})))
     (is (= {:request/send-preview
             {:send/subject "Subject"
              :send/html    "<p>Preview</p>"
