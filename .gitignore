@@ -10,3 +10,4 @@
 /target/
 config.env
 config.prod.env
+/spec/agent/

@@ -7,17 +7,18 @@ Review the `spec/` folder and then create/overwrite two files:
 
 - `spec/agent/plan.md`: a checklist of changes that need to be made to the
   codebase to bring it in line with the spec. Each item in the checklist
-  includes file(s) and line numbers from the spec, formatted like `- [ ] widgets
-  should frobulate. [widget
-  frobulation](/spec/features/widgets.md#frobulation?lines=12-14)`. Do not
-  include any additional information. If there is nothing to implement, delete
-  the file.
+  includes file(s) and line numbers from the spec, formatted like `1. [ ]
+  widgets should frobulate. [widget
+  frobulation](/spec/features/widgets.md#frobulation?lines=12-14)`. Only include
+  the anchor for subheadings. Group the items under headings for "Add",
+  "Remove", "Change", and "Fix". Do not include any additional information. If
+  there is nothing to implement, delete the file.
 
-- `spec/agent/questions.md`: a list of questions that the user should clarify
-  (by editing the spec) before implementation. These should address things like
-  contradictions, ambiguities, and under-specification. Include a recommendation
-  with each question. Include files and line numbers similar to `plan.md`. If
-  there are no questions, delete the file.
+- `spec/agent/questions.md`: a numbered list of questions that the user should
+  clarify (by editing the spec) before implementation. These should address
+  things like contradictions, ambiguities, and under-specification. Include a
+  recommendation with each question. Include files and line numbers similar to
+  `plan.md`. If there are no questions, delete the file.
 
 After you've updated those files, if there are items in both `plan.md` and
 `questions.md`, then output this text to the user:
