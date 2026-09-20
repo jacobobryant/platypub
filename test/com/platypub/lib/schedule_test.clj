@@ -4,14 +4,11 @@
             [tick.core :as tick]))
 
 (deftest starting-at-state-test
-  (let [[state]
-        ((ns-resolve 'com.platypub.lib.schedule 'starting-at))
+  (let [[state] ((ns-resolve 'com.platypub.lib.schedule 'starting-at))
 
-        now
-        (tick/instant "2026-09-14T00:00:00Z")
+        now (tick/instant "2026-09-14T00:00:00Z")
 
-        duration
-        (tick/of-minutes 15)]
+        duration (tick/of-minutes 15)]
     (is (= (tick/instant "2026-09-14T00:15:00Z")
            (state {:biff.fx/now now} duration)))))
 

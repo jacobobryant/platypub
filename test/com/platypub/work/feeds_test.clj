@@ -7,10 +7,9 @@
 
 (deftest enqueue-feeds-states
   (let [[load-feeds select-ready] (feeds/enqueue-feeds)]
-    (is (= {:feeds
-            [:biff.graph.fx/query
-             [{:global/active-feeds
-               [:feed/id :feed/fetched-at :feed/failed-syncs]}]]}
+    (is (= [:biff.graph.fx/query
+            [{:global/active-feeds
+              [:feed/id :feed/fetched-at :feed/failed-syncs]}]]
            (load-feeds {})))
     (is (= [:biff.background.fx/submit-jobs
             :platypub/feed-sync

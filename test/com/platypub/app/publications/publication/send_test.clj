@@ -4,14 +4,11 @@
             [tick.core :as tick]))
 
 (deftest send-page-state-test
-  (let [[state]
-        (send/send-page)
+  (let [[state] (send/send-page)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        post-id
-        (random-uuid)]
+        post-id (random-uuid)]
     (is (= {:status 404} (state {} {})))
     (is (= 200
            (:status
@@ -34,17 +31,13 @@
                      :send/html    "<p>Preview</p>"}}))))))
 
 (deftest preview-send-state-test
-  (let [[load-content write-preview]
-        (send/preview-send)
+  (let [[load-content write-preview] (send/preview-send)
 
-        publication
-        {:publication/id (random-uuid)}
+        publication {:publication/id (random-uuid)}
 
-        post
-        {:post/id (random-uuid)}
+        post {:post/id (random-uuid)}
 
-        tab-id
-        (random-uuid)]
+        tab-id (random-uuid)]
     (is (= {:status 404} (load-content {} {})))
     (is (= {:status 404}
            (load-content {} {:request/publication publication
@@ -64,23 +57,17 @@
         (is (= {:status 204} (:biff.fx/return result)))))))
 
 (deftest confirm-send-states-test
-  (let [[load-content create submit]
-        (send/confirm-send)
+  (let [[load-content create submit] (send/confirm-send)
 
-        publication
-        {:publication/id (random-uuid)}
+        publication {:publication/id (random-uuid)}
 
-        post
-        {:post/id (random-uuid)}
+        post {:post/id (random-uuid)}
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")
+        now (tick/instant "2026-01-01T00:00:00Z")
 
-        ids
-        (repeatedly 3 random-uuid)
+        ids (repeatedly 3 random-uuid)
 
-        tab-id
-        (random-uuid)]
+        tab-id (random-uuid)]
     (is (= {:biff.fx/return {:status 204}}
            (load-content {}
                          {:request/publication publication
@@ -104,11 +91,9 @@
       (is (= (first ids) (:send-id created)))
       (is (= :biff.sqlite.fx/authorized-write-tx
              (get-in created [:_write 0]))))
-    (let [send-id
-          (random-uuid)
+    (let [send-id (random-uuid)
 
-          result
-          (submit {} {:send-id send-id})]
+          result (submit {} {:send-id send-id})]
       (is (= :biff.background.fx/submit-jobs
              (get-in result [:_submit 0])))
       (is (= {:status 204} (:biff.fx/return result))))))

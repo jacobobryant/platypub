@@ -23,8 +23,7 @@
                               [{:post/id 1}]))))
 
 (deftest automatic-posts-resolver-test
-  (let [threshold
-        (tick/instant "2026-01-01T00:00:00Z")
+  (let [threshold (tick/instant "2026-01-01T00:00:00Z")
 
         included
         {:post/id         1

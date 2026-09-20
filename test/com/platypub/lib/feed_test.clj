@@ -53,11 +53,9 @@
            (get-in (feed/load-existing {} {:url "feed"}) [:old-feed 0])))
     (is (= {:success true} (feed/finish {} {:sync {:success true}}))))
   (testing "post loading supports new feeds"
-    (let [now
-          (tick/instant "2026-09-14T00:00:00Z")
+    (let [now (tick/instant "2026-09-14T00:00:00Z")
 
-          feed-id
-          (random-uuid)
+          feed-id (random-uuid)
 
           result
           (feed/load-posts
@@ -101,11 +99,9 @@
                                         {:status 500}))))
 
 (deftest prepare-sync-statements
-  (let [now
-        (tick/instant "2026-01-01T00:00:00Z")
+  (let [now (tick/instant "2026-01-01T00:00:00Z")
 
-        feed-id
-        (random-uuid)
+        feed-id (random-uuid)
 
         result
         (prepare-sync

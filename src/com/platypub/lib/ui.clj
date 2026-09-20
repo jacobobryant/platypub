@@ -77,16 +77,14 @@
          {:type "module", :src datastar-script-url}]]
        [:body
         (merge
-         {:class
-          ["absolute min-h-full w-full flex flex-col"]}
+         {:class ["absolute min-h-full w-full flex flex-col"]}
          (when init-datastar (biff.datastar/init-opts)))
         contents]]])))
 
 (defn app-page
   [{:keys [biff.datastar/sse-request], :as ctx} & content]
   (let [content* [:div#biff-datastar-content
-                  {:class
-                   ["flex min-h-full flex-1 flex-col"]}
+                  {:class ["flex min-h-full flex-1 flex-col"]}
                   content]]
     (if sse-request
       (html-response content*)

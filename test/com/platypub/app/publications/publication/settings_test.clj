@@ -40,8 +40,7 @@
             (state {}
                    {:request/publication
                     (assoc publication
-                           :publication/feed
-                           {:feed/url "https://feed.example"})}))))))
+                           :publication/feed {:feed/url "https://feed.example"})}))))))
 
 (deftest save-settings-states-test
   (let [[save
@@ -55,14 +54,12 @@
          write]
         (settings/save-settings)
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")
+        now (tick/instant "2026-01-01T00:00:00Z")
 
         result
         {:request/publication
          (assoc publication
-                :publication/feed
-                {:feed/url "https://feed.example"})
+                :publication/feed {:feed/url "https://feed.example"})
 
          :request/feed {:feed/url "https://new-feed.example"}
 
@@ -75,18 +72,15 @@
                      [:set-values :publication/automatic-send-threshold])))
       (is (= :biff.sqlite.fx/authorized-write
              (get-in saved [:_write 0])))
-      (let [started
-            (start {} saved)
+      (let [started (start {} saved)
 
             old-feed
             {:feed/id  (:publication/feed-id publication)
              :feed/url "https://new-feed.example"}
 
-            existing
-            (load-existing {} started)
+            existing (load-existing {} started)
 
-            fetched
-            (fetch {} (assoc existing :old-feed old-feed))
+            fetched (fetch {} (assoc existing :old-feed old-feed))
 
             canonical
             (load-canonical
@@ -101,11 +95,9 @@
               :biff.fx/random-uuid7-seq [(random-uuid)]}
              (assoc canonical :canonical old-feed))
 
-            persisted
-            (persist {} (assoc posts :existing {:feed/posts []}))
+            persisted (persist {} (assoc posts :existing {:feed/posts []}))
 
-            synced
-            (finish {} persisted)]
+            synced (finish {} persisted)]
         (is (= "https://new-feed.example" (:url started)))
         (is (= :biff.graph.fx/query (get-in existing [:old-feed 0])))
         (is (= :biff.fx/http (get-in fetched [:response 0])))

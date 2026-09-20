@@ -3,11 +3,9 @@
             [com.platypub.lib.email :as email]))
 
 (deftest send-email-states
-  (let [[deliver-message result]
-        (email/send-email)
+  (let [[deliver-message result] (email/send-email)
 
-        message
-        {:to "reader@example.com"}]
+        message {:to "reader@example.com"}]
     (is (true? (deliver-message {} message)))
     (is (= :biff.fx/http
            (first (deliver-message

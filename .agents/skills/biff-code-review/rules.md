@@ -89,6 +89,13 @@
    trying to put shared logic in fx handlers, it's better to write shared logic
    as pure functions that can be used by biff.fx state functions.
 
+7. When multiple state functions are used together in multiple pipelines, you
+   should define a vector of state functions and then use the sequence form of
+   `defpipeline` like `(def pipeline-fns [...]) (defpipeline my-pipeline (concat
+   [...] pipeline-fns [...]))`. For machines, you should do something similar
+   but with maps: `(def machine-fns {...}) (defmachine my-machine (merge
+   machine-fns ...))`.
+
 ## C. biff.graph
 
 1. biff.graph resolvers must be placed in a namespace whose last segment matches

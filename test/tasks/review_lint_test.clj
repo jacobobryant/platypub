@@ -48,8 +48,7 @@
              :var-usages      []}))))))
 
 (deftest module-require-violations-test
-  (let [valid
-        {:from "com.example.modules", :to "com.example.app.home"}
+  (let [valid {:from "com.example.modules", :to "com.example.app.home"}
 
         invalid
         {:from     "com.example.lib.shared",

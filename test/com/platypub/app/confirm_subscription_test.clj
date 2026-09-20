@@ -4,11 +4,9 @@
             [tick.core :as tick]))
 
 (deftest page-states-test
-  (let [[lookup confirm send-welcome]
-        (confirmation/page)
+  (let [[lookup confirm send-welcome] (confirmation/page)
 
-        now
-        (tick/instant "2026-09-13T00:00:00Z")
+        now (tick/instant "2026-09-13T00:00:00Z")
 
         subscriber
         {:subscriber/id             (random-uuid)
@@ -22,8 +20,7 @@
         {:publication/title        "News"
          :publication/welcome-html "<p>Welcome</p>"}
 
-        token
-        (byte-array [1 2 3])]
+        token (byte-array [1 2 3])]
     (is (contains? (lookup {} {}) :biff.fx/return))
     (is (= {:token token
 
@@ -58,13 +55,13 @@
     (let [result
           (send-welcome
            {:mailersend/api-key (delay "secret")}
-           {:subscriber  subscriber
-            :publication publication})]
+           {:subscriber
+            (assoc subscriber :subscriber/publication publication)})]
       (is (= :biff.fx/http (get-in result [:_email 0])))
       (is (= 200 (:status (:biff.fx/return result)))))
     (let [result (send-welcome
                   {}
-                  {:subscriber  subscriber
-                   :publication publication})]
+                  {:subscriber
+                   (assoc subscriber :subscriber/publication publication)})]
       (is (nil? (:_email result)))
       (is (= 200 (:status (:biff.fx/return result)))))))

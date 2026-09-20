@@ -17,14 +17,11 @@
                     :publication/primary-color    "#00f"}))))))
 
 (deftest submit-subscription-states-test
-  (let [[load-existing persist respond]
-        (subscription/submit-subscription)
+  (let [[load-existing persist respond] (subscription/submit-subscription)
 
-        now
-        (tick/instant "2026-09-13T00:00:00Z")
+        now (tick/instant "2026-09-13T00:00:00Z")
 
-        uuids
-        (repeatedly 2 random-uuid)
+        uuids (repeatedly 2 random-uuid)
 
         publication
         {:publication/id                   (random-uuid)
@@ -39,8 +36,7 @@
            (load-existing
             {}
             (assoc publication
-                   :request/subscription
-                   {:subscriber/email "not-an-email"}))
+                   :request/subscription {:subscriber/email "not-an-email"}))
            :biff.fx/return)))
     (let [loaded
           (load-existing

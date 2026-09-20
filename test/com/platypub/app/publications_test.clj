@@ -6,8 +6,7 @@
 
 (deftest publications-page-state-test
   (let [[state] (publications/publications-page)]
-    (is (= 200 (:status (state {} {:request/user
-                                   {:user/publications []}}))))))
+    (is (= 200 (:status (state {} {:request/user {:user/publications []}}))))))
 
 (deftest create-publication-states-test
   (let [[prepare
@@ -22,14 +21,11 @@
          create]
         (publications/create-publication)
 
-        user-id
-        (random-uuid)
+        user-id (random-uuid)
 
-        publication-id
-        (UUID/fromString "01900000-0000-7000-8000-000000000001")
+        publication-id (UUID/fromString "01900000-0000-7000-8000-000000000001")
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")]
+        now (tick/instant "2026-01-01T00:00:00Z")]
     (let [loaded (fetch-page
                   {}
                   (prepare {} {:request/user {:user/id user-id}
@@ -56,17 +52,13 @@
              :body   (str "<link type='application/rss+xml' "
                           "href='https://feed.example'>")}})
 
-          feed-id
-          (random-uuid)
+          feed-id (random-uuid)
 
-          old-feed
-          {:feed/id feed-id :feed/url "https://feed.example"}
+          old-feed {:feed/id feed-id :feed/url "https://feed.example"}
 
-          existing
-          (load-existing {} started)
+          existing (load-existing {} started)
 
-          fetched
-          (fetch-feed {} (assoc existing :old-feed old-feed))
+          fetched (fetch-feed {} (assoc existing :old-feed old-feed))
 
           canonical
           (load-canonical
@@ -80,11 +72,9 @@
             :biff.fx/random-uuid7-seq [(random-uuid)]}
            (assoc canonical :canonical old-feed))
 
-          persisted
-          (persist {} (assoc posts :existing {:feed/posts []}))
+          persisted (persist {} (assoc posts :existing {:feed/posts []}))
 
-          synced
-          (finish {} persisted)
+          synced (finish {} persisted)
 
           result
           (create {:biff.fx/now              now
@@ -107,17 +97,13 @@
       (is (= {:status 204} (:biff.fx/return result))))))
 
 (deftest create-publication-metadata-state-test
-  (let [state
-        (last (publications/create-publication))
+  (let [state (last (publications/create-publication))
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        user-id
-        (random-uuid)
+        user-id (random-uuid)
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")
+        now (tick/instant "2026-01-01T00:00:00Z")
 
         result
         (state
@@ -133,8 +119,7 @@
           :post-ids         []
           :write-statements []})
 
-        row
-        (some :values (get-in result [:_write 1]))]
+        row (some :values (get-in result [:_write 1]))]
     (is (= "Description"
            (:publication/description (first row))))
     (is (= "Author"

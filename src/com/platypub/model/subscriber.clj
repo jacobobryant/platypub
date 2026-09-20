@@ -43,7 +43,4 @@
             (some? (:subscriber/confirmed-at subscriber))))})
 
 (def module
-  {:biff.graph/resolvers
-   [by-publication-email
-    by-confirmation-token
-    active]})
+  {:biff.graph/resolvers [by-publication-email by-confirmation-token active]})

@@ -18,25 +18,21 @@
           :biff.fx/handlers
           {:biff.sqlite.fx/execute execute
 
-           :platypub/read-uploaded-file
-           (fn [_ value] (str "read:" value))})))
+           :platypub/read-uploaded-file (fn [_ value] (str "read:" value))})))
 
 (deftest request-parameter-resolvers-test
   (let [user-id (random-uuid)]
     (is (= {:request/user {:user/id user-id}}
            (resolve-resolver request/user {:session {:uid (str user-id)}}))))
-  (is (= {:request/new-publication
-          {:publication/url "https://example.com/feed"}}
+  (is (= {:request/new-publication {:publication/url "https://example.com/feed"}}
          (resolve-resolver
           request/publication-url
           {:biff.datastar/signals
            {:request/publication-url "https://example.com/feed"}})))
-  (is (= {:request/pagination
-          {:page/number 3 :page/limit 50 :page/offset 100}}
+  (is (= {:request/pagination {:page/number 3 :page/limit 50 :page/offset 100}}
          (resolve-resolver request/pagination
                            {:query-params {"page" "3"}})))
-  (is (= {:request/pagination
-          {:page/number 1 :page/limit 50 :page/offset 0}}
+  (is (= {:request/pagination {:page/number 1 :page/limit 50 :page/offset 0}}
          (resolve-resolver request/pagination
                            {:query-params {"page" "invalid"}}))))
 
@@ -88,12 +84,10 @@
                       :from   :tab-state
                       :where  [:= :tab-state/id tab-id]}
                      statement))
-              [{:tab-state/data
-                {:tab/admin-publication-search "search"}}]))))))
+              [{:tab-state/data {:tab/admin-publication-search "search"}}]))))))
 
 (deftest search-and-collection-resolvers-test
-  (is (= {:request/admin-publication-search
-          {:publication/search "current"}}
+  (is (= {:request/admin-publication-search {:publication/search "current"}}
          (resolve-resolver
           request/admin-publication-search
           {:biff.datastar/signals {:publication/search "current"}}
@@ -107,8 +101,7 @@
          (resolve-with-effects
           request/admin-publications
           {}
-          {:request/admin-publication-search
-           {:publication/search "news"}}
+          {:request/admin-publication-search {:publication/search "news"}}
           (fn [_ statement]
             (is (= :or (first (:where statement))))
             [{:publication/id 1}]))))
@@ -142,16 +135,14 @@
                (fn [_ _] []))))))
 
 (deftest public-request-resolvers-test
-  (let [token-bytes
-        (byte-array [1 2 3])
+  (let [token-bytes (byte-array [1 2 3])
 
         token
         (.encodeToString
          (.withoutPadding (java.util.Base64/getUrlEncoder))
          token-bytes)
 
-        subscriber-id
-        (random-uuid)
+        subscriber-id (random-uuid)
 
         claims
         {:subscriber-id subscriber-id
@@ -207,14 +198,11 @@
               :publication/require-confirmation false}})))))
 
 (deftest owned-request-resolvers-test
-  (let [user-id
-        (random-uuid)
+  (let [user-id (random-uuid)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        post-id
-        (random-uuid)]
+        post-id (random-uuid)]
     (let [tier-key (keyword (str "request.tier-" user-id))]
       (is (= {:request/admin-user-tier
               {:user/id      user-id
@@ -234,16 +222,14 @@
             request/admin-publication-import
             {:path-params {:id (str publication-id)}
 
-             :biff.datastar/signals
-             {:request/csv "email\nreader@example.com"}}
+             :biff.datastar/signals {:request/csv "email\nreader@example.com"}}
             {}
             (fn [_ _] [{:publication/id publication-id}]))))
     (is (= {:request/send-selection {:send/post-ids [post-id]}}
            (resolve-resolver
             request/send-selection
             {}
-            {:request/tab
-             {:tab/send-preview {:send/post-ids [post-id]}}})))
+            {:request/tab {:tab/send-preview {:send/post-ids [post-id]}}})))
     (is (= {:request/send-selection {:send/post-ids []}}
            (resolve-resolver
             request/send-selection
@@ -288,5 +274,4 @@
           {:request/publication {:publication/id publication-id}
 
            :request/tab
-           {:tab/send-preview
-            {:publication/id (random-uuid)}}})))))
+           {:tab/send-preview {:publication/id (random-uuid)}}})))))

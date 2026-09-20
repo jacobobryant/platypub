@@ -18,17 +18,13 @@
          (schema/edn* :any))))
 
 (deftest owned-write-authorization-test
-  (let [user-id
-        (random-uuid)
+  (let [user-id (random-uuid)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        subscriber-id
-        (random-uuid)
+        subscriber-id (random-uuid)
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")
+        now (tick/instant "2026-01-01T00:00:00Z")
 
         ctx
         {:session                 {:uid user-id}
@@ -76,11 +72,9 @@
                :after  {:post/id publication-id :post/present-as-of now}}]))))))
 
 (deftest authorization-rejects-request-specific-evidence-test
-  (let [publication-id
-        (random-uuid)
+  (let [publication-id (random-uuid)
 
-        subscriber-id
-        (random-uuid)
+        subscriber-id (random-uuid)
 
         subscriber
         {:subscriber/id             subscriber-id
@@ -110,20 +104,15 @@
                            (tick/instant "2026-01-01T00:00:00Z"))}])))))
 
 (deftest authorization-transaction-ownership-test
-  (let [user-id
-        (random-uuid)
+  (let [user-id (random-uuid)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        send-id
-        (random-uuid)
+        send-id (random-uuid)
 
-        content-id
-        (random-uuid)
+        content-id (random-uuid)
 
-        send-post-id
-        (random-uuid)
+        send-post-id (random-uuid)
 
         ctx
         {:session                 {:uid user-id}
@@ -155,9 +144,7 @@
            (schema/authorize
             {:session {:uid user-id}
 
-             :platypub/user
-             {:user/id   user-id
-              :user/tier :user.tier/admin}
+             :platypub/user {:user/id user-id :user/tier :user.tier/admin}
 
              :biff.sqlite/before-conn :before}
             [{:table  :subscriber

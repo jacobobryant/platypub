@@ -27,11 +27,9 @@
     (with-open [reader (io/reader value)]
       (slurp reader))
 
-    (instance? java.io.File value)
-    (slurp value)
+    (instance? java.io.File value) (slurp value)
 
-    (instance? Path value)
-    (slurp value)
+    (instance? Path value) (slurp value)
 
     (instance? (Class/forName "[B") value)
     (String. ^bytes value StandardCharsets/UTF_8)

@@ -4,9 +4,8 @@
 
 (deftest enqueue-publications-states
   (let [[load-publications submit] (readiness/enqueue-publications)]
-    (is (= {:publications
-            [:biff.graph.fx/query
-             [{:global/publications [:publication/id]}]]}
+    (is (= [:biff.graph.fx/query
+            [{:global/publications [:publication/id]}]]
            (load-publications {})))
     (is (= [:biff.background.fx/submit-jobs
             :platypub/send-readiness

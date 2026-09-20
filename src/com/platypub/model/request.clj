@@ -142,8 +142,7 @@
     {:request/tab (merge tab-defaults data)}))
 
 (defresolver pagination
-  {:output [{:request/pagination
-             [:page/number :page/limit :page/offset]}]}
+  {:output [{:request/pagination [:page/number :page/limit :page/offset]}]}
   [ctx _]
   (let [number (or (positive-int (request/value ctx :page)) 1)
         limit  50]
@@ -284,8 +283,7 @@
           :request/token      token}}))))
 
 (defresolver admin-user-tier
-  {:output [{:request/admin-user-tier
-             [:user/id :user/tier :request/tier]}]}
+  {:output [{:request/admin-user-tier [:user/id :user/tier :request/tier]}]}
 
   (fn [ctx _]
     (when-let [user-id (request/path-uuid ctx :id)]
@@ -306,8 +304,7 @@
         :request/tier tier}})))
 
 (defresolver admin-publication-import
-  {:output [{:request/admin-publication-import
-             [:publication/id :request/csv]}]}
+  {:output [{:request/admin-publication-import [:publication/id :request/csv]}]}
 
   (fn [ctx _]
     (when-let [publication-id (request/path-uuid ctx :id)]
@@ -363,8 +360,7 @@
                    (get-in input [:request/tab
                                   :tab/send-preview
                                   :send/post-ids]))]
-    {:request/send-selection
-     {:send/post-ids (or (uuid-vector post-ids) [])}}))
+    {:request/send-selection {:send/post-ids (or (uuid-vector post-ids) [])}}))
 
 (defresolver send-posts
   {:input  [{:request/publication [:publication/id]}

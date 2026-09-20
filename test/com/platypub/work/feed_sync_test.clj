@@ -16,21 +16,17 @@
          submit]
         (feed-sync/feed-sync-consumer)
 
-        feed
-        {:feed/id 1 :feed/url "https://feed"}]
+        feed {:feed/id 1 :feed/url "https://feed"}]
     (is (= [:biff.graph.fx/query
             {:feed/id 1}
             [:feed/id :feed/url]]
            (load-feed {:biff.background/job {:feed-id 1}})))
     (is (= {:biff.fx/return nil} (start {} {})))
-    (let [started
-          (start {} feed)
+    (let [started (start {} feed)
 
-          existing
-          (load-existing {} started)
+          existing (load-existing {} started)
 
-          fetched
-          (fetch {} (assoc existing :old-feed feed))
+          fetched (fetch {} (assoc existing :old-feed feed))
 
           canonical
           (load-canonical
@@ -40,15 +36,12 @@
 
           posts
           (load-posts
-           {:biff.fx/now
-            (tick/instant "2026-01-01T00:00:00Z")
+           {:biff.fx/now (tick/instant "2026-01-01T00:00:00Z")
 
-            :biff.fx/random-uuid7-seq
-            [(random-uuid)]}
+            :biff.fx/random-uuid7-seq [(random-uuid)]}
            (assoc canonical :canonical feed))
 
-          persisted
-          (persist {} (assoc posts :existing {:feed/posts []}))]
+          persisted (persist {} (assoc posts :existing {:feed/posts []}))]
       (is (= "https://feed" (:url started)))
       (is (= :biff.graph.fx/query (get-in existing [:old-feed 0])))
       (is (= :biff.fx/http (get-in fetched [:response 0])))

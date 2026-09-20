@@ -3,39 +3,32 @@
             [com.platypub.api.mock-mailersend :as mailersend]))
 
 (deftest reset-state-test
-  (let [[state]
-        (mailersend/reset-state)
+  (let [[state] (mailersend/reset-state)
 
-        store
-        (atom nil)]
+        store (atom nil)]
     (is (= [:platypub/reset-atom
             store
             {:emails [] :activities []}]
            (state {:platypub/mock-mailersend-state store})))))
 
 (deftest send-email-state-test
-  (let [[state]
-        (mailersend/send-email)
+  (let [[state] (mailersend/send-email)
 
-        store
-        (atom {:emails [] :activities []})]
+        store (atom {:emails [] :activities []})]
     (is (= {:biff.fx/return {:status 404}}
            (state {:platypub/mock-mailersend-enabled false})))
     (let [result (state {:platypub/mock-mailersend-enabled true
                          :platypub/mock-mailersend-state   store
                          :biff.fx/random-uuid7-seq         [(random-uuid)]
 
-                         :params
-                         {:to [{:email "reader@example.com"}]}})]
+                         :params {:to [{:email "reader@example.com"}]}})]
       (is (= :platypub/swap-atom (get-in result [:_store 0])))
       (is (= 202 (get-in result [:biff.fx/return :status]))))))
 
 (deftest activities-states-test
-  (let [[load-state response]
-        (mailersend/activities)
+  (let [[load-state response] (mailersend/activities)
 
-        store
-        (atom {:activities [{:email "a@example.com"}]})]
+        store (atom {:activities [{:email "a@example.com"}]})]
     (is (= {:biff.fx/return {:status 404}}
            (load-state {:platypub/mock-mailersend-enabled false})))
     (is (= {:state [:platypub/deref store]}

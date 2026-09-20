@@ -4,8 +4,7 @@
             [com.platypub.test-helpers :as helpers]))
 
 (deftest by-send-resolver-test
-  (is (= {:send/attempts
-          [{:send-attempt/id 2}]}
+  (is (= {:send/attempts [{:send-attempt/id 2}]}
          (helpers/resolve-sql
           send-attempt/for-send
           {:send/id 1}

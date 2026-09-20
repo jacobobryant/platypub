@@ -4,11 +4,9 @@
             [tick.core :as tick]))
 
 (deftest page-state-test
-  (let [[state]
-        (unsubscribe/page)
+  (let [[state] (unsubscribe/page)
 
-        now
-        (tick/instant "2026-09-13T00:00:00Z")]
+        now (tick/instant "2026-09-13T00:00:00Z")]
     (is (= {:status 404} (state {:biff.fx/now now} {})))
     (is (= {:status 410}
            (state {:biff.fx/now now}
@@ -23,14 +21,11 @@
                      :request/expiration 4102444800}}))))))
 
 (deftest unsubscribe-state-test
-  (let [[state]
-        (unsubscribe/unsubscribe)
+  (let [[state] (unsubscribe/unsubscribe)
 
-        now
-        (tick/instant "2026-09-13T00:00:00Z")
+        now (tick/instant "2026-09-13T00:00:00Z")
 
-        subscriber-id
-        (random-uuid)]
+        subscriber-id (random-uuid)]
     (is (= {:status 404} (state {:biff.fx/now now} {})))
     (is (= {:status 410}
            (state {:biff.fx/now now}

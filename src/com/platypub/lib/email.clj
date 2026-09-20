@@ -1,43 +1,40 @@
 (ns com.platypub.lib.email
-  (:require [clojure.tools.logging :as log]
-            [hato.client :as hato]))
+  (:require [com.biffweb.fx :refer [defpipeline]]))
 
-(defn- send-mailersend
-  [{:mailersend/keys [api-key from from-name reply-to]}
-   {:keys [to subject html text]}]
-  (let [response (hato/post
-                  "https://api.mailersend.com/v1/email"
-                  {:headers          {"Authorization"
-                                      (str "Bearer " (force api-key))}
-                   :content-type     :json
-                   :throw-exceptions false
-                   :as               :json
-                   :form-params      {:from     {:email from
-                                                 :name  from-name}
-                                      :reply_to {:email reply-to
-                                                 :name  from-name}
-                                      :to       [{:email to}]
-                                      :subject  subject
-                                      :html     html
-                                      :text     text}})]
-    (when (<= 400 (:status response))
-      (log/warn "MailerSend error:" (:body response)))
-    (< (:status response) 400)))
+(def unsubscribe-placeholder "{{unsubscribe_url}}")
 
-(defn send-email [{:keys [mailersend/api-key] :as ctx}
-                  {:keys [to subject text html]}]
-  (if api-key
-    (send-mailersend ctx {:to      to
-                          :subject subject
-                          :html    html
-                          :text    text})
-    (do
-      (println)
-      (println "---")
-      (println "To:     " to)
-      (println "Subject:" subject)
-      (println)
-      (println text)
-      (println "---")
-      (println)
-      true)))
+(defn request
+  [{:mailersend/keys [api-key base-url from from-name reply-to plan]}
+   {:keys [to subject html text unsubscribe-url] :as message}]
+  (let [from-name (or (:from-name message) from-name)
+        reply-to  (or (:reply-to message) reply-to)]
+    {:method           :post
+     :url              (str (or base-url "https://api.mailersend.com")
+                            "/v1/email")
+     :headers          (cond-> {"Authorization" (str "Bearer " (force api-key))}
+                         (and unsubscribe-url (= plan :professional))
+                         (assoc "List-Unsubscribe" (str "<" unsubscribe-url ">")
+                                "List-Unsubscribe-Post"
+                                "List-Unsubscribe=One-Click"))
+     :content-type     :json
+     :throw-exceptions false
+     :as               :json
+     :form-params      {:from     {:email from, :name from-name}
+                        :reply_to {:email reply-to, :name from-name}
+                        :to       [{:email to}]
+                        :subject  subject
+                        :html     html
+                        :text     text}}))
+
+(defn- success?
+  [response]
+  (and (:status response) (< (:status response) 400)))
+
+(defpipeline send-email
+  (fn [{:keys [mailersend/api-key] :as ctx} message]
+    (if api-key
+      [:biff.fx/http (request ctx message)]
+      true))
+
+  (fn [_ctx response]
+    (if (map? response) (success? response) response)))

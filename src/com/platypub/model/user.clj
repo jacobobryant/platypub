@@ -21,5 +21,4 @@
        :order-by [[:publication/created-at :desc]]}]}))
 
 (def module
-  {:biff.graph/resolvers
-   [by-email publications]})
+  {:biff.graph/resolvers [by-email publications]})

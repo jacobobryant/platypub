@@ -3,11 +3,9 @@
             [com.platypub.app.mock-mailersend :as mock]))
 
 (deftest inbox-states-test
-  (let [[load-state render-state]
-        (mock/inbox)
+  (let [[load-state render-state] (mock/inbox)
 
-        store
-        (atom {:emails []})]
+        store (atom {:emails []})]
     (is (= {:biff.fx/return {:status 404}}
            (load-state {:platypub/mock-mailersend-enabled false})))
     (is (= {:state [:platypub/deref store]}

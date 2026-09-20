@@ -14,12 +14,9 @@
 (def subscriber {:subscriber/id 4 :subscriber/email "reader@example.com"})
 
 (deftest send-consumer-states
-  (let [[load-send expand hydrate create-deliveries]
-        (send/send-consumer)
+  (let [[load-send expand hydrate create-deliveries] (send/send-consumer)
 
-        attempt-id
-        (UUID/fromString
-         "00000000-0000-0000-0000-000000000001")]
+        attempt-id (UUID/fromString "00000000-0000-0000-0000-000000000001")]
     (is (= [:biff.graph.fx/query
             {:send/id 1}
             [:send/id
@@ -59,8 +56,7 @@
                                     :send/attempts
                                     [{:send-attempt/subscriber-id 6}]
 
-                                    :send/delivery-subscribers
-                                    [subscriber]}})]
+                                    :send/delivery-subscribers [subscriber]}})]
       (is (= #{6} (:attempted hydrated)))
       (is (= [subscriber] (:subscribers hydrated)))
       (is (= {:user/id 5 :user/email "owner@example.com"}
@@ -79,8 +75,7 @@
                                       {:user/id    5
                                        :user/email "owner@example.com"}))
 
-            effects
-            (vec (:biff.fx/seq result))]
+            effects (vec (:biff.fx/seq result))]
         (is (= :biff.sqlite.fx/execute-tx
                (ffirst effects)))
         (is (= attempt-id

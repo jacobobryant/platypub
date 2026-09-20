@@ -3,8 +3,7 @@
             [com.platypub.app.publications.publication :as publication]))
 
 (deftest publication-page-state-test
-  (let [[state]
-        (publication/publication-page)
+  (let [[state] (publication/publication-page)
 
         result
         {:request/pagination {:page/number 1}
@@ -19,11 +18,9 @@
     (is (= {:status 404} (state {} {})))))
 
 (deftest sync-feed-state-test
-  (let [[state]
-        (publication/sync-feed)
+  (let [[state] (publication/sync-feed)
 
-        feed-id
-        (random-uuid)]
+        feed-id (random-uuid)]
     (is (= {:status 404} (state {} {})))
     (is (= {:status 204}
            (:biff.fx/return

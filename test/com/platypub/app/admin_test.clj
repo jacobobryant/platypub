@@ -8,18 +8,15 @@
     (is (= 200
            (:status
             (state {}
-                   {:request/admin-publication-search
-                    {:publication/search ""}
+                   {:request/admin-publication-search {:publication/search ""}
 
                     :global/users               []
                     :request/admin-publications []}))))))
 
 (deftest set-tier-state-test
-  (let [[state]
-        (control/set-tier)
+  (let [[state] (control/set-tier)
 
-        user-id
-        (random-uuid)]
+        user-id (random-uuid)]
     (testing "valid transition"
       (let [result (state {} {:request/admin-user-tier
                               {:user/id      user-id
@@ -36,11 +33,9 @@
                          :request/tier "waitlist"}}))))))
 
 (deftest update-search-state-test
-  (let [[state]
-        (control/update-search)
+  (let [[state] (control/update-search)
 
-        tab-id
-        (random-uuid)]
+        tab-id (random-uuid)]
     (is (= :biff.sqlite.fx/execute
            (get-in (state {:biff.datastar/tab-id tab-id}
                           {:request/admin-publication-search
@@ -57,23 +52,18 @@
                     :request/tab {}}))))))
 
 (deftest import-subscribers-states
-  (let [[load-existing write-rows]
-        (control/import-subscribers)
+  (let [[load-existing write-rows] (control/import-subscribers)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        subscriber-id
-        (random-uuid)
+        subscriber-id (random-uuid)
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")]
+        now (tick/instant "2026-01-01T00:00:00Z")]
     (is (= {:publication-id publication-id,
             :csv            "email\nperson@example.com",
             :existing       [:biff.graph.fx/query
                              {:publication/id publication-id}
-                             [{:publication/subscribers
-                               [:subscriber/email]}]]}
+                             [{:publication/subscribers [:subscriber/email]}]]}
            (load-existing
             {}
             {:request/admin-publication-import

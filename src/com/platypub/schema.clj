@@ -4,11 +4,9 @@
 (def ? {:optional true})
 
 (defn base [args]
-  (let [[flags args]
-        ((juxt filterv remove) #{:required :unique :index} args)
+  (let [[flags args] ((juxt filterv remove) #{:required :unique :index} args)
 
-        opts
-        (apply hash-map args)]
+        opts (apply hash-map args)]
     (into opts (zipmap flags (repeat true)))))
 
 (def primary-key {:type :uuid :primary-key true})
@@ -381,9 +379,7 @@
     (and (#{:create :update} op)
          (owns-content? ctx (:content/id after)))
 
-    :send
-    (and (= op :create)
-         (owns-send? ctx (:send/id after)))
+    :send (and (= op :create) (owns-send? ctx (:send/id after)))
 
     :send-post
     (and (= op :create)

@@ -16,14 +16,11 @@
                     :request/subscribers       []}))))))
 
 (deftest update-search-state-test
-  (let [[state]
-        (subscribers/update-search)
+  (let [[state] (subscribers/update-search)
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        tab-id
-        (random-uuid)]
+        tab-id (random-uuid)]
     (is (= {:status 404} (state {} {})))
     (let [result
           (state {:biff.datastar/tab-id tab-id}
@@ -38,17 +35,13 @@
       (is (= {:status 204} (:biff.fx/return result))))))
 
 (deftest toggle-subscriber-state-test
-  (let [[state]
-        (subscribers/toggle-subscriber)
+  (let [[state] (subscribers/toggle-subscriber)
 
-        now
-        (tick/instant "2026-01-01T00:00:00Z")
+        now (tick/instant "2026-01-01T00:00:00Z")
 
-        publication-id
-        (random-uuid)
+        publication-id (random-uuid)
 
-        subscriber-id
-        (random-uuid)]
+        subscriber-id (random-uuid)]
     (is (= {:status 404} (state {:biff.fx/now now} {})))
     (let [result
           (state {:biff.fx/now now}
