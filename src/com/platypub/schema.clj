@@ -1,10 +1,14 @@
-(ns com.platypub.schema)
+(ns com.platypub.schema
+  (:require [com.biffweb.sqlite :as sqlite]))
 
 (def ? {:optional true})
 
 (defn base [args]
-  (let [[flags args] ((juxt filterv remove) #{:required :unique :index} args)
-        opts         (apply hash-map args)]
+  (let [[flags args]
+        ((juxt filterv remove) #{:required :unique :index} args)
+
+        opts
+        (apply hash-map args)]
     (into opts (zipmap flags (repeat true)))))
 
 (def primary-key {:type :uuid :primary-key true})
@@ -26,7 +30,20 @@
 
 (def tab-state-schema
   [:map
-   [:tab/background-color ? [:enum :white :red :blue :green]]])
+   [:tab/background-color ? [:enum :white :red :blue :green]]
+   [:tab/admin-publication-search ? :string]
+   [:tab/subscriber-search
+    ?
+    [:map
+     [:publication/id :uuid]
+     [:subscriber/search :string]]]
+   [:tab/send-preview
+    ?
+    [:map
+     [:publication/id :uuid]
+     [:send/subject :string]
+     [:send/html :string]
+     [:send/post-ids [:vector :uuid]]]]])
 
 (def columns
   {:tab-state/id   primary-key
@@ -91,9 +108,8 @@
    :publication/automatic-send-threshold (inst)
 
    :subscriber/id                        primary-key
-   :subscriber/email                     (text :required :index
-                                               {:unique-with
-                                                [:subscriber/publication-id]})
+   :subscriber/email                     (text :required :index :unique-with
+                                               [:subscriber/publication-id])
    :subscriber/publication-id            (ref* :publication/id :required :index)
    :subscriber/subscribed-at             (inst :required :index)
    :subscriber/require-confirmation      (bool :required)
@@ -125,9 +141,8 @@
    :send-post/post-id (ref* :post/id :required)
 
    :send-attempt/id            primary-key
-   :send-attempt/send-id       (ref* :send/id :required :index
-                                     {:unique-with
-                                      [:send-attempt/subscriber-id]})
+   :send-attempt/send-id       (ref* :send/id :required :index :unique-with
+                                     [:send-attempt/subscriber-id])
    :send-attempt/subscriber-id (ref* :subscriber/id :required)})
 
 ;; Strings added here will be appended to resources/schema.sql
@@ -174,54 +189,207 @@
 
 (defn only-fields-edited?
   [before after fields]
-  (= (apply dissoc before fields)
-     (apply dissoc after fields)))
+  (= (apply dissoc (or before {}) fields)
+     (apply dissoc (or after {}) fields)))
+
+(defn- entry-id
+  [before after attribute]
+  (or (get after attribute) (get before attribute)))
+
+(defn- query
+  [ctx connection statement]
+  (sqlite/execute
+   (assoc ctx
+          :biff.sqlite/read-pool connection
+          :biff.sqlite/write-conn connection)
+   statement))
+
+(defn- exists?
+  [ctx connection statement]
+  (boolean (seq (query ctx connection statement))))
+
+(defn- current-user-id
+  [ctx]
+  (get-in ctx [:session :uid]))
+
+(defn- admin?
+  [ctx]
+  (when-let [user-id (current-user-id ctx)]
+    (= :user.tier/admin
+       (:user/tier
+        (first
+         (query
+          ctx
+          (:biff.sqlite/before-conn ctx)
+          {:select [:user/tier]
+           :from   :user
+           :where  [:= :user/id user-id]}))))))
+
+(defn- owns-publication?
+  [ctx publication-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/before-conn ctx)
+     {:select [:publication/id]
+      :from   :publication
+      :where  [:and
+               [:= :publication/id publication-id]
+               [:= :publication/user-id user-id]]})))
+
+(defn- owns-feed?
+  [ctx feed-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/after-conn ctx)
+     {:select [:feed/id]
+      :from   :feed
+      :join   [:publication [:= :publication/feed-id :feed/id]]
+      :where  [:and
+               [:= :feed/id feed-id]
+               [:= :publication/user-id user-id]]})))
+
+(defn- owns-subscriber?
+  [ctx subscriber-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/before-conn ctx)
+     {:select [:subscriber/id]
+      :from   :subscriber
+      :join   [:publication
+               [:= :publication/id :subscriber/publication-id]]
+      :where  [:and
+               [:= :subscriber/id subscriber-id]
+               [:= :publication/user-id user-id]]})))
+
+(defn- owns-post?
+  [ctx post-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/after-conn ctx)
+     {:select [:post/id]
+      :from   :post
+      :join   [:publication
+               [:= :publication/feed-id :post/feed-id]]
+      :where  [:and
+               [:= :post/id post-id]
+               [:= :publication/user-id user-id]]})))
+
+(defn- owns-send?
+  [ctx send-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/after-conn ctx)
+     {:select [:send/id]
+      :from   :send
+      :join   [:publication
+               [:= :publication/id :send/publication-id]]
+      :where  [:and
+               [:= :send/id send-id]
+               [:= :publication/user-id user-id]]})))
+
+(defn- owns-content?
+  [ctx content-id]
+  (when-let [user-id (current-user-id ctx)]
+    (or
+     (exists?
+      ctx
+      (:biff.sqlite/after-conn ctx)
+      {:select [:content/id]
+       :from   :content
+       :join   [:send
+                [:= :send/content-id :content/id]
+                :publication
+                [:= :publication/id :send/publication-id]]
+       :where  [:and
+                [:= :content/id content-id]
+                [:= :publication/user-id user-id]]})
+     (exists?
+      ctx
+      (:biff.sqlite/after-conn ctx)
+      {:select [:content/id]
+       :from   :content
+       :join   [:post
+                [:= :post/content-id :content/id]
+                :publication
+                [:= :publication/feed-id :post/feed-id]]
+       :where  [:and
+                [:= :content/id content-id]
+                [:= :publication/user-id user-id]]}))))
+
+(defn- owns-send-post?
+  [ctx send-post-id]
+  (when-let [user-id (current-user-id ctx)]
+    (exists?
+     ctx
+     (:biff.sqlite/after-conn ctx)
+     {:select [:send-post/id]
+      :from   :send-post
+      :join   [:send
+               [:= :send/id :send-post/send-id]
+               :publication
+               [:= :publication/id :send/publication-id]]
+      :where  [:and
+               [:= :send-post/id send-post-id]
+               [:= :publication/user-id user-id]]})))
 
 (defn authorize-entry
-  [{{:keys [uid]} :session,
-    :keys         [biff.datastar/tab-id
-                   platypub/user
-                   platypub/authorized-publication-id
-                   platypub/authorized-subscriber-id]}
-   {:keys [table op before after]}]
-  (let [admin? (= :user.tier/admin (:user/tier user))]
-    (case table
-      :user (case op
-              :create false
-              :update (or (and admin?
-                               (only-fields-edited?
-                                before after [:user/tier]))
-                          (and (every? #{uid}
-                                       (keep :user/id [before after]))
-                               (only-fields-edited?
-                                before after editable-user-fields)))
-              :delete (every? #{uid} (keep :user/id [before after])))
-      :tab-state (every? #{tab-id}
-                         (keep :tab-state/id [before after]))
-      :publication
-      (and (every? #{uid} (keep :publication/user-id [before after]))
-           (or (= op :create)
-               (and (= op :update)
-                    (only-fields-edited? before after
-                                         editable-publication-fields))))
-      :subscriber
-      (or admin?
-          (and authorized-publication-id
-               (every? #{authorized-publication-id}
-                       (keep :subscriber/publication-id [before after]))
-               (= op :update)
-               (only-fields-edited?
-                before after [:subscriber/unsubscribed-at]))
-          (and authorized-subscriber-id
-               (every? #{authorized-subscriber-id}
-                       (keep :subscriber/id [before after]))
-               (= op :update)
-               (only-fields-edited?
-                before after
-                [:subscriber/confirmation-token
-                 :subscriber/confirmation-triggered-at
-                 :subscriber/unsubscribed-at])))
-      false)))
+  [ctx {:keys [table op before after]}]
+  (case table
+    :user
+    (let [user-id (entry-id before after :user/id)]
+      (case op
+        :create false
+        :update (or (and (admin? ctx)
+                         (only-fields-edited? before after [:user/tier]))
+                    (and (= user-id (current-user-id ctx))
+                         (only-fields-edited?
+                          before after editable-user-fields)))
+        :delete (= user-id (current-user-id ctx))))
+
+    :publication
+    (let [publication-id (entry-id before after :publication/id)]
+      (case op
+        :create (= (:publication/user-id after) (current-user-id ctx))
+        :update (and (owns-publication? ctx publication-id)
+                     (only-fields-edited?
+                      before after editable-publication-fields))
+        false))
+
+    :feed
+    (and (#{:create :update} op)
+         (owns-feed? ctx (entry-id before after :feed/id)))
+
+    :post
+    (and (#{:create :update} op)
+         (owns-post? ctx (entry-id before after :post/id)))
+
+    :subscriber
+    (let [subscriber-id (entry-id before after :subscriber/id)]
+      (or
+       (admin? ctx)
+       (and (= op :update)
+            (owns-subscriber? ctx subscriber-id)
+            (only-fields-edited?
+             before after [:subscriber/unsubscribed-at]))))
+
+    :content
+    (and (#{:create :update} op)
+         (owns-content? ctx (:content/id after)))
+
+    :send
+    (and (= op :create)
+         (owns-send? ctx (:send/id after)))
+
+    :send-post
+    (and (= op :create)
+         (owns-send-post? ctx (entry-id before after :send-post/id)))
+
+    false))
 
 ;; These authorization rules apply when using biff.sqlite/authorized-write and
 ;; are meant as an extra layer of protection.

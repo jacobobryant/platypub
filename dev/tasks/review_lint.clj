@@ -26,10 +26,10 @@
                                                  usages))]))
                      (group-by (juxt :to :name) var-usages))]
     (for [{:keys [ns name] :as definition} var-definitions
-          :when (and (some #{"lib"} (segments ns))
-                     (public-function? definition))
-          :let [n-used (get counts [ns name] 0)]
-          :when (< n-used 2)]
+          :when                            (and (some #{"lib"} (segments ns))
+                                                (public-function? definition))
+          :let                             [n-used (get counts [ns name] 0)]
+          :when                            (< n-used 2)]
       (assoc definition
              :kind :lib-usage
              :message
@@ -51,7 +51,7 @@
                (str "Module namespaces are required by multiple namespaces: "
                     (str/join ", " (sort requirers)) "."))])
      (for [{:keys [from to] :as usage} usages
-           :when (not= "modules" (last (segments from)))]
+           :when                       (not= "modules" (last (segments from)))]
        (assoc usage
               :kind :invalid-module-requirer
               :message

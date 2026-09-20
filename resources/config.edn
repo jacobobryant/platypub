@@ -40,7 +40,7 @@
  :mailersend/from            #biff/env MAILERSEND_FROM,
  :mailersend/from-name       "My Application",
 
- :mailersend/mock-enabled
+ :platypub/mock-mailersend-enabled
  #boolean #or [#biff/env MOCK_MAILERSEND "false"],
 
  :mailersend/plan     #keyword #or [#biff/env MAILERSEND_PLAN

@@ -8,4 +8,6 @@ In development, emails that would be sent in production should be printed to the
 console. Their text content is printed, not their html content. This includes
 signin emails.
 
+Use https://github.com/igrishaev/remus for parsing feeds.
+
 TODO add notes about object storage in dev

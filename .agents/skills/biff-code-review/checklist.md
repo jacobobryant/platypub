@@ -35,6 +35,15 @@ biff.graph
 [ ] C6. resolvers do not duplicate database adapter resolvers
 [ ] C7. non-primary-key lookups
 [ ] C8. don't use [:*] unnecessarily
+[ ] C9. one-to-many joins
+[ ] C10. don't mix entities
+[ ] C11. database queries include only what's needed
+[ ] C12. top-level resolver keys share a namespace
+[ ] C13. request-derived entities are nested under :request/* keys
+[ ] C14. use `global` as output namespace for resolvers without input
+[ ] C15. mark optional input keys
+[ ] C16. don't use shortcut resolvers
+[ ] C17. avoid unnecessary multiple queries
 
 Database adapters
 
@@ -69,3 +78,8 @@ Code style
 [ ] H5. tick usage for date/time
 [ ] H6. hiccup used for rendering HTML
 [ ] H7. use main namespace as keyword namespace
+[ ] H8. use HoneySQL
+[ ] H9. only use `?` for predicate functions
+[ ] H10. don't shadow clojure.core names
+[ ] H11. avoid lazy operations
+[ ] H12. don't break form pairs unnecessarily
