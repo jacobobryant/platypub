@@ -32,6 +32,8 @@ put them in a temporary folder outside source control.
 Prior to implementation, take a snapshot of the spec by copying `spec/` to a
 temporary folder. If the user says "update", then take another snapshot and
 compare it to the previous snapshot with `diff` etc, update `plan.md` and
-`questions.md` accordingly, and implement the changes.
+`questions.md` accordingly, and implement the changes. See the
+`biff-spec-review` skill for guidance for the content of `plan.md` and
+`questions.md`.
 
 If the user says "done", then delete `plan.md` and `questions.md`.

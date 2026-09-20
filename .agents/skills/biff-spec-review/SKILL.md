@@ -7,10 +7,11 @@ Review the `spec/` folder and then create/overwrite two files:
 
 - `spec/agent/plan.md`: a checklist of changes that need to be made to the
   codebase to bring it in line with the spec. Each item in the checklist
-  includes file(s) and line numbers from the spec, formatted like `- [ ]
-  [widgets should
-  frobulate](/spec/features/widgets.md#frobulation?lines=12-14)`. Do not include
-  any additional information. If there is nothing to implement, delete the file.
+  includes file(s) and line numbers from the spec, formatted like `- [ ] widgets
+  should frobulate. [widget
+  frobulation](/spec/features/widgets.md#frobulation?lines=12-14)`. Do not
+  include any additional information. If there is nothing to implement, delete
+  the file.
 
 - `spec/agent/questions.md`: a list of questions that the user should clarify
   (by editing the spec) before implementation. These should address things like
@@ -46,3 +47,6 @@ Before you start reviewing, take a snapshot of the spec by copying the `spec/`
 folder to a temporary folder. If the user asks you to update the spec, take
 another snapshot and compare (with `diff` etc) against the previous snapshot to
 ensure you notice exactly what changed.
+
+Keep lines in `plan.md` and `questions.md` to 80 characters or less. Put an
+empty line between items in both files.
