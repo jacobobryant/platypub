@@ -11,7 +11,7 @@
 
 (defpipeline page
   [:biff.graph.fx/query
-   [{:request/unsubscribe-claims
+   [{[:? :request/unsubscribe-claims]
      [:subscriber/email :request/expiration :request/token]}]]
 
   (fn [{:biff.fx/keys [now] :as request} result]
@@ -45,7 +45,8 @@
 
 (defpipeline unsubscribe
   [:biff.graph.fx/query
-   [{:request/unsubscribe-claims [:subscriber/id :request/expiration]}]]
+   [{[:? :request/unsubscribe-claims]
+     [:subscriber/id :request/expiration]}]]
 
   (fn [{:biff.fx/keys [now]} result]
     (if-let [{:subscriber/keys [id] :request/keys [expiration]}

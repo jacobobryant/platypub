@@ -121,7 +121,7 @@
   {:method           :get
    :url              url
    :headers          (merge {"User-Agent" user-agent} headers)
-   :connect-timeout  10000
+   :http-client      {:connect-timeout 10000, :redirect-policy :normal}
    :request-timeout  20000
    :throw-exceptions false
    :as               :string})
@@ -301,9 +301,12 @@
          [:? :feed/last-modified]]]})
     (catch Exception exception
       (cond-> {:biff.fx/return
-               {:success false
-                :error   (.getMessage exception)
-                :data    data}}
+               (if (:defer-write data)
+                 {:status 422
+                  :body   "The feed could not be fetched or parsed."}
+                 {:success false
+                  :error   (.getMessage exception)
+                  :data    data})}
         (:feed/id old-feed)
         (assoc :_failure
                [:biff.sqlite.fx/execute

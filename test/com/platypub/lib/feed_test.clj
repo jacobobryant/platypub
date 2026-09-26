@@ -17,13 +17,24 @@
       (is (= {"If-None-Match"     "etag"
               "If-Modified-Since" "yesterday"}
              (select-keys (get-in result [:response 1 :headers])
-                          ["If-None-Match" "If-Modified-Since"])))))
+                          ["If-None-Match" "If-Modified-Since"])))
+      (is (= {:connect-timeout 10000, :redirect-policy :normal}
+             (get-in result [:response 1 :http-client])))))
   (testing "canonical feed lookup"
     (let [result (feed/load-canonical
                   {}
                   {:url      "https://example.com/feed"
                    :response {:status 304}})]
       (is (= :biff.graph.fx/query (get-in result [:canonical 0])))))
+  (testing "browser feed failures are HTTP errors"
+    (let [result (feed/load-canonical
+                  {}
+                  {:url      "https://example.com/feed"
+                   :data     {:defer-write true}
+                   :response {:status  200
+                              :headers {"content-type" "application/rss+xml"}
+                              :body    "not a feed"}})]
+      (is (= 422 (get-in result [:biff.fx/return :status])))))
   (testing "writes execute immediately for background work"
     (with-redefs-fn {prepare-sync
                      (fn [& _]

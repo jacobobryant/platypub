@@ -183,3 +183,10 @@
 37. [x] Add Playwright coverage for the major signup, publication setup, feed
     sync, settings, subscription, subscriber administration, manual send, and
     unsubscribe flows, and make the full browser suite pass.
+
+38. [x] Expand Playwright coverage so every user-observable requirement in the
+    spec is exercised, with an explicit traceability map for requirements that
+    are necessarily verified below the browser boundary.
+    [MVP features](/spec/features.md)
+    [Data model](/spec/data-model.md)
+    [Implementation](/spec/implementation.md)
