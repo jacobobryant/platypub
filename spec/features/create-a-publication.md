@@ -56,3 +56,15 @@ When the user enters a website or feed URL, we always use the final resolved URL
 (e.g. after redirects).
 
 We support RSS, Atom, and JSON feed.
+
+## Archiving publications
+
+When editing a publication, there is an "Archive" button which hides the
+publication from the main publication list page. You can still navigate to a
+list of archived publications. For archived publications:
+
+- you cannot edit them, except that you can unarchive them.
+- you cannot send manual emails to them.
+- they are not eligible for automatic sends.
+- the subscribe page/embedded subscribe form are disabled, as if the publication
+  didn't exist.

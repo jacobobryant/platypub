@@ -1,0 +1,18 @@
+Publication settings page:
+
+
+  [breadcrumbs: <- Publications]
+
+  # My Publication
+
+  [tabs: posts | subscribers | *settings*]
+
+
+  <settings form>
+
+  [btn link: preview subscribe from] [btn link: preview email]
+  [primary btn: Save settings]
+
+
+Each preview button opens a modal that renders the data currently in the form,
+even if it hasn't been saved yet.

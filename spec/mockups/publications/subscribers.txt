@@ -1,0 +1,24 @@
+
+
+  [breadcrumbs: <- Publications]
+
+  # My Publication
+
+  [tabs: posts | *subscribers* | settings]
+
+  [text: Search email] [btn: Search]
+
+  --------------------------------------------------------------------
+  | Email    | Subscribed at    | Unsubscribed at    | Actions       |
+  --------------------------------------------------------------------
+  | hello@example.com | <timestamp> | <empty> | [dropdown:...]       |
+  --------------------------------------------------------------------
+  | foo@example.com | <timestamp> | <timestamp> | [dropdown:...]     |
+  --------------------------------------------------------------------
+
+
+Dropdown menu:
+
+- Unsubscribe (gated by confirmation modal)
+
+

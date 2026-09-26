@@ -1,0 +1,39 @@
+Publications list page:
+
+
+  # Publications
+
+
+          [link: Archived publications] [btn primary: Add publication]
+
+
+  --------------------------------------------------------------------
+  | My publication                                                   |
+  --------------------------------------------------------------------
+
+  --------------------------------------------------------------------
+  | Another publication                                              |
+  --------------------------------------------------------------------
+
+  --------------------------------------------------------------------
+  | Third publication                                                |
+  --------------------------------------------------------------------
+
+
+Add publication modal:
+
+
+  --------------------------------------------------------------------
+  | Add publication                                                  |
+  |------------------------------------------------------------------|
+  |                                                                  |
+  | Website or feed URL                                              |
+  | [text]                                                           |
+  |                                                                  |
+  |                                                                  |
+  |                                [btn: Cancel] [btn primary: Save] |
+  --------------------------------------------------------------------
+
+
+The publications page is shown immediately after signing in. `Archived
+publications` is only shown if there is at least one archived publication.

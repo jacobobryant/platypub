@@ -1,0 +1,19 @@
+Navbar:
+
+
+  Platypub                                       [btn: hamburger menu]
+  --------------------------------------------------------------------
+
+
+Sidebar:
+
+
+  [link: Publications]
+  [link: Admin]
+  [btn: Sign out]
+
+
+The navbar is shown at the top of each page. The sidebar is shown on the left.
+For screen sizes of at least `lg`, the sidebar is always shown and the hamburger
+button is hidden. For smaller screen sizes, the sidebar is hidden until you
+toggle it open with the hamburger button.

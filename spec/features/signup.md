@@ -1,5 +1,9 @@
 # Signup
 
+There is no landing page. Users who aren't yet signed in are redirected
+immediately to the signin page. Users who are signed in are redirected to the
+application.
+
 The first user to sign up is put on the "admin" tier. The admin has access to a
 dashboard that lets them edit the tier of other users (and themselves). After a
 user has been moved from the waitlist to another tier, they cannot be moved back

@@ -1,0 +1,31 @@
+
+
+  [breadcrumbs: <- Publications]
+
+  # My Publication
+
+  [tabs: *posts* | subscribers | settings]
+
+
+  --------------------------------------------------------------------
+  | Hosted form                                                      |
+  | <link>                                                           |
+  |                                                                  |
+  | Embedded form                                   [link btn: Copy] |
+  | <code>                                                           |
+  --------------------------------------------------------------------
+
+
+  Last synced: <timestamp>             [btn: Sync] [primary btn: Send]
+
+  --------------------------------------------------------------------
+  | My post                                                          |
+  | Sent <timestamp>                                                 |
+  --------------------------------------------------------------------
+  | Another post                                                     |
+  | Not sent                                                         |
+  --------------------------------------------------------------------
+
+
+After clicking `Send` and finishing the manual send flow, users are redirected
+back to this page (posts).

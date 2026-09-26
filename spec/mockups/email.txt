@@ -1,0 +1,31 @@
+Email with multiple posts:
+
+
+  # My Publication
+
+  <author info>
+
+  [link: <post name>]
+  <excerpt>... [link: Read more]
+
+  [link: <post name>]
+  <excerpt>... [link: Read more]
+
+  <address>
+  <unsubscribe>
+
+
+Email with one post:
+
+
+  # [link: My Post]
+
+  <author info>
+  [link: Read online]
+
+  <post content>
+
+  <address>
+  <unsubscribe>
+
+

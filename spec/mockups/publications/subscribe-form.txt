@@ -1,0 +1,16 @@
+Subscribe form:
+
+
+  <banner image>
+  Subscribe to My Publication
+  <description>
+  [text: you@example.com] [primary btn: Subscribe]
+
+
+After submitting:
+
+
+  Check your inbox
+  We've sent you a confirmation email to **<email>**.
+
+

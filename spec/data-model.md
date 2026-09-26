@@ -40,6 +40,7 @@ Required:
   subscribing."
 - `require confirmation`. If true, new subscribers must confirm their
   subscription by clicking a link in an email ("double opt-in"). Default false.
+- `address`. This is rendered in send emails next to the unsubscribe link.
 
 Optional:
 
