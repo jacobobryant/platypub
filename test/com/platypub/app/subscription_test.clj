@@ -126,9 +126,10 @@
                  (persist {:biff.fx/now              now
                            :biff.fx/random-uuid7-seq uuids}
                           (assoc loaded :existing existing)))]
-            (is (= 1 (count effects)))
+            (is (= 2 (count effects)))
+            (is (nil? (get-in effects [0 :_write])))
             (is (= :biff.graph.fx/query
-                   (get-in effects [0 :active 0]))))))
+                   (get-in effects [1 :active 0]))))))
       (testing "confirmation, welcome, and no-email branches"
         (let [confirmation
               (respond {:biff.fx/now              now

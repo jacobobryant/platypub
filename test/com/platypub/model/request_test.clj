@@ -292,19 +292,27 @@
             (fn [_ statement]
               (is (= publication-id (get-in statement [:where 2 2])))
               [{:post/id post-id}]))))
-    (is (= {:request/send-selection {:send/post-ids []}}
+    (is (= {:request/send-selection {}}
            (resolve-with-effects
             request/send-selection
             {:biff.datastar/signals {:send/post-ids [post-id]}}
             {:request/publication {:publication/id publication-id}
              :request/tab         {}}
             (fn [_ _] []))))
-    (is (= {:request/send-selection {:send/post-ids []}}
+    (is (= {:request/send-selection {}}
            (resolve-resolver
             request/send-selection
             {:biff.datastar/signals {:send/post-ids ["invalid"]}}
             {:request/publication {:publication/id publication-id}
              :request/tab         {}})))
+    (is (= {:request/send-selection {:send/post-ids [post-id]}}
+           (resolve-with-effects
+            request/send-selection
+            {:biff.datastar/signals
+             {:send/post-ids [(str post-id) "" ""]}}
+            {:request/publication {:publication/id publication-id}
+             :request/tab         {}}
+            (fn [_ _] [{:post/id post-id}]))))
     (is (= {:request/send-posts [{:post/id post-id}]}
            (resolve-resolver
             request/send-posts

@@ -108,7 +108,7 @@
       :publication/text-color
       :publication/primary-color
       {:publication/user [:user/email]}]}
-    {:request/send-selection [:send/post-ids]}
+    {:request/send-selection [[:? :send/post-ids]]}
     {:request/send-posts
      [:post/id
       [:? :post/url]

@@ -13,7 +13,8 @@
 
 (defn- uuid-vector [value]
   (when (sequential? value)
-    (let [ids (mapv request/uuid value)]
+    (let [values (remove #(and (string? %) (str/blank? %)) value)
+          ids    (mapv request/uuid values)]
       (when (and (every? some? ids)
                  (= (count ids) (count (distinct ids))))
         ids))))
@@ -436,7 +437,7 @@
             {:request/tab
              [{[:? :tab/send-preview]
                [:publication/id :send/post-ids]}]}]
-   :output [{:request/send-selection [:send/post-ids]}]}
+   :output [{:request/send-selection [[:? :send/post-ids]]}]}
 
   (fn [ctx input]
     (let [publication-id (get-in input [:request/publication :publication/id])
@@ -474,11 +475,13 @@
 
   (fn [_ {:keys [post-ids posts]}]
     {:request/send-selection
-     {:send/post-ids
-      (if (= (set post-ids) (set (map :post/id posts))) post-ids [])}}))
+     (cond-> {}
+       (and (seq post-ids)
+            (= (set post-ids) (set (map :post/id posts))))
+       (assoc :send/post-ids post-ids))}))
 
 (defresolver send-posts
-  {:input  [{:request/send-selection [:send/post-ids]}]
+  {:input  [{:request/send-selection [[:? :send/post-ids]]}]
    :output [{:request/send-posts [:post/id]}]}
   [_ input]
   {:request/send-posts

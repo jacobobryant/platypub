@@ -88,7 +88,9 @@
    [{:request/user
      [:user/id
       {:user/publications
-       [:publication/id :publication/title :publication/description]}]}
+       [:publication/id
+        :publication/title
+        [:? :publication/description]]}]}
     {:request/tab
      [{[:? :tab/new-publication]
        [:publication/url :publication/feed-urls]}]}]]

@@ -73,6 +73,35 @@ test.describe.serial('Platypub user flows', () => {
     await waitlistContext.close();
   });
 
+  test('an admin creates a publication whose feed has no description', async ({ page, request }) => {
+    const sseRequests = [];
+    page.on('request', (pageRequest) => {
+      if (pageRequest.method() === 'GET'
+          && pageRequest.headers().accept?.includes('text/event-stream')) {
+        sseRequests.push(pageRequest.url());
+      }
+    });
+
+    await signIn(page, request, adminEmail);
+    sseRequests.length = 0;
+
+    const createResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/app/publications')
+      && response.request().method() === 'POST');
+    await page.getByPlaceholder('Website or feed URL')
+      .fill('http://127.0.0.1:9090/descriptionless');
+    await page.getByRole('button', { name: 'Add publication' }).click();
+    expect((await createResponse).status()).toBe(204);
+
+    await expect(page.getByRole('link', { name: 'Fixture JSON Feed' })).toBeVisible();
+    await page.waitForTimeout(300);
+    expect(sseRequests).toHaveLength(0);
+
+    const reloadResponse = await page.reload();
+    expect(reloadResponse.status()).toBe(200);
+    await expect(page.getByRole('link', { name: 'Fixture JSON Feed' })).toBeVisible();
+  });
+
   test('an owner handles feed discovery and creates a publication', async ({ page, request }) => {
     await signIn(page, request, adminEmail);
 
@@ -162,7 +191,7 @@ test.describe.serial('Platypub user flows', () => {
 
     await page.getByRole('link', { name: 'Publication' }).click();
     await expect(page.getByRole('heading', { name: 'Updated Gazette' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'JSON post' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'JSON post', exact: true })).toBeVisible();
   });
 
   test('a reader confirms a subscription and receives a welcome email', async ({ page, request }) => {
@@ -247,6 +276,7 @@ test.describe.serial('Platypub user flows', () => {
     await settle(page);
     await page.getByRole('link', { name: 'Send' }).click();
     await expect(page.getByRole('heading', { name: 'Send newsletter' })).toBeVisible();
+    await expect(page.getByText('Unselected JSON post', { exact: true })).toBeVisible();
 
     const post = page.getByText('JSON post', { exact: true });
     await post.click();
@@ -258,6 +288,8 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.getByText('Subject: JSON post')).toBeVisible();
     await expect(page.frameLocator('[title="Newsletter preview"]')
       .getByText('JSON feed body.')).toBeVisible();
+    await expect(page.frameLocator('[title="Newsletter preview"]')
+      .getByText('This post should not be in the newsletter.')).toHaveCount(0);
 
     const confirmResponse = page.waitForResponse((response) =>
       response.url().endsWith('/send/confirm') && response.request().method() === 'POST');

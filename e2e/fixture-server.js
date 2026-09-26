@@ -58,6 +58,12 @@ const server = http.createServer((request, response) => {
       <link rel="alternate" type="application/feed+json" href="/feed.json">`);
   }
 
+  if (url.pathname === '/descriptionless') {
+    return respond(response, 200, 'text/html', `
+      <!doctype html><title>Descriptionless feed</title>
+      <link rel="alternate" type="application/feed+json" href="/feed.json">`);
+  }
+
   if (url.pathname === '/no-feed') {
     return respond(response, 200, 'text/html', '<!doctype html><title>No feed</title>');
   }
@@ -77,6 +83,11 @@ const server = http.createServer((request, response) => {
         url: `http://127.0.0.1:${port}/posts/json-1`,
         title: 'JSON post',
         content_html: '<p>JSON feed body.</p>',
+      }, {
+        id: 'json-post-2',
+        url: `http://127.0.0.1:${port}/posts/json-2`,
+        title: 'Unselected JSON post',
+        content_html: '<p>This post should not be in the newsletter.</p>',
       }],
     }));
   }
