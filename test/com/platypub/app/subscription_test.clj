@@ -9,15 +9,26 @@
     (is (= 200
            (:status
             (state {}
-                   {:publication/id               (random-uuid)
-                    :publication/title            "News"
-                    :publication/padding-color    "#fff"
-                    :publication/background-color "#fff"
-                    :publication/text-color       "#111"
-                    :publication/primary-color    "#00f"}))))))
+                   {:request/subscription-publication
+                    {:publication/id               (random-uuid)
+                     :publication/title            "News"
+                     :publication/padding-color    "#fff"
+                     :publication/background-color "#fff"
+                     :publication/text-color       "#111"
+                     :publication/primary-color    "#00f"}}))))))
+
+(deftest embeddable-middleware-test
+  (let [handler (subscription/wrap-embeddable
+                 (constantly {:status  200
+                              :headers {"X-Frame-Options" "SAMEORIGIN"}}))]
+    (is (= {"Content-Security-Policy" "frame-ancestors *"}
+           (:headers (handler {:uri "/subscribe/id"}))))
+    (is (= {"X-Frame-Options" "SAMEORIGIN"}
+           (:headers (handler {:uri "/other"}))))))
 
 (deftest submit-subscription-states-test
-  (let [[load-existing persist respond] (subscription/submit-subscription)
+  (let [[prepare load-existing persist respond]
+        (subscription/submit-subscription)
 
         now (tick/instant "2026-09-13T00:00:00Z")
 
@@ -30,27 +41,57 @@
          :publication/welcome-html         "<p>Welcome</p>"}]
     (testing "missing publication and invalid email stop before effects"
       (is (= {:biff.fx/return {:status 404}}
-             (load-existing {} {:request/subscription
-                                {:subscriber/email "person@example.com"}})))
+             (prepare {:biff.auth/skip-captcha true}
+                      {:request/subscription-publication nil
+
+                       :request/subscription
+                       {:subscriber/email "person@example.com"}})))
       (is (contains?
-           (load-existing
-            {}
-            (assoc publication
-                   :request/subscription {:subscriber/email "not-an-email"}))
+           (prepare
+            {:biff.auth/skip-captcha true}
+            {:request/subscription-publication publication
+
+             :request/subscription
+             {:subscriber/email "not-an-email"}})
            :biff.fx/return)))
+    (testing "captcha verification and rejection"
+      (let [verification
+            (prepare
+             {:biff.auth/skip-captcha       false
+              :biff.auth/turnstile-secret   (delay "secret")
+              :platypub/hcaptcha-secret-key (delay "fallback")}
+             {:request/subscription-publication publication
+
+              :request/subscription
+              {:subscriber/email        "person@example.com"
+               :request/turnstile-token "token"}})]
+        (is (= :biff.fx/http (get-in verification [:_captcha 0])))
+        (is (= "secret"
+               (get-in verification [:_captcha 1 :form-params :secret])))
+        (is (= 200
+               (get-in (load-existing
+                        {}
+                        (assoc verification
+                               :_captcha {:body {:success false}}))
+                       [:biff.fx/return :status])))))
     (let [loaded
-          (load-existing
-           {}
-           (assoc publication
-                  :request/subscription
-                  {:subscriber/email        " PERSON@example.com "
-                   :subscriber/headers      {:user-agent "test"}
-                   :subscriber/form-params  {:email " PERSON@example.com "}
-                   :subscriber/query-params {:source "test"}}))]
+          (prepare
+           {:biff.auth/skip-captcha true
+            :headers                {:user-agent "test"}
+            :form-params            {:email " PERSON@example.com "}
+            :query-params           {:source "test"}}
+           {:request/subscription-publication publication
+
+            :request/subscription
+            {:subscriber/email " PERSON@example.com "}})
+
+          loaded (load-existing {} loaded)]
       (is (= [:biff.graph.fx/query
               {:subscriber/publication-id (:publication/id publication)
                :subscriber/email          "person@example.com"}]
              (subvec (:existing loaded) 0 2)))
+      (is (= {:user-agent "test"}
+             (get-in loaded [:request-data :subscriber/headers])))
       (testing "new and resubscribed subscribers are written"
         (doseq [existing [nil
                           {:subscriber/id              (second uuids)
@@ -60,22 +101,34 @@
                 (persist {:biff.fx/now              now
                           :biff.fx/random-uuid7-seq uuids}
                          (assoc loaded
-                                :existing existing))]
+                                :existing existing))
+
+                effects (:biff.fx/seq result)]
             (is (= :biff.sqlite.fx/execute
-                   (get-in result [:_write 0])))
-            (is (= :biff.graph.fx/query
-                   (get-in result [:active 0]))))))
+                   (get-in effects [0 :_write 0])))
+            (when-not existing
+              (is (= "{\"user-agent\":\"test\"}"
+                     (String.
+                      (get-in effects
+                              [0 :_write 1 :values 0
+                               :subscriber/headers])))))
+            (is (= [:biff.graph.fx/query
+                    (:subscriber result)
+                    [:subscriber/active]]
+                   (:active (second effects)))))))
       (testing "an active or suppressed existing subscriber is not written"
         (doseq [existing [{:subscriber/id         (second uuids)
                            :subscriber/suppressed true}
                           {:subscriber/id         (second uuids)
                            :subscriber/suppressed false}]]
-          (is (nil?
-               (:_write
-                (persist {:biff.fx/now              now
-                          :biff.fx/random-uuid7-seq uuids}
-                         (assoc loaded
-                                :existing existing)))))))
+          (let [effects
+                (:biff.fx/seq
+                 (persist {:biff.fx/now              now
+                           :biff.fx/random-uuid7-seq uuids}
+                          (assoc loaded :existing existing)))]
+            (is (= 1 (count effects)))
+            (is (= :biff.graph.fx/query
+                   (get-in effects [0 :active 0]))))))
       (testing "confirmation, welcome, and no-email branches"
         (let [confirmation
               (respond {:biff.fx/now              now
@@ -120,6 +173,6 @@
           (is (= 2 (count (:biff.fx/seq confirmation))))
           (is (= :biff.sqlite.fx/execute
                  (get-in confirmation [:biff.fx/seq 0 :_write 0])))
-          (is (= {:status 204} (:biff.fx/return confirmation)))
+          (is (= 200 (get-in confirmation [:biff.fx/return :status])))
           (is (= 1 (count (:biff.fx/seq welcome))))
           (is (nil? (:biff.fx/seq no-email))))))))

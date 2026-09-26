@@ -22,7 +22,12 @@
                          :biff.fx/random-uuid7-seq         [(random-uuid)]
 
                          :params {:to [{:email "reader@example.com"}]}})]
-      (is (= :platypub/swap-atom (get-in result [:_store 0])))
+      (is (= [:platypub.fx/swap!
+              :platypub/mock-mailersend-state
+              `update
+              :emails
+              `conj]
+             (subvec (get result :_store) 0 5)))
       (is (= 202 (get-in result [:biff.fx/return :status]))))))
 
 (deftest activities-states-test
@@ -34,5 +39,8 @@
     (is (= {:state [:platypub/deref store]}
            (load-state {:platypub/mock-mailersend-enabled true
                         :platypub/mock-mailersend-state   store})))
-    (is (= {:status 200 :body {:data (:activities @store)}}
+    (is (= {:status 200
+            :body   {:data  (:activities @store)
+                     :links {:next nil}
+                     :meta  {:current_page 1}}}
            (response {} {:state @store})))))

@@ -1,5 +1,6 @@
 (ns com.platypub.app.publications.publication.send
-  (:require [com.biffweb.datastar :as datastar]
+  (:require [cheshire.core :as json]
+            [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.biffweb.ring :refer [defpath]]
             [com.platypub.lib.middleware :as mid]
@@ -8,7 +9,7 @@
             [com.platypub.routes :as routes]))
 
 (defpath root-path "")
-(defpath confirm-path "/app/publications/:id/send/confirm")
+(defpath confirm-path "/app/publications/:publication-id/send/confirm")
 
 (defpipeline send-page
   [:biff.graph.fx/query
@@ -16,9 +17,10 @@
      [:publication/id
       :publication/title
       {:publication/sends [{:send/posts [:post/id]}]}
-      {:publication/visible-posts [:post/id :post/title]}]}
-    {:request/send-preview
-     [:send/subject :send/html {:send/posts [:post/id]}]}]]
+      {:publication/visible-posts [:post/id [:? :post/title]]}]}
+    {[:? :request/send-preview]
+     [:send/subject :send/html :send/from-name :send/reply-to
+      {:send/posts [:post/id]}]}]]
 
   (fn [request result]
     (if-let [publication (:request/publication result)]
@@ -48,12 +50,19 @@
              [:p
               {:class ["my-2"]}
               [:strong "From: "]
-              (:publication/title publication)]
+              (:send/from-name preview)]
+             [:p
+              {:class ["my-2"]}
+              [:strong "Reply-To: "]
+              (:send/reply-to preview)]
              [:p
               {:class ["mb-4"]}
               [:strong "Subject: "]
               (:send/subject preview)]
-             [:div {:class ["rounded border p-4"]} (:send/html preview)]
+             [:iframe
+              {:title  "Newsletter preview"
+               :srcdoc (:send/html preview)
+               :class  ["min-h-96 w-full rounded border"]}]
              [:form
               {:data-on:submit "@post(el.dataset.action)",
 
@@ -86,20 +95,41 @@
 
 (defpipeline preview-send
   [:biff.graph.fx/query
-   [{:request/publication [:publication/id]}
+   [{:request/publication
+     [:publication/id
+      :publication/title
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      [:? :publication/default-author-name]
+      [:? :publication/default-author-url]
+      [:? :publication/default-author-image-url]
+      :publication/padding-color
+      :publication/background-color
+      :publication/text-color
+      :publication/primary-color
+      {:publication/user [:user/email]}]}
     {:request/send-selection [:send/post-ids]}
     {:request/send-posts
      [:post/id
-      :post/url
+      [:? :post/url]
       :post/fetched-at
-      :post/published-at
-      :post/title
-      :post/author-name
-      :post/author-url
-      :post/author-image-url
-      :post/excerpt
-      :content/data]}
-    {:request/tab [:tab/send-preview]}]]
+      [:? :post/published-at]
+      [:? :post/title]
+      [:? :post/author-name]
+      [:? :post/author-url]
+      [:? :post/author-image-url]
+      [:? :post/excerpt]
+      :post/content-id
+      {:post/content [[:? :content/html] [:? :content/text]]}]}
+    {:request/tab
+     [{[:? :tab/send-preview]
+       [:publication/id
+        :send/subject
+        :send/html
+        :send/text
+        :send/from-name
+        :send/reply-to
+        :send/post-ids]}]}]]
 
   (fn [{:keys [biff.datastar/tab-id]} result]
     (if (and (:request/publication result)
@@ -111,7 +141,7 @@
        [:biff.graph.fx/query
         {:send/publication (:request/publication result)
          :send/posts       (:request/send-posts result)}
-        [:send/subject :send/html]]}
+        [:send/subject :send/html :send/text]]}
       {:status 404}))
 
   (fn [_ctx {:keys [tab-id result content]}]
@@ -127,35 +157,41 @@
           {:publication/id (:publication/id publication)
            :send/subject   (:send/subject content)
            :send/html      (:send/html content)
+           :send/text      (:send/text content)
+           :send/from-name (:publication/title publication)
+           :send/reply-to  (get-in publication
+                                   [:publication/user :user/email])
            :send/post-ids  (mapv :post/id posts)}})]
 
        :biff.fx/return {:status 204}})))
 
 (defpipeline confirm-send
   [:biff.graph.fx/query
-   [{:request/publication
-     [:publication/id
-      :publication/title
-      :publication/intro
-      :publication/banner-image-url
-      :publication/default-author-name
-      :publication/default-author-url
-      :publication/default-author-image-url
-      :publication/padding-color
-      :publication/background-color
-      :publication/text-color]}
+   [{:request/publication [:publication/id]}
     {:request/send-posts
      [:post/id
-      :post/url
+      [:? :post/url]
       :post/fetched-at
-      :post/published-at
-      :post/title
-      :post/author-name
-      :post/author-url
-      :post/author-image-url
-      :post/excerpt
-      :content/data]}
-    {:request/tab [:tab/send-preview]}]]
+      [:? :post/published-at]
+      [:? :post/title]
+      [:? :post/author-name]
+      [:? :post/author-url]
+      [:? :post/author-image-url]
+      [:? :post/excerpt]
+      :post/content-id
+      {:post/content [[:? :content/html] [:? :content/text]]}]}
+    {[:? :request/send-preview]
+     [:send/subject :send/html :send/text :send/from-name :send/reply-to
+      {:send/posts [:post/id]}]}
+    {:request/tab
+     [{[:? :tab/send-preview]
+       [:publication/id
+        :send/subject
+        :send/html
+        :send/text
+        :send/from-name
+        :send/reply-to
+        :send/post-ids]}]}]]
 
   (fn [{:biff.fx/keys       [now random-uuid7-seq]
         :biff.datastar/keys [tab-id]}
@@ -167,19 +203,15 @@
         {:now    now
          :ids    random-uuid7-seq
          :tab-id tab-id
-         :result result
-
-         :content
-         [:biff.graph.fx/query
-          {:send/publication publication
-           :send/posts       posts}
-          [:send/subject :send/html :send/text]]}
+         :result result}
         {:biff.fx/return {:status 204}})))
 
-  (fn [_ctx {:keys [now ids tab-id result content]}]
+  (fn [_ctx {:keys [now ids tab-id result]}]
     (let [publication (:request/publication result)
 
           posts (:request/send-posts result)
+
+          preview (:request/send-preview result)
 
           send-id (first ids)
 
@@ -187,31 +219,53 @@
 
           row-ids (drop 2 ids)
 
-          content
-          {:subject (:send/subject content)
-           :html    (:send/html content)
-           :text    (:send/text content)}]
+          content {:html (:send/html preview)
+                   :text (:send/text preview)}]
+      {:send-id    send-id
+       :content-id content-id
+       :content    content
+       :write-data {:now         now
+                    :tab-id      tab-id
+                    :result      result
+                    :publication publication
+                    :posts       posts
+                    :row-ids     row-ids
+                    :send-id     send-id
+                    :content-id  content-id
+                    :content     content}
+
+       :_content [:platypub.fx/put-object
+                  content-id
+                  (json/generate-string content)
+                  "application/json"]}))
+
+  (fn [_ctx {:keys [write-data]}]
+    (let [{:keys [now tab-id result publication posts row-ids send-id
+                  content-id]}
+          write-data
+
+          preview (:request/send-preview result)]
       {:send-id send-id
+
+       :clear-preview
+       (tab/write-statement tab-id (:request/tab result)
+                            {:tab/send-preview nil})
 
        :_write
        [:biff.sqlite.fx/authorized-write-tx
         (into
-         [{:insert-into :content
-           :values      [{:content/id   content-id
-                          :content/data [:lift content]}]}
-          {:insert-into :send
+         [{:insert-into :send
            :values      [{:send/id             send-id
                           :send/publication-id (:publication/id publication)
                           :send/started-at     now
                           :send/progress-at    now
                           :send/status         [:lift :send.status/pending]
-                          :send/from-name      (:publication/title publication)
-                          :send/subject        (:subject content)
+                          :send/from-name      (:send/from-name preview)
+                          :send/reply-to       (:send/reply-to preview)
+                          :send/subject        (:send/subject preview)
                           :send/content-id     content-id
 
-                          :send/provenance [:lift :send.provenance/manual]}]}
-          (tab/write-statement tab-id (:request/tab result)
-                               {:tab/send-preview nil})]
+                          :send/provenance [:lift :send.provenance/manual]}]}]
          (map (fn [post row-id]
                 {:insert-into :send-post
                  :values      [{:send-post/id      row-id
@@ -219,6 +273,10 @@
                                 :send-post/post-id (:post/id post)}]})
               posts
               row-ids))]}))
+
+  (fn [_ctx {:keys [send-id clear-preview]}]
+    {:send-id        send-id
+     :_clear-preview [:biff.sqlite.fx/execute clear-preview]})
 
   (fn [_ctx {:keys [send-id]}]
     {:_submit

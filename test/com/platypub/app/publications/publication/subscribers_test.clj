@@ -43,16 +43,15 @@
     (is (= {:status 404} (state {:biff.fx/now now} {})))
     (let [result
           (state {:biff.fx/now now}
-                 {:request/subscriber {:subscriber/id subscriber-id}})]
+                 {:request/subscriber {:subscriber/id     subscriber-id
+                                       :subscriber/active true}})]
       (is (= :biff.sqlite.fx/authorized-write (get-in result [:_write 0])))
       (is (= now
              (get-in result
                      [:_write 1 :set :subscriber/unsubscribed-at])))
       (is (= {:status 204} (:biff.fx/return result))))
-    (is (nil?
-         (get-in
-          (state {:biff.fx/now now}
-                 {:request/subscriber
-                  {:subscriber/id              subscriber-id
-                   :subscriber/unsubscribed-at now}})
-          [:_write 1 :set :subscriber/unsubscribed-at])))))
+    (is (= {:status 404}
+           (state {:biff.fx/now now}
+                  {:request/subscriber
+                   {:subscriber/id     subscriber-id
+                    :subscriber/active false}})))))

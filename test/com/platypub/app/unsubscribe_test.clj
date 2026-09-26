@@ -38,4 +38,6 @@
                   {:subscriber/id      subscriber-id
                    :request/expiration 4102444800}})]
       (is (= :biff.sqlite.fx/execute (get-in result [:_write 0])))
-      (is (= {:status 204} (:biff.fx/return result))))))
+      (is (= 200 (get-in result [:biff.fx/return :status])))
+      (is (re-find #"unsubscribe_submitted"
+                   (get-in result [:biff.fx/return :body]))))))

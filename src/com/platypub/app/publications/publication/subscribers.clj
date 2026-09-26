@@ -14,12 +14,13 @@
   [:biff.graph.fx/query
    [{:request/publication [:publication/id]}
     {:request/subscriber-search [:subscriber/search]}
-    {:request/pagination [:page/limit :page/offset]}
+    {:request/pagination [:page/number :page/limit :page/offset]}
     {:request/subscribers
      [:subscriber/id
       :subscriber/email
       :subscriber/subscribed-at
-      :subscriber/unsubscribed-at]}]]
+      [:? :subscriber/unsubscribed-at]
+      :subscriber/active]}]]
 
   (fn [request result]
     (if-let [publication (:request/publication result)]
@@ -84,26 +85,32 @@
                       subscriber))]
                [:td
                 {:class ["border p-2"]}
-                [:form
-                 {:data-on:submit "@post(el.dataset.action)",
+                (when (:subscriber/active subscriber)
+                  [:form
+                   {:data-on:submit "@post(el.dataset.action)",
 
-                  :data-action
-                  (subscriber-path (:subscriber/id subscriber)),
+                    :data-action
+                    (subscriber-path (:subscriber/id subscriber)),
 
-                  :data-signals__ifmissing (datastar/signals-json {})}
-                 [:button
-                  {:class ["text-blue-700"]}
-                  (if (:subscriber/unsubscribed-at
-                       subscriber)
-                    "Re-subscribe"
-                    "Unsubscribe")]]]])]]]))
+                    :data-signals__ifmissing (datastar/signals-json {})}
+                   [:button {:class ["text-blue-700"]} "Unsubscribe"]])]])]
+           (let [page (or (get-in result [:request/pagination :page/number]) 1)]
+             [:nav {:class ["mt-4 flex gap-4"]}
+              (when (> page 1)
+                [:a {:href (str "?page=" (dec page)) :class ["text-blue-700"]}
+                 "Previous"])
+              (when (= 50 (count subscribers))
+                [:a {:href (str "?page=" (inc page)) :class ["text-blue-700"]}
+                 "Next"])])]]))
       {:status 404})))
 
 (defpipeline update-search
   [:biff.graph.fx/query
    [{:request/publication [:publication/id]}
     {:request/subscriber-search [:subscriber/search]}
-    {:request/tab [:tab/subscriber-search]}]]
+    {:request/tab
+     [{[:? :tab/subscriber-search]
+       [:publication/id :subscriber/search]}]}]]
 
   (fn [{:keys [biff.datastar/tab-id]} result]
     (if-let [publication (:request/publication result)]
@@ -123,18 +130,19 @@
 
 (defpipeline toggle-subscriber
   [:biff.graph.fx/query
-   [{:request/subscriber [:subscriber/id :subscriber/unsubscribed-at]}]]
+   [{:request/subscriber [:subscriber/id :subscriber/active]}]]
 
   (fn [{:biff.fx/keys [now]} result]
-    (if-let [subscriber (:request/subscriber result)]
+    (if-let [subscriber (when (get-in result [:request/subscriber
+                                              :subscriber/active])
+                          (:request/subscriber result))]
       (let [subscriber-id (:subscriber/id subscriber)]
         {:_write
          [:biff.sqlite.fx/authorized-write
           {:update :subscriber,
 
            :set
-           {:subscriber/unsubscribed-at
-            (when-not (:subscriber/unsubscribed-at subscriber) now)},
+           {:subscriber/unsubscribed-at now},
 
            :where [:= :subscriber/id subscriber-id]}]
 

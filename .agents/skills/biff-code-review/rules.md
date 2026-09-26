@@ -236,6 +236,9 @@
    relationship between a `user` and a `pet`, then `/pet/:pet-id` is sufficient
    to infer the user ID.
 
+4. Don't use `:id` as the name of a path parameter. Always use the entity name
+   too, like `:pet-id`.
+
 ## F. biff.datastar
 
 1. Application pages (not marketing pages like the landing page) must use
@@ -244,7 +247,9 @@
    handlers) should return a 204 response.
 
 2. Rendering updates should be handled by letting the biff.datastar middleware
-   push updates to the client when backend state changes.
+   push updates to the client when backend state changes. action handlers (i.e.
+   typically POST request handlers) do not return html; they update backend
+   state and let the SSE thread rerender the frontend.
 
 3. Tab-specific state should be stored on the backend, keyed by
    `:biff.datastar/tab-id`.

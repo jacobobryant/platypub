@@ -3,8 +3,7 @@
             [clojure.string :as str]
             [com.platypub.lib.request :as request]
             [com.platypub.lib.tokens :as tokens]
-            [com.platypub.schema :as schema]
-            [malli.core :as malli])
+            [com.platypub.schema :as schema])
   (:import [java.net URLDecoder]
            [java.nio.charset StandardCharsets]
            [java.util Base64]))
@@ -27,16 +26,7 @@
       number)))
 
 (defn- tier-signal [user-id]
-  (keyword (str "request.tier-" user-id)))
-
-(defn- upload-value [upload]
-  (if (map? upload)
-    (or (:tempfile upload)
-        (:file upload)
-        (:content upload)
-        (:data upload)
-        (:body upload))
-    upload))
+  (keyword "request" (str "tier-" user-id)))
 
 (defn- data-url [value]
   (when (and (string? value) (str/starts-with? value "data:"))
@@ -53,13 +43,47 @@
                  StandardCharsets/UTF_8)
         (URLDecoder/decode encoded StandardCharsets/UTF_8)))))
 
+(defn- upload-value [upload]
+  (cond
+    (and (sequential? upload) (= 1 (count upload)))
+    (recur (first upload))
+
+    (sequential? upload)
+    (throw (ex-info "Expected exactly one uploaded CSV."
+                    {:upload-count (count upload)}))
+
+    (map? upload)
+    (if-let [contents (:contents upload)]
+      (let [mime (some-> (:mime upload) str/lower-case)]
+        (when-not (#{"text/csv" "application/csv"
+                     "application/vnd.ms-excel"} mime)
+          (throw (ex-info "Unsupported uploaded CSV content type."
+                          {:content-type mime})))
+        (String. (.decode (Base64/getDecoder) ^String contents)
+                 StandardCharsets/UTF_8))
+      (or (:tempfile upload)
+          (:file upload)
+          (:content upload)
+          (:data upload)
+          (:body upload)))
+
+    :else upload))
+
 (defn- subscription-request [ctx]
   (let [email (request/text (request/value ctx :subscription/email))]
-    {:subscriber/email        email
-     :subscriber/headers      (:headers ctx)
-     :subscriber/form-params  (or (:form-params ctx)
-                                  {:email email})
-     :subscriber/query-params (:query-params ctx)}))
+    (cond-> {:subscriber/email email}
+      (or (request/value ctx :request/turnstile-token)
+          (request/value ctx "cf-turnstile-response"))
+      (assoc :request/turnstile-token
+             (request/text
+              (or (request/value ctx :request/turnstile-token)
+                  (request/value ctx "cf-turnstile-response"))))
+      (or (request/value ctx :request/hcaptcha-token)
+          (request/value ctx "h-captcha-response"))
+      (assoc :request/hcaptcha-token
+             (request/text
+              (or (request/value ctx :request/hcaptcha-token)
+                  (request/value ctx "h-captcha-response")))))))
 
 (def settings-fields
   [:publication/title
@@ -77,8 +101,21 @@
    :publication/remove-tag
    :publication/welcome-html])
 
-(def tab-state-keys
-  (vec (keys (malli/entries schema/tab-state-schema))))
+(defn- schema-map-query [map-schema]
+  (mapv
+   (fn [[attribute options value-schema]]
+     (let [[options value-schema] (if (map? options)
+                                    [options value-schema]
+                                    [nil options])
+
+           attribute
+           (if (:optional options) [:? attribute] attribute)]
+       (if (and (vector? value-schema) (= :map (first value-schema)))
+         {attribute (schema-map-query value-schema)}
+         attribute)))
+   (rest map-schema)))
+
+(def tab-state-query (schema-map-query schema/tab-state-schema))
 
 (def tab-defaults
   {:tab/background-color :white})
@@ -105,18 +142,24 @@
     {:request/user {:user/id user-id}}))
 
 (defresolver publication-url
-  {:output [{:request/new-publication [:publication/url]}]}
+  {:output
+   [{:request/new-publication
+     [:publication/url [:? :publication/feed-url]]}]}
   [ctx _]
   (when-let [url (request/text (request/value ctx
                                               :request/publication-url))]
-    {:request/new-publication {:publication/url url}}))
+    {:request/new-publication
+     (cond-> {:publication/url url}
+       (request/value ctx :request/feed-url)
+       (assoc :publication/feed-url
+              (request/text (request/value ctx :request/feed-url))))}))
 
 (defresolver publication
   {:output [{:request/publication [:publication/id]}]}
 
   (fn [{:keys [session] :as ctx} _]
     (when-let [user-id (request/uuid (:uid session))]
-      (when-let [publication-id (request/path-uuid ctx :id)]
+      (when-let [publication-id (request/path-uuid ctx :publication-id)]
         [:biff.sqlite.fx/execute
          {:select [:publication/id]
           :from   :publication
@@ -128,15 +171,37 @@
     (when-let [publication (first rows)]
       {:request/publication publication})))
 
-(defresolver tab-state
-  {:output [{:request/tab tab-state-keys}]}
+(defresolver subscription-publication
+  {:output
+   [{:request/subscription-publication
+     [:publication/id
+      :publication/title
+      [:? :publication/description]
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      :publication/padding-color
+      :publication/background-color
+      :publication/text-color
+      :publication/primary-color
+      :publication/require-confirmation
+      :publication/welcome-html]}]}
 
-  (fn [{:keys [biff.datastar/tab-id]} _]
-    (when tab-id
-      [:biff.sqlite.fx/execute
-       {:select [:tab-state/data]
-        :from   :tab-state
-        :where  [:= :tab-state/id tab-id]}]))
+  [ctx _]
+  (when-let [publication-id (request/path-uuid ctx :publication-id)]
+    {:request/subscription-publication {:publication/id publication-id}}))
+
+(defresolver tab-state
+  {:output [{:request/tab tab-state-query}]}
+
+  (fn [{:keys [biff.datastar/tab-id] :as ctx} _]
+    (let [tab-id (or tab-id
+                     (request/uuid
+                      (request/value ctx :biff.datastar/client-tab-id)))]
+      (when tab-id
+        [:biff.sqlite.fx/execute
+         {:select [:tab-state/data]
+          :from   :tab-state
+          :where  [:= :tab-state/id tab-id]}])))
 
   (fn [_ [{:tab-state/keys [data]}]]
     {:request/tab (merge tab-defaults data)}))
@@ -189,7 +254,9 @@
          [])})))
 
 (defresolver subscriber-search
-  {:input  [{:request/tab [[:? :tab/subscriber-search]]}]
+  {:input  [{:request/tab
+             [{[:? :tab/subscriber-search]
+               [:publication/id :subscriber/search]}]}]
    :output [{:request/subscriber-search [:subscriber/search]}]}
   [ctx input]
   {:request/subscriber-search
@@ -251,9 +318,8 @@
 (defresolver subscription
   {:output [{:request/subscription
              [:subscriber/email
-              :subscriber/headers
-              :subscriber/form-params
-              :subscriber/query-params]}]}
+              [:? :request/turnstile-token]
+              [:? :request/hcaptcha-token]]}]}
   [ctx _]
   {:request/subscription (subscription-request ctx)})
 
@@ -295,7 +361,7 @@
   (fn [ctx input]
     (when-let [user-id (and (= :user.tier/admin
                                (get-in input [:request/user :user/tier]))
-                            (request/path-uuid ctx :id))]
+                            (request/path-uuid ctx :user-id))]
       {:user-id user-id
        :tier    (request/text (request/value ctx (tier-signal user-id)))
 
@@ -320,7 +386,7 @@
     (when-let [publication-id
                (and (= :user.tier/admin
                        (get-in input [:request/user :user/tier]))
-                    (request/path-uuid ctx :id))]
+                    (request/path-uuid ctx :publication-id))]
       (when-let [upload (request/value ctx :request/csv)]
         (let [upload (upload-value upload)]
           (when-not upload
@@ -347,18 +413,18 @@
   {:output [{:request/feed [:feed/url]}
             {:request/publication-settings
              [:publication/title
-              :publication/description
-              :publication/intro
-              :publication/banner-image-url
-              :publication/default-author-name
-              :publication/default-author-url
-              :publication/default-author-image-url
+              [:? :publication/description]
+              [:? :publication/intro]
+              [:? :publication/banner-image-url]
+              [:? :publication/default-author-name]
+              [:? :publication/default-author-url]
+              [:? :publication/default-author-image-url]
               :publication/padding-color
               :publication/background-color
               :publication/text-color
               :publication/primary-color
-              :publication/filter-tag
-              :publication/remove-tag
+              [:? :publication/filter-tag]
+              [:? :publication/remove-tag]
               :publication/welcome-html
               :publication/automatic-sending
               :publication/require-confirmation]}]}
@@ -367,7 +433,9 @@
 
 (defresolver send-selection
   {:input  [{:request/publication [:publication/id]}
-            {:request/tab [[:? :tab/send-preview]]}]
+            {:request/tab
+             [{[:? :tab/send-preview]
+               [:publication/id :send/post-ids]}]}]
    :output [{:request/send-selection [:send/post-ids]}]}
 
   (fn [ctx input]
@@ -419,24 +487,37 @@
 
 (defresolver send-preview
   {:input  [{:request/publication [:publication/id]}
-            {:request/tab [[:? :tab/send-preview]]}]
+            {:request/tab
+             [{[:? :tab/send-preview]
+               [:publication/id
+                :send/subject
+                :send/html
+                :send/text
+                :send/from-name
+                :send/reply-to
+                :send/post-ids]}]}]
    :output [{:request/send-preview
-             [:send/subject :send/html {:send/posts [:post/id]}]}]}
+             [:send/subject :send/html :send/text :send/from-name :send/reply-to
+              {:send/posts [:post/id]}]}]}
   [_ input]
   (let [publication-id (get-in input [:request/publication :publication/id])
         preview        (get-in input [:request/tab :tab/send-preview])]
     (when (= publication-id (:publication/id preview))
       {:request/send-preview
-       {:send/subject (:send/subject preview)
-        :send/html    (:send/html preview)
-        :send/posts   (mapv (fn [post-id] {:post/id post-id})
-                            (:send/post-ids preview))}})))
+       {:send/subject   (:send/subject preview)
+        :send/html      (:send/html preview)
+        :send/text      (:send/text preview)
+        :send/from-name (:send/from-name preview)
+        :send/reply-to  (:send/reply-to preview)
+        :send/posts     (mapv (fn [post-id] {:post/id post-id})
+                              (:send/post-ids preview))}})))
 
 (def module
   {:biff.graph/resolvers
    [user
     publication-url
     publication
+    subscription-publication
     tab-state
     pagination
     admin-publication-search

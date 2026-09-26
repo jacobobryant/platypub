@@ -5,6 +5,7 @@
             [com.biffweb.ring :refer [defpath]]
             [com.platypub.lib.feed :as feed]
             [com.platypub.lib.middleware :as mid]
+            [com.platypub.lib.tab :as tab]
             [com.platypub.lib.ui :as ui]
             [com.platypub.routes :as routes])
   (:import [java.net URI]))
@@ -44,15 +45,57 @@
        distinct
        vec))))
 
+(defn- publication-form
+  [tab-state]
+  (if-let [{:publication/keys [url feed-urls]}
+           (:tab/new-publication tab-state)]
+    [:form
+     {:data-on:submit "@post(el.dataset.action)"
+      :data-action    (publications-path)
+
+      :data-signals__ifmissing
+      (datastar/signals-json {:request/publication-url url
+                              :request/feed-url        nil})
+
+      :class ["my-8 flex gap-2"]}
+     [:select {:data-bind (datastar/signal-name :request/feed-url)
+               :required  true
+               :class     ["min-w-0 flex-1 rounded border p-3"]}
+      [:option {:value ""} "Choose a feed"]
+      (for [feed-url feed-urls]
+        [:option {:value feed-url} feed-url])]
+     [:button {:class ["rounded bg-blue-600 px-5 py-3 text-white"]}
+      "Use this feed"]]
+    [:form
+     {:data-on:submit "@post(el.dataset.action)"
+      :data-action    (publications-path)
+
+      :data-signals__ifmissing
+      (datastar/signals-json {:request/publication-url ""
+                              :request/feed-url        nil})
+
+      :class ["my-8 flex gap-2"]}
+     [:input {:data-bind   (datastar/signal-name :request/publication-url)
+              :type        "url"
+              :required    true
+              :placeholder "Website or feed URL"
+              :class       ["min-w-0 flex-1 rounded border p-3"]}]
+     [:button {:class ["rounded bg-blue-600 px-5 py-3 text-white"]}
+      "Add publication"]]))
+
 (defpipeline publications-page
   [:biff.graph.fx/query
    [{:request/user
      [:user/id
       {:user/publications
-       [:publication/id :publication/title :publication/description]}]}]]
+       [:publication/id :publication/title :publication/description]}]}
+    {:request/tab
+     [{[:? :tab/new-publication]
+       [:publication/url :publication/feed-urls]}]}]]
 
   (fn [request result]
-    (let [publications (get-in result [:request/user :user/publications])]
+    (let [publications (get-in result [:request/user :user/publications])
+          tab-state    (:request/tab result)]
       (ui/app-shell
        request
        [:main
@@ -60,22 +103,7 @@
         [:div
          {:class ["flex items-center justify-between"]}
          [:h1 {:class ["text-3xl font-bold"]} "Publications"]]
-        [:form
-         {:data-on:submit "@post(el.dataset.action)",
-          :data-action    (publications-path),
-
-          :data-signals__ifmissing
-          (datastar/signals-json {:request/publication-url ""}),
-
-          :class ["my-8 flex gap-2"]}
-         [:input {:data-bind   (datastar/signal-name :request/publication-url),
-                  :type        "url"
-                  :required    true
-                  :placeholder "Website or feed URL"
-                  :class       ["min-w-0 flex-1 rounded border p-3"]}]
-         [:button
-          {:class ["rounded bg-blue-600 px-5 py-3 text-white"]}
-          "Add publication"]]
+        (publication-form tab-state)
         (if (seq publications)
           [:div
            {:class ["grid gap-4"]}
@@ -96,59 +124,92 @@
 (defpipeline create-publication
   [:biff.graph.fx/query
    [{:request/user [:user/id]}
-    {:request/new-publication [:publication/url]}]]
+    {:request/new-publication
+     [:publication/url [:? :publication/feed-url]]}
+    {:request/tab
+     [{[:? :tab/new-publication]
+       [:publication/url :publication/feed-urls]}]}]]
 
   (concat
-   [(fn [_ctx result]
+   [(fn [{:keys [biff.datastar/tab-id]} result]
       {:url  (get-in result [:request/new-publication :publication/url])
-       :data {:user-id (get-in result [:request/user :user/id])}})
+       :data {:user-id     (get-in result [:request/user :user/id])
+              :feed-choice (get-in result
+                                   [:request/new-publication
+                                    :publication/feed-url])
+              :tab-id      tab-id
+              :tab         (:request/tab result)}})
 
     feed/fetch
 
     (fn [_ctx {:keys [url response data]}]
-      (let [urls (discover-feed-urls url response)]
-        (if (= 1 (count urls))
-          {:url  (first urls)
-           :data (assoc data :defer-write true)}
-          {:biff.fx/return {:status 204}})))]
+      (let [urls     (discover-feed-urls url response)
+            selected (when (some #{(:feed-choice data)} urls)
+                       (:feed-choice data))]
+        (cond
+          (or selected (= 1 (count urls)))
+          {:url    (or selected (first urls))
+           :data   (assoc data :defer-write true :force-fetch true)
+           :_clear (when (:tab-id data)
+                     [:biff.sqlite.fx/execute
+                      (tab/write-statement (:tab-id data)
+                                           (:tab data)
+                                           {:tab/new-publication nil})])}
+
+          (empty? urls)
+          {:biff.fx/return {:status 422
+                            :body   "No feed was discovered at that URL."}}
+
+          :else
+          {:_write         [:biff.sqlite.fx/execute
+                            (tab/write-statement
+                             (:tab-id data)
+                             (:tab data)
+                             {:tab/new-publication
+                              {:publication/url       url
+                               :publication/feed-urls urls}})]
+           :biff.fx/return {:status 204}})))]
 
    feed/sync-fns
 
    [(fn [{:biff.fx/keys [now random-uuid7-seq]}
          {:keys [data] :as sync-result}]
-      (let [publication-id (first random-uuid7-seq)
-            user-id        (:user-id data)
-            feed           (:feed sync-result)
-            author         (:author feed)
+      (if-not (and (:success sync-result) (seq (:post-ids sync-result)))
+        {:biff.fx/return {:status 422
+                          :body   "The feed has no usable posts."}}
+        (let [publication-id (first random-uuid7-seq)
+              user-id        (:user-id data)
+              feed           (:feed sync-result)
+              author         (:author feed)
 
-            row
-            (merge
-             defaults
-             {:publication/id                       publication-id
-              :publication/created-at               now
-              :publication/user-id                  user-id
-              :publication/feed-id                  (:feed/id feed)
-              :publication/feed-id-updated-at       now
-              :publication/automatic-send-threshold now
+              row
+              (merge
+               defaults
+               {:publication/id                       publication-id
+                :publication/created-at               now
+                :publication/user-id                  user-id
+                :publication/feed-id                  (:feed/id feed)
+                :publication/feed-id-updated-at       now
+                :publication/automatic-send-threshold now
 
-              :publication/title (or (:title feed) (:feed/url feed))}
-             (when-let [value (:description feed)]
-               {:publication/description value
-                :publication/intro       value})
-             (when-let [value (:name author)]
-               {:publication/default-author-name value
-                :publication/default-author-url  (:url author)
+                :publication/title (or (:title feed) (:feed/url feed))}
+               (when-let [value (:description feed)]
+                 {:publication/description value
+                  :publication/intro       value})
+               (when-let [value (:name author)]
+                 {:publication/default-author-name value
+                  :publication/default-author-url  (:url author)
 
-                :publication/default-author-image-url (:image author)}))]
-        {:_write
-         [:biff.sqlite.fx/authorized-write-tx
-          (into (:write-statements sync-result)
-                [{:insert-into :publication, :values [row]}
-                 {:update :post,
-                  :set    {:post/present-as-of now},
-                  :where  [:in :post/id (:post-ids sync-result)]}])]
+                  :publication/default-author-image-url (:image author)}))]
+          {:_write
+           [:biff.sqlite.fx/authorized-write-tx
+            (into (:write-statements sync-result)
+                  [{:insert-into :publication, :values [row]}
+                   {:update :post,
+                    :set    {:post/present-as-of now},
+                    :where  [:in :post/id (:post-ids sync-result)]}])]
 
-         :biff.fx/return {:status 204}}))]))
+           :biff.fx/return {:status 204}})))]))
 
 (def module
   {:biff.ring/routes

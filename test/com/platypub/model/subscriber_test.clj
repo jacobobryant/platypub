@@ -1,7 +1,8 @@
 (ns com.platypub.model.subscriber-test
   (:require [clojure.test :refer [deftest is]]
             [com.platypub.model.subscriber :as subscriber]
-            [com.platypub.test-helpers :as helpers]))
+            [com.platypub.test-helpers :as helpers]
+            [tick.core :as tick]))
 
 (deftest lookup-resolvers-test
   (is (= {:subscriber/id 1}
@@ -30,3 +31,18 @@
           subscriber/active
           {}
           {:subscriber/id 1 :subscriber/suppressed true}))))
+
+(deftest confirmation-token-active-resolver-test
+  (let [now (tick/instant "2026-09-21T00:00:00Z")]
+    (is (= {:subscriber/confirmation-token-active true}
+           (helpers/resolve-resolver
+            subscriber/confirmation-token-active
+            {:biff.fx/now now}
+            {:subscriber/confirmation-triggered-at
+             (tick/<< now (tick/of-hours 23))})))
+    (is (= {:subscriber/confirmation-token-active false}
+           (helpers/resolve-resolver
+            subscriber/confirmation-token-active
+            {:biff.fx/now now}
+            {:subscriber/confirmation-triggered-at
+             (tick/<< now (tick/of-hours 25))})))))

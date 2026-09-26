@@ -3,26 +3,25 @@
             [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.biffweb.ring :refer [defpath]]
-            [com.platypub.lib.middleware :as mid]
             [com.platypub.lib.feed :as feed]
+            [com.platypub.lib.middleware :as mid]
+            [com.platypub.lib.request :as request]
+            [com.platypub.lib.tab :as tab]
             [com.platypub.lib.ui :as ui]
             [com.platypub.routes :as routes]))
 
 (defpath root-path "")
+(defpath image-path "/app/publications/:publication-id/settings/image/:field")
 
 (def setting-fields
   [[:publication/title "Title" "text"]
    [:publication/description "Description" "text"]
    [:publication/intro "Intro" "text"]
-   [:publication/banner-image-url "Banner image URL" "url"]
    [:publication/default-author-name
     "Default author name"
     "text"]
    [:publication/default-author-url
     "Default author URL"
-    "url"]
-   [:publication/default-author-image-url
-    "Default author image URL"
     "url"]
    [:publication/padding-color "Padding color" "color"]
    [:publication/background-color
@@ -36,8 +35,12 @@
 (defn- settings-signals
   [publication feed-url]
   (merge
-   (select-keys publication (map first setting-fields))
-   {:request/feed-url feed-url
+   (select-keys publication
+                (concat (map first setting-fields)
+                        [:publication/banner-image-url
+                         :publication/default-author-image-url]))
+   {:request/feed-url         feed-url
+    :publication/welcome-html (:publication/welcome-html publication)
 
     :publication/automatic-sending
     (some? (:publication/automatic-send-threshold publication))
@@ -45,31 +48,45 @@
     :publication/require-confirmation
     (:publication/require-confirmation publication)}))
 
+(defn- pending-images
+  [publication tab-state]
+  (let [images (:tab/publication-images tab-state)]
+    (when (= (:publication/id publication) (:publication/id images))
+      images)))
+
 (defpipeline settings-page
   [:biff.graph.fx/query
    [{:request/publication
      [:publication/id
       :publication/title
-      :publication/description
-      :publication/intro
-      :publication/banner-image-url
-      :publication/default-author-name
-      :publication/default-author-url
-      :publication/default-author-image-url
+      [:? :publication/description]
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      [:? :publication/default-author-name]
+      [:? :publication/default-author-url]
+      [:? :publication/default-author-image-url]
       :publication/padding-color
       :publication/background-color
       :publication/text-color
       :publication/primary-color
-      :publication/filter-tag
-      :publication/remove-tag
+      [:? :publication/filter-tag]
+      [:? :publication/remove-tag]
       :publication/welcome-html
-      :publication/automatic-send-threshold
+      [:? :publication/automatic-send-threshold]
       :publication/require-confirmation
-      {:publication/feed [:feed/url]}]}]]
+      {:publication/feed [:feed/url]}]}
+    {:request/tab
+     [{[:? :tab/publication-images]
+       [:publication/id
+        [:? :publication/banner-image-url]
+        [:? :publication/default-author-image-url]]}]}]]
 
   (fn [request result]
     (if-let [publication (:request/publication result)]
-      (let [feed-url (get-in publication [:publication/feed :feed/url])]
+      (let [publication (merge publication
+                               (pending-images publication
+                                               (:request/tab result)))
+            feed-url    (get-in publication [:publication/feed :feed/url])]
         (ui/app-shell
          request
          [:main
@@ -81,6 +98,32 @@
           [:h1
            {:class ["my-4 text-3xl font-bold"]}
            "Publication settings"]
+          [:div
+           {:class ["mb-6 grid gap-4 sm:grid-cols-2"]}
+           (for [[field label image]
+                 [["banner" "Banner image"
+                   (:publication/banner-image-url publication)]
+                  ["author" "Default author image"
+                   (:publication/default-author-image-url publication)]]]
+             [:form
+              {:data-on:change
+               "@post(el.dataset.action, {contentType: 'form'})"
+
+               :data-action (image-path (:publication/id publication) field)
+               :enctype     "multipart/form-data"
+               :class       ["rounded border p-4"]}
+              [:div {:class ["font-medium"]} label]
+              (when image
+                [:img {:src image :class ["my-2 max-h-32 max-w-full"]}])
+              [:input
+               {:type            "hidden"
+                :name            (datastar/signal-name
+                                  :biff.datastar/client-tab-id)
+                :data-attr:value "$biff_datastar_client-tab-id"}]
+              [:input {:type     "file"
+                       :name     (datastar/signal-name :request/image)
+                       :accept   "image/png,image/jpeg,image/gif,image/webp"
+                       :required true}]])]
           [:div
            {:class ["grid gap-8 lg:grid-cols-2"]}
            [:form
@@ -136,7 +179,8 @@
             {:class ["rounded border p-6"]}
             [:h2
              {:class ["text-xl font-semibold"]}
-             "Preview"]
+             "Previews"]
+            [:h3 {:class ["mt-4 font-semibold"]} "Subscribe form"]
             [:div
              {:style (str "background:"
                           (:publication/background-color
@@ -152,38 +196,65 @@
               {:class ["text-2xl font-bold"]}
               (:publication/title publication)]
              [:p (:publication/intro publication)]
-             [:p
-              "Lorem ipsum dolor sit amet, consectetur adipiscing elit."]]]]]))
+             [:div {:class ["mt-3 flex gap-2"]}
+              [:input {:type        "email"
+                       :placeholder "you@example.com"
+                       :class       ["min-w-0 flex-1 rounded border p-2"]}]
+              [:button
+               {:style (str "background:"
+                            (:publication/primary-color publication))
+                :class ["rounded px-3 py-2 text-white"]}
+               "Subscribe"]]]
+            [:h3 {:class ["mt-6 font-semibold"]} "Email"]
+            [:div
+             {:style (str "background:"
+                          (:publication/background-color publication)
+                          ";color:" (:publication/text-color publication))
+              :class ["mt-2 p-6"]}
+             [:h3 {:class ["text-2xl font-bold"]} "Lorem ipsum"]
+             [:p "Lorem ipsum dolor sit amet, consectetur adipiscing elit."]
+             [:a
+              {:href  "#"
+               :style (str "color:"
+                           (:publication/primary-color publication))}
+              "Read online"]]]]]))
       {:status 404})))
 
 (defpipeline save-settings
   [:biff.graph.fx/query
    [{:request/publication
      [:publication/id
-      :publication/automatic-send-threshold
+      [:? :publication/automatic-send-threshold]
       {:publication/feed [:feed/url]}]}
     {:request/feed [:feed/url]}
     {:request/publication-settings
      [:publication/title
-      :publication/description
-      :publication/intro
-      :publication/banner-image-url
-      :publication/default-author-name
-      :publication/default-author-url
-      :publication/default-author-image-url
+      [:? :publication/description]
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      [:? :publication/default-author-name]
+      [:? :publication/default-author-url]
+      [:? :publication/default-author-image-url]
       :publication/padding-color
       :publication/background-color
       :publication/text-color
       :publication/primary-color
-      :publication/filter-tag
-      :publication/remove-tag
+      [:? :publication/filter-tag]
+      [:? :publication/remove-tag]
       :publication/welcome-html
       :publication/automatic-sending
-      :publication/require-confirmation]}]]
+      :publication/require-confirmation]}
+    {:request/tab
+     [{[:? :tab/publication-images]
+       [:publication/id
+        [:? :publication/banner-image-url]
+        [:? :publication/default-author-image-url]]}]}]]
 
   (fn [{:biff.fx/keys [now]} result]
     (if-let [publication (:request/publication result)]
-      (let [settings (:request/publication-settings result)
+      (let [settings (merge (:request/publication-settings result)
+                            (pending-images publication
+                                            (:request/tab result)))
 
             old-auto (some? (:publication/automatic-send-threshold publication))
 
@@ -198,6 +269,9 @@
                             (str/trim
                              (or (get settings field) "")))])
                         setting-fields))
+             (select-keys settings
+                          [:publication/banner-image-url
+                           :publication/default-author-image-url])
              {:publication/require-confirmation
               (boolean (:publication/require-confirmation settings)),
 
@@ -215,7 +289,7 @@
             (str/trim (or (get-in result [:request/feed :feed/url]) ""))
 
             old-feed-url (get-in publication [:publication/feed :feed/url])]
-        {:publication  publication
+        {:publication  (assoc publication :pending-settings set-values)
          :set-values   set-values
          :feed-url     feed-url
          :feed-changed (not= feed-url old-feed-url)
@@ -229,8 +303,15 @@
 
   (fn [_ctx {:keys [feed-url feed-changed publication]}]
     (if feed-changed
-      {:url  feed-url
-       :data {:publication publication, :defer-write true}}
+      (let [threshold
+            (get (:pending-settings publication)
+                 :publication/automatic-send-threshold)]
+        {:url  feed-url
+         :data {:publication (assoc publication
+                                    :publication/automatic-send-threshold
+                                    threshold)
+                :defer-write true
+                :force-fetch true}})
       {:biff.fx/return {:status 204}}))
 
   feed/load-existing
@@ -241,31 +322,102 @@
 
   feed/load-posts
 
+  feed/store-content
+
   feed/persist
 
   feed/finish
 
-  (fn [{:biff.fx/keys [now]} {:keys [data] :as feed}]
+  (fn [{:biff.fx/keys [now]}
+       {:keys [data] feed-record :feed :as sync}]
     (let [publication (:publication data)]
-      {:_write
-       [:biff.sqlite.fx/authorized-write-tx
-        (into (:write-statements feed)
-              [{:update :publication
-                :set    (cond->
-                         {:publication/feed-id            (:feed/id feed)
-                          :publication/feed-id-updated-at now}
-                          (:publication/automatic-send-threshold publication)
-                          (assoc :publication/automatic-send-threshold now))
-                :where  [:= :publication/id (:publication/id publication)]}
-               {:update :post
-                :set    {:post/present-as-of now}
-                :where  [:in :post/id (:post-ids feed)]}])]
+      (if (and (:success sync) (seq (:post-ids sync)))
+        {:_write
+         [:biff.sqlite.fx/authorized-write-tx
+          (into (:write-statements sync)
+                [{:update :publication
+                  :set    (cond->
+                           {:publication/feed-id
+                            (:feed/id feed-record)
 
-       :biff.fx/return {:status 204}})))
+                            :publication/feed-id-updated-at now}
+                            (:publication/automatic-send-threshold publication)
+                            (assoc :publication/automatic-send-threshold now))
+                  :where  [:= :publication/id (:publication/id publication)]}
+                 {:update :post
+                  :set    {:post/present-as-of now}
+                  :where  [:in :post/id (:post-ids sync)]}])]
+
+         :biff.fx/return {:status 204}}
+        {:biff.fx/return {:status 422
+                          :body   "The feed has no usable posts."}}))))
+
+(def image-fields
+  {"banner" :publication/banner-image-url
+   "author" :publication/default-author-image-url})
+
+(defpipeline upload-image
+  [:biff.graph.fx/query
+   [{:request/publication [:publication/id]}
+    {:request/tab
+     [{[:? :tab/publication-images]
+       [:publication/id
+        [:? :publication/banner-image-url]
+        [:? :publication/default-author-image-url]]}]}]]
+
+  (fn [{:keys         [path-params]
+        :biff.fx/keys [random-uuid7-seq]
+        :as           ctx}
+       result]
+    (let [tab-id (or (:biff.datastar/tab-id ctx)
+                     (request/uuid
+                      (request/value ctx :biff.datastar/client-tab-id)))
+          field  (get image-fields (:field path-params))
+          upload (request/value ctx :request/image)
+          type   (:content-type upload)
+          ext    (get {"image/png"  ".png"
+                       "image/jpeg" ".jpg"
+                       "image/gif"  ".gif"
+                       "image/webp" ".webp"}
+                      type)]
+      (if (and (:request/publication result)
+               tab-id
+               field
+               (map? upload)
+               (:tempfile upload)
+               ext)
+        (let [object-key (str (first random-uuid7-seq) ext)]
+          {:publication (:request/publication result)
+           :tab-state   (:request/tab result)
+           :tab-id      tab-id
+           :field       field
+           :object-key  object-key
+           :_upload     [:platypub.fx/put-object
+                         object-key
+                         (:tempfile upload)
+                         type]})
+        {:biff.fx/return {:status 422}})))
+
+  (fn [{:keys [platypub/cdn-url-template]}
+       {:keys [publication field object-key tab-id tab-state]}]
+    {:_write
+     [:biff.sqlite.fx/execute
+      (tab/write-statement
+       tab-id
+       tab-state
+       {:tab/publication-images
+        (assoc (or (pending-images publication tab-state)
+                   {:publication/id (:publication/id publication)})
+               field
+               (format cdn-url-template object-key))})]
+
+     :biff.fx/return
+     {:status 204}}))
 
 (def module
   {:biff.ring/routes
    [[(root-path)
      {:middleware [mid/wrap-app-access]}
      [(routes/publication-settings)
-      {:get settings-page, :post save-settings}]]]})
+      {:get settings-page, :post save-settings}]
+     [(image-path) {:post upload-image}]]]})

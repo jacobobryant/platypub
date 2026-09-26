@@ -1,5 +1,7 @@
 (ns com.platypub.app.subscription
-  (:require [com.biffweb.datastar :as datastar]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
+            [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.platypub.lib.email :as email]
             [com.platypub.lib.subscriber :as subscriber]
@@ -8,12 +10,19 @@
             [com.platypub.routes :as routes]
             [dev.onionpancakes.chassis.core :as chassis])
   (:import [java.nio ByteBuffer]
+           [java.nio.charset StandardCharsets]
            [java.util Base64]))
 
 (defn- b64-encode [^bytes value]
   (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) value))
 
 (defn- bytes->token [value] (b64-encode value))
+
+(defn- submitted-response []
+  (datastar/patch-signals {:subscription/submitted true}))
+
+(defn- json-bytes [value]
+  (.getBytes (json/generate-string value) StandardCharsets/UTF_8))
 
 (defn- confirmation-token
   [uuid-seq]
@@ -23,29 +32,36 @@
       (.putLong buffer (.getLeastSignificantBits uuid)))
     (.array buffer)))
 
-(def publication-attrs
-  [:publication/id
-   :publication/title
-   :publication/description
-   :publication/padding-color
-   :publication/background-color
-   :publication/text-color
-   :publication/primary-color
-   :publication/banner-image-url
-   :publication/require-confirmation
-   :publication/welcome-html])
-
-(defn- publication
-  [result]
-  (when (:publication/title result)
-    (select-keys result publication-attrs)))
+(defn wrap-embeddable
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (if (str/starts-with? (:uri request) "/subscribe/")
+        (-> response
+            (update :headers dissoc "X-Frame-Options")
+            (assoc-in [:headers "Content-Security-Policy"]
+                      "frame-ancestors *"))
+        response))))
 
 (defpipeline subscribe-page
   [:biff.graph.fx/query
-   publication-attrs]
+   [{:request/subscription-publication
+     [:publication/id
+      :publication/title
+      [:? :publication/description]
+      :publication/padding-color
+      :publication/background-color
+      :publication/text-color
+      :publication/primary-color
+      [:? :publication/banner-image-url]
+      :publication/require-confirmation
+      :publication/welcome-html]}]]
 
   (fn [request result]
-    (if-let [publication (publication result)]
+    (if-let [publication (when (get-in result
+                                       [:request/subscription-publication
+                                        :publication/title])
+                           (:request/subscription-publication result))]
       (ui/app-page
        request
        [:main
@@ -71,23 +87,25 @@
           {:class ["my-3"]}
           (:publication/description publication)]
          [:div
-          {:data-show "$subscription.submitted"}
+          {:data-show "$subscription_submitted"}
           [:h2 {:class ["text-2xl font-bold"]} "Check your inbox"]
           [:p
            {:class ["mt-3"]}
            "Thanks! If confirmation is needed, we've sent you an email."]]
          [:form
           {:data-on:submit
-           "$subscription.submitted = true; @post(el.dataset.action)",
+           "@post(el.dataset.action)",
 
            :data-action (routes/subscribe (:publication/id publication)),
 
            :data-signals__ifmissing
            (datastar/signals-json
-            {:subscription/email     ""
-             :subscription/submitted false}),
+            {:subscription/email      ""
+             :subscription/submitted  false
+             :request/turnstile-token ""
+             :request/hcaptcha-token  ""}),
 
-           :data-show "!$subscription.submitted",
+           :data-show "!$subscription_submitted",
            :class     ["flex gap-2"]}
           [:input
            {:data-bind   (datastar/signal-name :subscription/email),
@@ -96,6 +114,43 @@
             :placeholder "you@example.com",
 
             :class ["min-w-0 flex-1 rounded border p-3 text-black"]}]
+          ;; :biff.auth/skip-captcha is a flag for platypub's signin form. Use a
+          ;; separate flag to control the newsletter subscription form.
+          (when-not (:biff.auth/skip-captcha request)
+            [:div
+             [:div {:class         "cf-turnstile"
+                    :data-sitekey  (:biff.auth/turnstile-site-key request)
+                    :data-callback "platypubTurnstile"}]
+             [:div {:id            "hcaptcha-fallback"
+                    :class         "h-captcha hidden"
+                    :data-sitekey  (:platypub/hcaptcha-site-key request)
+                    :data-callback "platypubHcaptcha"}]
+             [:input
+              {:id        "turnstile-token"
+               :type      "hidden"
+               :data-bind (datastar/signal-name :request/turnstile-token)}]
+             [:input
+              {:id        "hcaptcha-token"
+               :type      "hidden"
+               :data-bind (datastar/signal-name :request/hcaptcha-token)}]
+             [:script
+              (str
+               "window.platypubCaptchaToken=function(id,token){"
+               "var input=document.getElementById(id);input.value=token;"
+               "input.dispatchEvent(new Event('input',{bubbles:true}));};"
+               "window.platypubTurnstile=function(token){"
+               "platypubCaptchaToken('turnstile-token',token);};"
+               "window.platypubHcaptcha=function(token){"
+               "platypubCaptchaToken('hcaptcha-token',token);};")]
+             [:script
+              {:src     "https://challenges.cloudflare.com/turnstile/v0/api.js"
+               :async   true
+               :defer   true
+               :onerror (str "document.getElementById('hcaptcha-fallback')"
+                             ".classList.remove('hidden')")}]
+             [:script {:src   "https://js.hcaptcha.com/1/api.js"
+                       :async true
+                       :defer true}]])
           [:button
            {:style (str "background:"
                         (:publication/primary-color
@@ -106,59 +161,104 @@
 
 (defpipeline submit-subscription
   [:biff.graph.fx/query
-   [:publication/id
-    :publication/title
-    :publication/require-confirmation
-    :publication/welcome-html
+   [{:request/subscription-publication
+     [:publication/id
+      :publication/title
+      :publication/require-confirmation
+      :publication/welcome-html]}
     {:request/subscription
      [:subscriber/email
-      :subscriber/headers
-      :subscriber/form-params
-      :subscriber/query-params]}]]
+      [:? :request/turnstile-token]
+      [:? :request/hcaptcha-token]]}]]
 
-  (fn [_ctx result]
-    (let [publication (publication result)
-
-          request-data (:request/subscription result)
+  (fn [{:keys [biff.auth/skip-captcha
+               biff.auth/turnstile-secret
+               platypub/hcaptcha-secret-key]
+        :as   ctx}
+       result]
+    (let [publication
+          (when (get-in result
+                        [:request/subscription-publication :publication/title])
+            (:request/subscription-publication result))
 
           email-address
           (subscriber/normalize-email
-           (:subscriber/email request-data))]
+           (get-in result [:request/subscription :subscriber/email]))
+
+          request-data
+          (assoc (:request/subscription result)
+                 :subscriber/headers (:headers ctx)
+                 :subscriber/form-params
+                 (or (:form-params ctx) {:email email-address})
+                 :subscriber/query-params (:query-params ctx))]
       (cond
         (nil? publication) {:biff.fx/return {:status 404}}
 
         (not (subscriber/valid-email? email-address))
-        {:biff.fx/return {:status 204}}
+        {:biff.fx/return (submitted-response)}
 
         :else
-        {:publication  publication
-         :email        email-address
-         :request-data (select-keys
-                        request-data
-                        [:subscriber/headers
-                         :subscriber/form-params
-                         :subscriber/query-params])
+        (let [turnstile (:request/turnstile-token request-data)
+              hcaptcha  (:request/hcaptcha-token request-data)
+              provider  (cond turnstile :turnstile hcaptcha :hcaptcha)]
+          (cond->
+           {:publication   publication
+            :email         email-address
+            :captcha-valid skip-captcha
+            :request-data  (select-keys
+                            request-data
+                            [:subscriber/headers
+                             :subscriber/form-params
+                             :subscriber/query-params])}
+            (and (not skip-captcha) provider)
+            (assoc :_captcha
+                   [:biff.fx/http
+                    {:method           :post
+                     :url              (if (= provider :turnstile)
+                                         (str "https://challenges.cloudflare.com/"
+                                              "turnstile/v0/siteverify")
+                                         "https://api.hcaptcha.com/siteverify")
+                     :form-params      {:secret
+                                        (force
+                                         (if (= provider :turnstile)
+                                           turnstile-secret
+                                           hcaptcha-secret-key))
 
-         :existing
-         [:biff.graph.fx/query
-          {:subscriber/publication-id (:publication/id publication)
-           :subscriber/email          email-address}
-          [:subscriber/id
-           :subscriber/suppressed
-           :subscriber/unsubscribed-at
-           :subscriber/confirmed-at
-           :subscriber/require-confirmation
-           :subscriber/active]]})))
+                                        :response (or turnstile hcaptcha)}
+                     :as               :json
+                     :throw-exceptions false}]))))))
+
+  (fn [_ctx {:keys [publication email captcha-valid _captcha]
+             :as   state}]
+    (if (or captcha-valid (true? (get-in _captcha [:body :success])))
+      (assoc state
+             :existing
+             [:biff.graph.fx/query
+              {:subscriber/publication-id (:publication/id publication)
+               :subscriber/email          email}
+              [[:? :subscriber/id]
+               [:? :subscriber/suppressed]
+               [:? :subscriber/unsubscribed-at]
+               [:? :subscriber/confirmed-at]
+               [:? :subscriber/require-confirmation]
+               [:? :subscriber/active]]])
+      {:biff.fx/return (submitted-response)}))
 
   (fn [{:biff.fx/keys [now random-uuid7-seq]}
        {:keys [publication email request-data existing]}]
-    (let [previously-active (:subscriber/active existing)
+    (let [existing          (when (:subscriber/id existing) existing)
+          previously-active (:subscriber/active existing)
 
           resubscribe
           (and (:subscriber/unsubscribed-at existing)
                (not (:subscriber/suppressed existing)))
 
-          request-data (update-vals request-data #(when % [:lift %]))
+          request-data
+          (into {}
+                (keep (fn [[field value]]
+                        (when (some? value)
+                          [field (json-bytes value)])))
+                request-data)
 
           subscriber
           (cond
@@ -207,11 +307,10 @@
        :previously-active previously-active
        :wrote             (or (nil? existing) resubscribe)
 
-       :_write
-       (when (or (nil? existing) resubscribe)
-         [:biff.sqlite.fx/execute statement])
-
-       :active [:biff.graph.fx/query subscriber [:subscriber/active]]}))
+       :biff.fx/seq
+       [{:_write (when (or (nil? existing) resubscribe)
+                   [:biff.sqlite.fx/execute statement])}
+        {:active [:biff.graph.fx/query subscriber [:subscriber/active]]}]}))
 
   (fn [{:biff.fx/keys [now random-uuid4-seq]
         :as           ctx}
@@ -224,7 +323,7 @@
           send-welcome (and (not previously-active) (:subscriber/active active))
 
           token (when send-confirmation (confirmation-token random-uuid4-seq))]
-      (cond-> {:biff.fx/return {:status 204}}
+      (cond-> {:biff.fx/return (submitted-response)}
         send-confirmation
         (assoc
          :biff.fx/seq
@@ -279,6 +378,8 @@
                :html (:publication/welcome-html publication)})])})))))
 
 (def module
-  {:biff.ring/routes
+  {:biff.ring/base-middleware [wrap-embeddable]
+
+   :biff.ring/routes
    [[(routes/subscribe)
      {:get subscribe-page, :post submit-subscription}]]})

@@ -83,7 +83,7 @@
     (with-redefs [sqlite/execute (fn [_ _] [{:publication/id publication-id}])]
       (is (not
            (schema/authorize
-            {:path-params             {:id (str publication-id)}
+            {:path-params             {:publication-id (str publication-id)}
              :biff.datastar/signals   {:subscription/email
                                        (:subscriber/email subscriber)}
              :biff.sqlite/before-conn :before}
@@ -110,8 +110,6 @@
 
         send-id (random-uuid)
 
-        content-id (random-uuid)
-
         send-post-id (random-uuid)
 
         ctx
@@ -121,16 +119,11 @@
     (with-redefs [sqlite/execute (fn [_ _] [{:owned true}])]
       (is (schema/authorize
            ctx
-           [{:table  :content
-             :op     :create
-             :before nil
-             :after  {:content/id content-id}}
-            {:table  :send
+           [{:table  :send
              :op     :create
              :before nil
              :after  {:send/id             send-id
-                      :send/publication-id publication-id
-                      :send/content-id     content-id}}
+                      :send/publication-id publication-id}}
             {:table  :send-post
              :op     :create
              :before nil
@@ -162,7 +155,4 @@
              :after {:feed/id (random-uuid)}}
             {:table :post
              :op    :create
-             :after {:post/id (random-uuid)}}
-            {:table :content
-             :op    :update
-             :after {:content/id (random-uuid)}}])))))
+             :after {:post/id (random-uuid)}}])))))

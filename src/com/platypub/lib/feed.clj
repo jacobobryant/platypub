@@ -3,161 +3,63 @@
             [clojure.string :as str]
             [com.platypub.lib.text :as text]
             [dev.onionpancakes.chassis.core :as chassis]
+            [remus]
             [tick.core :as tick])
   (:import [java.io ByteArrayInputStream]
            [java.nio.charset StandardCharsets]
-           [java.security MessageDigest]
-           [javax.xml.parsers DocumentBuilderFactory]
-           [org.w3c.dom Element Node]))
+           [java.security MessageDigest]))
 
 (def user-agent "platypub")
-(def rfc-1123 (tick/formatter "EEE, dd MMM uuuu HH:mm:ss zzz"))
-
 (defn- sha-256 [value]
   (let [digest (.digest (MessageDigest/getInstance "SHA-256")
                         (.getBytes (str value) StandardCharsets/UTF_8))]
     (apply str (map #(format "%02x" (bit-and % 0xff)) digest))))
 
-(defn- parse-date
+(defn- author
   [value]
-  (when (not-empty (str/trim (or value "")))
-    (some (fn [f] (try (f value) (catch Exception _ nil)))
-          [tick/instant
-           #(tick/instant
-             (tick/parse-offset-date-time
-              %
-              (tick/formatter :iso-offset-date-time)))
-           #(tick/instant (tick/parse-zoned-date-time % rfc-1123))])))
+  (let [value (or (first (:authors value)) (:author value))]
+    (if (map? value)
+      {:name (:name value), :url (or (:uri value) (:url value))}
+      {:name value})))
 
-(defn- children
-  [^Node node]
-  (let [nodes (.getChildNodes node)]
-    (map #(.item nodes %) (range (.getLength nodes)))))
-
-(defn- elements
-  [node tag-name]
-  (filter #(and (= Node/ELEMENT_NODE (.getNodeType ^Node %))
-                (= tag-name
-                   (str/lower-case
-                    (or (.getLocalName ^Node %)
-                        (.getNodeName ^Node %)))))
-          (children node)))
-
-(defn- descendant-elements
-  [node tag-name]
-  (filter #(and (= Node/ELEMENT_NODE (.getNodeType ^Node %))
-                (= tag-name
-                   (str/lower-case
-                    (or (.getLocalName ^Node %)
-                        (.getNodeName ^Node %)))))
-          (tree-seq #(seq (children %)) children node)))
-
-(defn- text-of
-  [node names]
-  (some (fn [tag-name]
-          (some-> (first (elements node tag-name))
-                  .getTextContent
-                  str/trim
-                  not-empty))
-        names))
-
-(defn- attr
-  [^Node node attribute-name]
-  (when (instance? Element node)
-    (some-> ^Element node
-            (.getAttribute attribute-name)
-            str/trim
-            not-empty)))
-
-(defn- link-of
+(defn- remus-content
   [entry]
-  (or (some (fn [node]
-              (when (not= "enclosure" (attr node "rel"))
-                (attr node "href")))
-            (elements entry "link"))
-      (text-of entry ["link"])))
-
-(defn- xml-author
-  [node]
-  (when-let [author (first (elements node "author"))]
-    {:name  (or (text-of author ["name"])
-                (some-> author
-                        .getTextContent
-                        str/trim
-                        not-empty)),
-     :url   (text-of author ["uri" "url"]),
-     :image (text-of author ["avatar" "image"])}))
-
-(defn- xml-item
-  [item]
-  (let [url (link-of item)
-
-        content (text-of item ["encoded" "content" "description" "summary"])
-
-        author
-        (or (xml-author item)
-            {:name (text-of item
-                            ["creator" "author"])})]
-    {:guid         (text-of item ["guid" "id"]),
-     :url          url,
-     :title        (text-of item ["title"]),
-     :content      (or content
-                       (when url
-                         (chassis/html [:a {:href url} url]))),
-     :published-at (parse-date (text-of item
-                                        ["published"
-                                         "updated"
-                                         "pubdate"
-                                         "date"])),
-     :tags         (->> (concat (elements item "category")
-                                (elements item "tag"))
-                        (map #(or (attr % "term")
-                                  (some-> %
-                                          .getTextContent
-                                          str/trim)))
-                        (remove str/blank?)
-                        vec),
-     :author-name  (:name author),
-     :author-url   (:url author),
-     :author-image (:image author)}))
+  (let [{:keys [type value]}
+        (or (first (:contents entry)) (:description entry))]
+    (when (not-empty value)
+      (if (or (= "text" type) (= "text/plain" type))
+        {:text value}
+        {:html value}))))
 
 (defn- parse-xml
   [body]
-  (let
-   [factory
-    (doto (DocumentBuilderFactory/newInstance)
-      (.setNamespaceAware true)
-      (.setFeature
-       "http://apache.org/xml/features/disallow-doctype-decl"
-       true)
-      (.setFeature
-       "http://xml.org/sax/features/external-general-entities"
-       false)
-      (.setFeature
-       "http://xml.org/sax/features/external-parameter-entities"
-       false))
-
-    doc
-    (.parse (.newDocumentBuilder factory)
-            (ByteArrayInputStream.
-             (.getBytes body StandardCharsets/UTF_8)))
-
-    root (.getDocumentElement doc)
-
-    channel (or (first (elements root "channel")) root)
-
-    items
-    (concat (descendant-elements channel "item")
-            (descendant-elements channel "entry"))
-
-    author (xml-author channel)]
-    {:title       (text-of channel ["title"]),
-     :description (text-of channel
-                           ["description" "subtitle"]),
-     :author      author,
-     :posts       (->> items
-                       (map xml-item)
-                       (filter :content)
+  (let [feed (remus/parse
+              (ByteArrayInputStream.
+               (.getBytes body StandardCharsets/UTF_8)))]
+    {:title       (:title feed)
+     :description (:description feed)
+     :author      (author feed)
+     :posts       (->> (:entries feed)
+                       (keep
+                        (fn [entry]
+                          (let [url     (:link entry)
+                                content (or (remus-content entry)
+                                            (when url
+                                              {:html (chassis/html
+                                                      [:a {:href url} url])}))
+                                author  (author entry)]
+                            (when content
+                              {:guid         (:uri entry)
+                               :url          url
+                               :title        (:title entry)
+                               :content      content
+                               :published-at (some-> (or (:published-date entry)
+                                                         (:updated-date entry))
+                                                     tick/instant)
+                               :tags         (mapv :name (:categories entry))
+                               :author-name  (:name author)
+                               :author-url   (:url author)
+                               :author-image (:image author)}))))
                        vec)}))
 
 (defn- json-author
@@ -185,19 +87,19 @@
          (let [url (or (:url item) (:external_url item))
 
                content
-               (or (:content_html item)
-                   (:content_text item)
+               (or (when-some [html (:content_html item)] {:html html})
+                   (when-some [text (:content_text item)] {:text text})
                    (when url
-                     (chassis/html [:a {:href url} url])))
+                     {:html (chassis/html [:a {:href url} url])}))
 
                author (json-author item)]
            {:guid         (:id item),
             :url          url,
             :title        (:title item),
             :content      content,
-            :published-at (parse-date
-                           (or (:date_published item)
-                               (:date_modified item))),
+            :published-at (some-> (or (:date_published item)
+                                      (:date_modified item))
+                                  tick/instant),
             :tags         (vec (:tags item)),
             :author-name  (:name author),
             :author-url   (:url author),
@@ -257,19 +159,18 @@
 
 (defn- prepare-post
   [post]
-  (let [text (text/html->text (:content post))]
+  (let [content (:content post)
+        plain   (or (:text content) (text/html->text (:html content)))]
     (assoc post
-           :content-hash (sha-256 (:content post))
-           :length (count text)
-           :excerpt (subs text 0 (min 500 (count text))))))
+           :content-hash (sha-256 (json/generate-string content))
+           :length (count plain)
+           :excerpt (subs plain 0 (min 500 (count plain))))))
 
 (defn- post-statements
   [now feed-id {:keys [post post-id content-id new-post]}]
   (let [optional
         (into {}
-              (keep (fn [[source target]]
-                      (when-some [value (get post source)]
-                        [target value])))
+              (map (fn [[source target]] [target (get post source)]))
               {:guid         :post/guid
                :published-at :post/published-at
                :title        :post/title
@@ -283,17 +184,9 @@
                 :post/content-hash (:content-hash post)
                 :post/length       (:length post)
                 :post/excerpt      (:excerpt post)
-                :post/tags         [:lift (:tags post)]}
+                :post/tags         [:lift (not-empty (:tags post))]}
                optional)]
-    [{:insert-into   :content
-      :values        [{:content/id content-id
-
-                       :content/data
-                       [:lift {:html (:content post)
-                               :text (text/html->text (:content post))}]}]
-      :on-conflict   [:content/id]
-      :do-update-set [:content/data]}
-     (if new-post
+    [(if new-post
        {:insert-into :post
         :values      [(merge fields
                              {:post/id            post-id
@@ -305,18 +198,14 @@
         :where  [:= :post/id post-id]})]))
 
 (defn- prepare-sync
-  [now ids feed existing parsed]
-  (let [feed-id (or (:feed/id feed) (first ids))
-
-        ids (if (:feed/id feed) ids (rest ids))
-
-        existing (or existing [])]
+  [now feed-id ids feed existing parsed]
+  (let [existing (or existing [])]
     (if (:not-modified parsed)
       {:statement {:update :feed
                    :set    {:feed/fetched-at now :feed/failed-syncs 0}
                    :where  [:= :feed/id feed-id]}
        :result    {:feed         (assoc feed :feed/fetched-at now)
-                   :post-ids     (mapv :post/id existing)
+                   :post-ids     []
                    :not-modified true
                    :success      true}}
       (let [prepared (mapv prepare-post (:posts parsed))
@@ -346,7 +235,7 @@
              :feed/last-modified (get headers "last-modified")}
 
             base
-            (if feed
+            (if (:feed/id feed)
               {:update :feed
                :set    (dissoc feed-row :feed/id :feed/created-at)
                :where  [:= :feed/id feed-id]}
@@ -362,6 +251,10 @@
                                                      :description
                                                      :author]))
                       :post-ids (mapv :post-id rows)
+                      :objects  (mapv (fn [{:keys [content-id post]}]
+                                        {:content-id content-id
+                                         :data       (:content post)})
+                                      rows)
                       :success  true}}))))
 
 (defn load-existing
@@ -369,39 +262,55 @@
   (assoc input :old-feed
          [:biff.graph.fx/query
           {:feed/url url}
-          [:feed/id
-           :feed/url
-           :feed/created-at
-           :feed/etag
-           :feed/last-modified]]))
+          [[:? :feed/id]
+           [:? :feed/url]
+           [:? :feed/created-at]
+           [:? :feed/etag]
+           [:? :feed/last-modified]]]))
 
 (defn fetch
   [_ctx {:keys [url old-feed data]}]
   (let [headers
-        (cond-> {}
-          (:feed/etag old-feed) (assoc "If-None-Match" (:feed/etag old-feed))
-          (:feed/last-modified old-feed)
-          (assoc "If-Modified-Since" (:feed/last-modified old-feed)))]
+        (if (:force-fetch data)
+          {}
+          (cond-> {}
+            (:feed/etag old-feed)
+            (assoc "If-None-Match" (:feed/etag old-feed))
+            (:feed/last-modified old-feed)
+            (assoc "If-Modified-Since" (:feed/last-modified old-feed))))]
     {:url      url
      :data     data
      :old-feed old-feed
      :response [:biff.fx/http (request url headers)]}))
 
 (defn load-canonical
-  [_ctx {:keys [url old-feed response data]}]
-  (let [parsed (parse-response url response)]
-    {:old-feed old-feed
-     :data     data
-     :parsed   parsed
+  [{:biff.fx/keys [now]} {:keys [url old-feed response data]}]
+  (try
+    (let [parsed (parse-response url response)]
+      {:old-feed old-feed
+       :data     data
+       :parsed   parsed
 
-     :canonical
-     [:biff.graph.fx/query
-      {:feed/url (:url parsed)}
-      [:feed/id
-       :feed/url
-       :feed/created-at
-       :feed/etag
-       :feed/last-modified]]}))
+       :canonical
+       [:biff.graph.fx/query
+        {:feed/url (:url parsed)}
+        [[:? :feed/id]
+         [:? :feed/url]
+         [:? :feed/created-at]
+         [:? :feed/etag]
+         [:? :feed/last-modified]]]})
+    (catch Exception exception
+      (cond-> {:biff.fx/return
+               {:success false
+                :error   (.getMessage exception)
+                :data    data}}
+        (:feed/id old-feed)
+        (assoc :_failure
+               [:biff.sqlite.fx/execute
+                {:update :feed
+                 :set    {:feed/fetched-at   now
+                          :feed/failed-syncs [:+ :feed/failed-syncs 1]}
+                 :where  [:= :feed/id (:feed/id old-feed)]}])))))
 
 (defn load-posts
   [{:biff.fx/keys [now random-uuid7-seq]}
@@ -409,11 +318,11 @@
   (let [feed (or (when (:feed/id canonical) canonical) old-feed)
 
         feed-id (or (:feed/id feed) (first random-uuid7-seq))]
-    {:now    now
-     :data   data
-     :ids    random-uuid7-seq
-     :feed   feed
-     :parsed parsed
+    {:now     now
+     :data    data
+     :feed-id feed-id
+     :feed    feed
+     :parsed  parsed
 
      :existing
      [:biff.graph.fx/query
@@ -425,20 +334,42 @@
          :post/url
          :post/content-hash]}]]}))
 
-(defn persist
-  [_ctx {:keys [now ids feed parsed existing data]}]
+(defn store-content
+  [{:biff.fx/keys [random-uuid7-seq]}
+   {:keys [now feed-id feed parsed existing data]}]
   (let [{:keys [statement statements result]}
-        (prepare-sync now ids feed (:feed/posts existing) parsed)
+        (prepare-sync now
+                      feed-id
+                      random-uuid7-seq
+                      feed
+                      (:feed/posts existing)
+                      parsed)
 
         write-statements (if statement [statement] statements)
 
         sync-result (assoc result :data data)]
+    {:sync-result      sync-result
+     :write-statements write-statements
+
+     :biff.fx/seq
+     (mapv (fn [{:keys [content-id data]}]
+             {:_content [:platypub.fx/put-object
+                         content-id
+                         (json/generate-string data)
+                         "application/json"]})
+           (:objects result))}))
+
+(defn persist
+  [_ctx {:keys [sync-result write-statements]}]
+  (let [statement        (first write-statements)
+        single-statement (= 1 (count write-statements))
+        data             (:data sync-result)]
     (if (:defer-write data)
       {:sync (assoc sync-result :write-statements write-statements)}
       {:sync   sync-result
-       :_write (if statement
+       :_write (if single-statement
                  [:biff.sqlite.fx/execute statement]
-                 [:biff.sqlite.fx/execute-tx statements])})))
+                 [:biff.sqlite.fx/execute-tx write-statements])})))
 
 (defn finish
   [_ctx state]
@@ -449,5 +380,6 @@
    fetch
    load-canonical
    load-posts
+   store-content
    persist
    finish])

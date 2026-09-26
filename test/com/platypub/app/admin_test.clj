@@ -13,6 +13,21 @@
                     :global/users               []
                     :request/admin-publications []}))))))
 
+(deftest dashboard-renders-user-controls-test
+  (let [[state]  (control/dashboard)
+        response (state {}
+                        {:request/admin-publication-search
+                         {:publication/search ""}
+
+                         :global/users
+                         [{:user/id    (random-uuid)
+                           :user/email "person@example.com"
+                           :user/tier  :user.tier/waitlist}]
+
+                         :request/admin-publications []})]
+    (is (= 200 (:status response)))
+    (is (re-find #"person@example.com" (:body response)))))
+
 (deftest set-tier-state-test
   (let [[state] (control/set-tier)
 

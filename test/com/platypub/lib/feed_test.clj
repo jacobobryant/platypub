@@ -29,40 +29,61 @@
                      (fn [& _]
                        {:statement {:update :feed}
                         :result    {:success true}})}
-      #(is (= :biff.sqlite.fx/execute
-              (get-in (feed/persist {} {}) [:_write 0]))))
+      #(let [stored (feed/store-content {} {})]
+         (is (= :biff.sqlite.fx/execute
+                (get-in (feed/persist {} stored) [:_write 0])))))
     (with-redefs-fn {prepare-sync
                      (fn [& _]
                        {:statements [{:update :feed} {:update :post}]
                         :result     {:success true}})}
-      #(is (= :biff.sqlite.fx/execute-tx
-              (get-in (feed/persist {} {}) [:_write 0])))))
+      #(let [stored (feed/store-content {} {})]
+         (is (= :biff.sqlite.fx/execute-tx
+                (get-in (feed/persist {} stored) [:_write 0]))))))
   (testing "browser-initiated writes are deferred for authorization"
     (with-redefs-fn {prepare-sync
                      (fn [& _]
                        {:statements [{:insert-into :feed}]
                         :result     {:success true}})}
-      #(let [result (feed/persist
-                     {}
-                     {:data {:defer-write true}})]
+      #(let [stored (feed/store-content {} {:data {:defer-write true}})
+             result (feed/persist {} stored)]
          (is (nil? (:_write result)))
          (is (= [{:insert-into :feed}]
                 (get-in result [:sync :write-statements]))))))
   (testing "load and finish states preserve pipeline data"
     (is (= :biff.graph.fx/query
            (get-in (feed/load-existing {} {:url "feed"}) [:old-feed 0])))
+    (is (= [[:? :feed/id]
+            [:? :feed/url]
+            [:? :feed/created-at]
+            [:? :feed/etag]
+            [:? :feed/last-modified]]
+           (get-in (feed/load-existing {} {:url "feed"}) [:old-feed 2])))
     (is (= {:success true} (feed/finish {} {:sync {:success true}}))))
   (testing "post loading supports new feeds"
     (let [now (tick/instant "2026-09-14T00:00:00Z")
 
           feed-id (random-uuid)
 
+          post-id (random-uuid)
+
+          content-id (random-uuid)
+
           result
           (feed/load-posts
            {:biff.fx/now              now
             :biff.fx/random-uuid7-seq [feed-id]}
-           {:parsed {:url "feed"}})]
-      (is (= {:feed/id feed-id} (get-in result [:existing 1]))))))
+           {:canonical {:feed/url "feed"}
+            :parsed    {:url   "feed"
+                        :posts [{:content {:text "Body"}}]}})
+
+          stored
+          (feed/store-content
+           {:biff.fx/random-uuid7-seq [post-id content-id]}
+           (assoc result :existing {:feed/posts []}))]
+      (is (= {:feed/id feed-id} (get-in result [:existing 1])))
+      (is (= feed-id (:feed-id result)))
+      (is (not (contains? result :ids)))
+      (is (= :feed (get-in stored [:write-statements 0 :insert-into]))))))
 
 (deftest parse-supported-feeds
   (testing "RSS"
@@ -75,7 +96,7 @@
       (is (= "News" (:title result)))
       (is (= "Hello" (get-in result [:posts 0 :title])))))
   (testing "JSON Feed"
-    (is (= "Body"
+    (is (= {:text "Body"}
            (get-in
             (parse-feed
              (str "{\"version\":\"https://jsonfeed.org/version/1.1\","
@@ -106,6 +127,7 @@
         result
         (prepare-sync
          now
+         feed-id
          (repeatedly random-uuid)
          {:feed/id feed-id, :feed/url "https://example.com/feed"}
          [{:post/id (random-uuid)}]

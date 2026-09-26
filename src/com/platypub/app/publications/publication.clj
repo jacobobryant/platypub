@@ -8,7 +8,7 @@
             [dev.onionpancakes.chassis.core :as chassis]))
 
 (defpath root-path "")
-(defpath sync-path "/app/publications/:id/sync")
+(defpath sync-path "/app/publications/:publication-id/sync")
 
 (defpipeline publication-page
   [:biff.graph.fx/query
@@ -18,7 +18,7 @@
       :publication/title
       {:publication/sends [:send/started-at {:send/posts [:post/id]}]}
       :publication/active-subscriber-count
-      {:publication/visible-posts [:post/id :post/title]}]}]]
+      {:publication/visible-posts [:post/id [:? :post/title]]}]}]]
 
   (fn [request result]
     (if-let [publication (:request/publication result)]

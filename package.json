@@ -1,0 +1,21 @@
+{
+  "name": "platypub",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "playwright test",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobobryant/platypub.git"
+  },
+  "private": true,
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jacobobryant/platypub/issues"
+  },
+  "homepage": "https://github.com/jacobobryant/platypub#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

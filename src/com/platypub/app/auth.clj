@@ -8,19 +8,15 @@
   (fn [_ctx email]
     [:biff.graph.fx/query
      {:user/email email}
-     [:user/id]])
+     [[:? :user/id]]])
 
   (fn [_ctx result]
     (:user/id result)))
 
 (defpipeline create-user
-  (fn [_ctx {:keys [email]}]
-    {:email email
-     :users [:biff.graph.fx/query [:global/user-count]]})
-
   (fn [{:biff.fx/keys  [now random-uuid7-seq],
         :platypub/keys [waitlist-enabled]}
-       {:keys [email users]}]
+       {:keys [email]}]
     (let [[new-user-id] random-uuid7-seq]
       {:user-id new-user-id
 
@@ -34,12 +30,13 @@
            :user/joined-at now,
 
            :user/tier
-           [:lift
-            (cond
-              (zero? (:global/user-count users)) :user.tier/admin
-
-              waitlist-enabled :user.tier/waitlist
-              :else            :user.tier/free)]}],
+           [:case
+            [:= {:select [[[:count :*]]] :from :user} 0]
+            [:lift :user.tier/admin]
+            :else
+            [:lift (if waitlist-enabled
+                     :user.tier/waitlist
+                     :user.tier/free)]]}],
 
          :on-conflict   [:user/email],
          :do-update-set [:user/email],

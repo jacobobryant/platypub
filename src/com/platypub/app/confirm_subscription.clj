@@ -3,8 +3,7 @@
             [com.platypub.lib.email :as email]
             [com.platypub.lib.text :as text]
             [com.platypub.lib.ui :as ui]
-            [com.platypub.routes :as routes]
-            [tick.core :as tick]))
+            [com.platypub.routes :as routes]))
 
 (defn- invalid-response
   []
@@ -22,42 +21,46 @@
 
   (fn [_ctx result]
     (if-let [token (get-in result [:request/confirmation :request/token])]
-      {:token token
-
-       :result
-       [:biff.graph.fx/query
-        {:subscriber/confirmation-token token}
-        [:subscriber/id
-         :subscriber/publication-id
-         :subscriber/email
-         :subscriber/confirmation-triggered-at
-         {:subscriber/publication
-          [:publication/title :publication/welcome-html]}]]}
+      [:biff.graph.fx/query
+       {:subscriber/confirmation-token token}
+       [[:? :subscriber/id]]]
       {:biff.fx/return (invalid-response)}))
 
-  (fn [{:biff.fx/keys [now]} {:keys [result]}]
-    (if-let [subscriber (when (:subscriber/id result) result)]
-      (if (and (:subscriber/confirmation-triggered-at subscriber)
-               (tick/> (tick/>> (:subscriber/confirmation-triggered-at
-                                 subscriber)
-                                (tick/of-hours 24))
-                       now))
-        {:subscriber subscriber
-
-         :_write
-         [:biff.sqlite.fx/execute
-          {:update :subscriber
-           :set    {:subscriber/confirmed-at              now
-                    :subscriber/confirmation-triggered-at nil
-                    :subscriber/confirmation-token        nil}
-           :where  [:= :subscriber/id (:subscriber/id subscriber)]}]}
-        {:biff.fx/return (invalid-response)})
+  (fn [_ctx result]
+    (if-let [subscriber-id (:subscriber/id result)]
+      [:biff.graph.fx/query
+       {:subscriber/id subscriber-id}
+       [:subscriber/id
+        :subscriber/email
+        :subscriber/confirmation-token-active
+        {:subscriber/publication
+         [:publication/title :publication/welcome-html]}]]
       {:biff.fx/return (invalid-response)}))
 
-  (fn [ctx {:keys [subscriber]}]
+  (fn [{:biff.fx/keys [now]} subscriber]
+    (if (:subscriber/confirmation-token-active subscriber)
+      {:subscriber subscriber
+
+       :_write
+       [:biff.sqlite.fx/execute
+        {:update :subscriber
+         :set    {:subscriber/confirmed-at              now
+                  :subscriber/confirmation-triggered-at nil
+                  :subscriber/confirmation-token        nil}
+         :where  [:= :subscriber/id (:subscriber/id subscriber)]}]}
+      {:biff.fx/return (invalid-response)}))
+
+  (fn [_ctx {:keys [subscriber]}]
+    {:subscriber subscriber
+     :active     [:biff.graph.fx/query
+                  {:subscriber/id (:subscriber/id subscriber)}
+                  [:subscriber/active]]})
+
+  (fn [ctx {:keys [subscriber active]}]
     (let [publication (:subscriber/publication subscriber)]
       {:_email
-       (when (:mailersend/api-key ctx)
+       (when (and (:subscriber/active active)
+                  (:mailersend/api-key ctx))
          [:biff.fx/http
           (email/request
            ctx

@@ -1,10 +1,20 @@
 (ns com.platypub.lib.request
+  (:require [clojure.string :as str])
   (:import [java.util UUID]))
+
+(defn- form-name
+  [attribute]
+  (when (qualified-keyword? attribute)
+    (str (str/replace (namespace attribute) "." "_")
+         "_"
+         (name attribute))))
 
 (defn value
   [ctx attribute]
   (let [signals    (:biff.datastar/signals ctx)
-        candidates [attribute (name attribute) (str attribute)]]
+        encoded    (form-name attribute)
+        candidates [attribute (name attribute) (str attribute)
+                    encoded (some-> encoded keyword)]]
     (or (some #(when (contains? signals %) (get signals %)) candidates)
         (some (fn [params]
                 (some #(when (contains? params %) (get params %)) candidates))

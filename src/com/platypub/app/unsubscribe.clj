@@ -25,18 +25,18 @@
           [:h1 {:class ["text-2xl font-bold"]} "Unsubscribe"]
           [:p {:class ["my-4"]} (str "Stop emails to " email "?")]
           [:div
-           {:data-show "$unsubscribe.submitted"}
+           {:data-show "$unsubscribe_submitted"}
            [:h2 "You have been unsubscribed."]]
           [:form
            {:data-on:submit
-            "$unsubscribe.submitted = true; @post(el.dataset.action)",
+            "@post(el.dataset.action)",
 
             :data-action (routes/unsubscribe token),
 
             :data-signals__ifmissing
             (datastar/signals-json {:unsubscribe/submitted false}),
 
-            :data-show "!$unsubscribe.submitted"}
+            :data-show "!$unsubscribe_submitted"}
            [:button
             {:class ["rounded bg-red-600 px-4 py-2 text-white"]}
             "Confirm unsubscribe"]]])
@@ -57,7 +57,8 @@
            :set    {:subscriber/unsubscribed-at now}
            :where  [:= :subscriber/id id]}]
 
-         :biff.fx/return {:status 204}}
+         :biff.fx/return
+         (datastar/patch-signals {:unsubscribe/submitted true})}
         {:status 410})
       {:status 404})))
 

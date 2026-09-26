@@ -16,6 +16,7 @@
          fetch-feed
          load-canonical
          load-posts
+         store-content
          persist
          finish
          create]
@@ -33,14 +34,26 @@
                                :request/new-publication
                                {:publication/url "https://example.com"}}))]
       (is (= :biff.fx/http (get-in loaded [:response 0]))))
-    (testing "zero or multiple discovered feeds return without writing"
-      (doseq [body ["<html></html>"
-                    (str "<link type='application/rss+xml' href='/one'>"
-                         "<link type='application/rss+xml' href='/two'>")]]
-        (is (= {:biff.fx/return {:status 204}}
-               (discover {} {:url      "https://example.com"
-                             :data     {:user-id user-id}
-                             :response {:status 200 :body body}})))))
+    (testing "missing and ambiguous discoveries are actionable"
+      (is (= 422
+             (get-in (discover {} {:url      "https://example.com"
+                                   :data     {:user-id user-id}
+                                   :response {:status 200
+                                              :body   "<html></html>"}})
+                     [:biff.fx/return :status])))
+      (is (= 204
+             (get-in
+              (discover
+               {}
+               {:url  "https://example.com"
+                :data {:user-id user-id}
+
+                :response
+                {:status 200
+                 :body   (str
+                          "<link type='application/rss+xml' href='/one'>"
+                          "<link type='application/rss+xml' href='/two'>")}})
+              [:biff.fx/return :status]))))
     (let [started
           (discover
            {}
@@ -62,17 +75,28 @@
 
           canonical
           (load-canonical
-           {}
-           (assoc fetched :response {:status 304
-                                     :uri    "https://feed.example"}))
+           {:biff.fx/now now}
+           (assoc fetched
+                  :response
+                  {:status  200
+                   :uri     "https://feed.example"
+                   :headers {"content-type" "application/rss+xml"}
+                   :body    (str "<rss><channel><title>News</title><item>"
+                                 "<guid>1</guid><description>Body</description>"
+                                 "</item></channel></rss>")}))
 
           posts
           (load-posts
            {:biff.fx/now              now
-            :biff.fx/random-uuid7-seq [(random-uuid)]}
+            :biff.fx/random-uuid7-seq (repeatedly 4 random-uuid)}
            (assoc canonical :canonical old-feed))
 
-          persisted (persist {} (assoc posts :existing {:feed/posts []}))
+          stored
+          (store-content
+           {:biff.fx/random-uuid7-seq (repeatedly random-uuid)}
+           (assoc posts :existing {:feed/posts []}))
+
+          persisted (persist {} stored)
 
           synced (finish {} persisted)
 
@@ -116,7 +140,8 @@
                              :author      {:name  "Author"
                                            :url   "https://example.com/author"
                                            :image "https://example.com/a.png"}}
-          :post-ids         []
+          :success          true
+          :post-ids         [(random-uuid)]
           :write-statements []})
 
         row (some :values (get-in result [:_write 1]))]

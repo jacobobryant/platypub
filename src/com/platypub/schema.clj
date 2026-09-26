@@ -25,11 +25,23 @@
 (defn int* [& args] (assoc (base args) :type :int))
 (defn bool [& args] (assoc (base args) :type :boolean))
 (defn blob [& args] (assoc (base args) :type :blob))
+(defn uuid [& args] (assoc (base args) :type :uuid))
 
 (def tab-state-schema
   [:map
    [:tab/background-color ? [:enum :white :red :blue :green]]
    [:tab/admin-publication-search ? :string]
+   [:tab/new-publication
+    ?
+    [:map
+     [:publication/url :string]
+     [:publication/feed-urls [:vector :string]]]]
+   [:tab/publication-images
+    ?
+    [:map
+     [:publication/id :uuid]
+     [:publication/banner-image-url ? :string]
+     [:publication/default-author-image-url ? :string]]]
    [:tab/subscriber-search
     ?
     [:map
@@ -41,6 +53,9 @@
      [:publication/id :uuid]
      [:send/subject :string]
      [:send/html :string]
+     [:send/text :string]
+     [:send/from-name :string]
+     [:send/reply-to :string]
      [:send/post-ids [:vector :uuid]]]]])
 
 (def columns
@@ -52,11 +67,9 @@
    :user/joined-at    (inst :required :index)
    :user/tier         (enum {0 :user.tier/waitlist
                              1 :user.tier/free
-                             2 :user.tier/admin})
+                             2 :user.tier/admin}
+                            :required)
    :user/display-name (text)
-
-   :content/id   primary-key
-   :content/data (edn* :string :required)
 
    :feed/id            primary-key
    :feed/created-at    (inst :required)
@@ -74,7 +87,7 @@
    :post/published-at     (inst)
    :post/title            (text)
    :post/url              (text)
-   :post/content-id       (ref* :content/id)
+   :post/content-id       (uuid)
    :post/content-hash     (text)
    :post/tags             (edn* :any)
    :post/author-name      (text)
@@ -114,9 +127,12 @@
    :subscriber/confirmation-triggered-at (inst)
    :subscriber/confirmation-token        (blob)
    :subscriber/confirmed-at              (inst)
-   :subscriber/headers                   (edn* :any)
-   :subscriber/form-params               (edn* :any)
-   :subscriber/query-params              (edn* :any)
+   ;; These JSON objects remain blobs because Biff Graph treats a thawed EDN
+   ;; map as a join, while the generated SQLite resolver exposes columns as
+   ;; scalars.
+   :subscriber/headers                   (blob)
+   :subscriber/form-params               (blob)
+   :subscriber/query-params              (blob)
    :subscriber/unsubscribed-at           (inst)
    :subscriber/suppressed                (bool)
 
@@ -128,8 +144,9 @@
                                1 :send.status/finished}
                               :required)
    :send/from-name      (text :required)
+   :send/reply-to       (text :required)
    :send/subject        (text :required)
-   :send/content-id     (ref* :content/id :required)
+   :send/content-id     (uuid :required)
    :send/provenance     (enum {0 :send.provenance/manual
                                1 :send.provenance/automatic}
                               :required)
@@ -290,35 +307,6 @@
                [:= :send/id send-id]
                [:= :publication/user-id user-id]]})))
 
-(defn- owns-content?
-  [ctx content-id]
-  (when-let [user-id (current-user-id ctx)]
-    (or
-     (exists?
-      ctx
-      (:biff.sqlite/after-conn ctx)
-      {:select [:content/id]
-       :from   :content
-       :join   [:send
-                [:= :send/content-id :content/id]
-                :publication
-                [:= :publication/id :send/publication-id]]
-       :where  [:and
-                [:= :content/id content-id]
-                [:= :publication/user-id user-id]]})
-     (exists?
-      ctx
-      (:biff.sqlite/after-conn ctx)
-      {:select [:content/id]
-       :from   :content
-       :join   [:post
-                [:= :post/content-id :content/id]
-                :publication
-                [:= :publication/feed-id :post/feed-id]]
-       :where  [:and
-                [:= :content/id content-id]
-                [:= :publication/user-id user-id]]}))))
-
 (defn- owns-send-post?
   [ctx send-post-id]
   (when-let [user-id (current-user-id ctx)]
@@ -374,10 +362,6 @@
             (owns-subscriber? ctx subscriber-id)
             (only-fields-edited?
              before after [:subscriber/unsubscribed-at]))))
-
-    :content
-    (and (#{:create :update} op)
-         (owns-content? ctx (:content/id after)))
 
     :send (and (= op :create) (owns-send? ctx (:send/id after)))
 

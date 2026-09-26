@@ -48,3 +48,15 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - pull schema helper functions from schema.clj into a new
   com.biffweb.sqlite.schema namespace.
+
+- maybe use #profile in config.edn (introduce config.prod.edn / config.dev.edn
+  maybe via profile + merge + include)
+
+- Apparently biff.graph doesn't actually work with `:type :edn` columns when
+  they contain maps because it always uses scalar descriptors instead of `[:*]`.
+  need to fix that and then change `:type :blob` to `:type :edn`.
+
+- biff.graph: support :?foo/bar as an alias for [:? :foo/bar] maybe?
+
+- don't use BIFF_PROFILE=prod in the e2e tests. add a new `test` profile if
+  needed or something.

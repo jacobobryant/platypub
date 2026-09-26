@@ -29,7 +29,8 @@
             :post/title      "Hello"
             :post/fetched-at now
             :post/content-id 2
-            :content/data    {:html "<p>Body</p>" :text "Body"}}]})]
+            :post/content    {:content/html "<p>Body</p>"
+                              :content/text "Body"}}]})]
     (is (= "Hello" (:send/subject result)))
     (is (str/includes? (:send/html result) "<p>Body</p>"))
     (is (str/includes? (:send/text result) "Unsubscribe:"))))

@@ -21,9 +21,15 @@
            :platypub/read-uploaded-file (fn [_ value] (str "read:" value))})))
 
 (deftest request-parameter-resolvers-test
-  (let [user-id (random-uuid)]
+  (let [user-id        (random-uuid)
+        publication-id (random-uuid)]
     (is (= {:request/user {:user/id user-id}}
-           (resolve-resolver request/user {:session {:uid (str user-id)}}))))
+           (resolve-resolver request/user {:session {:uid (str user-id)}})))
+    (is (= {:request/subscription-publication
+            {:publication/id publication-id}}
+           (resolve-resolver
+            request/subscription-publication
+            {:path-params {:publication-id (str publication-id)}}))))
   (is (= {:request/new-publication {:publication/url "https://example.com/feed"}}
          (resolve-resolver
           request/publication-url
@@ -43,7 +49,7 @@
            (resolve-with-effects
             request/publication
             {:session     {:uid (str user-id)}
-             :path-params {:id (str publication-id)}}
+             :path-params {:publication-id (str publication-id)}}
             {}
             (fn [_ statement]
               (is (= [:and
@@ -54,13 +60,13 @@
     (is (nil? (resolve-with-effects
                request/publication
                {:session     {:uid (str user-id)}
-                :path-params {:id "invalid"}}
+                :path-params {:publication-id "invalid"}}
                {}
                (fn [_ _] (throw (Exception. "must not query"))))))
     (is (nil? (resolve-with-effects
                request/publication
                {:session     {:uid (str user-id)}
-                :path-params {:id (str publication-id)}}
+                :path-params {:publication-id (str publication-id)}}
                {}
                (fn [_ _] []))))))
 
@@ -84,7 +90,16 @@
                       :from   :tab-state
                       :where  [:= :tab-state/id tab-id]}
                      statement))
-              [{:tab-state/data {:tab/admin-publication-search "search"}}]))))))
+              [{:tab-state/data {:tab/admin-publication-search "search"}}])))))
+  (let [tab-id (random-uuid)]
+    (is (= {:request/tab {:tab/background-color :white}}
+           (resolve-with-effects
+            request/tab-state
+            {:form-params {"biff_datastar_client-tab-id" (str tab-id)}}
+            {}
+            (fn [_ statement]
+              (is (= [:= :tab-state/id tab-id] (:where statement)))
+              []))))))
 
 (deftest search-and-collection-resolvers-test
   (is (= {:request/admin-publication-search {:publication/search "current"}}
@@ -166,10 +181,7 @@
          :email         "reader@example.com"
          :exp           4102444800}]
     (is (= {:request/subscription
-            {:subscriber/email        "reader@example.com"
-             :subscriber/headers      {"user-agent" "test"}
-             :subscriber/form-params  {:email "reader@example.com"}
-             :subscriber/query-params {"source" "embed"}}}
+            {:subscriber/email "reader@example.com"}}
            (resolve-resolver
             request/subscription
             {:headers      {"user-agent" "test"}
@@ -220,21 +232,21 @@
         publication-id (random-uuid)
 
         post-id (random-uuid)]
-    (let [tier-key (keyword (str "request.tier-" user-id))]
+    (let [tier-key (keyword "request" (str "tier-" user-id))]
       (is (= {:request/admin-user-tier
               {:user/id      user-id
                :user/tier    :user.tier/waitlist
                :request/tier "free"}}
              (resolve-with-effects
               request/admin-user-tier
-              {:path-params           {:id (str user-id)}
+              {:path-params           {:user-id (str user-id)}
                :biff.datastar/signals {tier-key "free"}}
               {:request/user {:user/tier :user.tier/admin}}
               (fn [_ _] [{:user/id   user-id
                           :user/tier :user.tier/waitlist}])))))
     (is (nil? (resolve-with-effects
                request/admin-user-tier
-               {:path-params {:id (str user-id)}}
+               {:path-params {:user-id (str user-id)}}
                {:request/user {:user/tier :user.tier/free}}
                (fn [_ _] (throw (Exception. "must not query"))))))
     (is (= {:request/admin-publication-import
@@ -242,14 +254,28 @@
              :request/csv    "email\nreader@example.com"}}
            (resolve-with-effects
             request/admin-publication-import
-            {:path-params {:id (str publication-id)}
+            {:path-params {:publication-id (str publication-id)}
 
              :biff.datastar/signals {:request/csv "email\nreader@example.com"}}
             {:request/user {:user/tier :user.tier/admin}}
             (fn [_ _] [{:publication/id publication-id}]))))
+    (is (= {:request/admin-publication-import
+            {:publication/id publication-id
+             :request/csv    "email\nreader@example.com"}}
+           (resolve-with-effects
+            request/admin-publication-import
+            {:path-params {:publication-id (str publication-id)}
+
+             :form-params
+             {"request_csv"
+              [{:name     "subscribers.csv"
+                :mime     "text/csv"
+                :contents "ZW1haWwKcmVhZGVyQGV4YW1wbGUuY29t"}]}}
+            {:request/user {:user/tier :user.tier/admin}}
+            (fn [_ _] [{:publication/id publication-id}]))))
     (is (nil? (resolve-with-effects
                request/admin-publication-import
-               {:path-params {:id (str publication-id)}
+               {:path-params {:publication-id (str publication-id)}
 
                 :biff.datastar/signals
                 {:request/csv "email\nreader@example.com"}}
@@ -290,9 +316,12 @@
             {}
             {:request/send-selection {:send/post-ids []}})))
     (is (= {:request/send-preview
-            {:send/subject "Subject"
-             :send/html    "<p>Preview</p>"
-             :send/posts   [{:post/id post-id}]}}
+            {:send/subject   "Subject"
+             :send/html      "<p>Preview</p>"
+             :send/text      "Preview"
+             :send/from-name "Publication"
+             :send/reply-to  "owner@example.com"
+             :send/posts     [{:post/id post-id}]}}
            (resolve-resolver
             request/send-preview
             {}
@@ -303,6 +332,9 @@
               {:publication/id publication-id
                :send/subject   "Subject"
                :send/html      "<p>Preview</p>"
+               :send/text      "Preview"
+               :send/from-name "Publication"
+               :send/reply-to  "owner@example.com"
                :send/post-ids  [post-id]}}})))
     (is (nil?
          (resolve-resolver

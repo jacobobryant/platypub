@@ -1,5 +1,6 @@
 (ns com.platypub.app.admin
   (:require [clojure.string :as str]
+            [clojure.data.csv :as csv]
             [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.biffweb.ring :refer [defpath]]
@@ -7,16 +8,17 @@
             [com.platypub.lib.tab :as tab]
             [com.platypub.lib.ui :as ui]
             [com.platypub.lib.subscriber :as subscriber]
-            [com.platypub.routes :as routes]))
+            [com.platypub.routes :as routes])
+  (:import [java.io StringReader]))
 
 (defpath root-path "")
-(defpath admin-user-tier-path "/app/admin/users/:id/tier")
+(defpath admin-user-tier-path "/app/admin/users/:user-id/tier")
 (defpath admin-publication-import-path
-  "/app/admin/publications/:id/import")
+  "/app/admin/publications/:publication-id/import")
 
 (defn- tier-signal
   [user-id]
-  (keyword (str "request.tier-" user-id)))
+  (keyword "request" (str "tier-" user-id)))
 
 (defn wrap-admin
   [handler]
@@ -122,7 +124,7 @@
 (defpipeline update-search
   [:biff.graph.fx/query
    [{:request/admin-publication-search [:publication/search]}
-    {:request/tab [:tab/admin-publication-search]}]]
+    {:request/tab [[:? :tab/admin-publication-search]]}]]
 
   (fn [{:keys [biff.datastar/tab-id]} result]
     {:_search
@@ -162,17 +164,18 @@
 
 (defn- csv-emails
   [contents]
-  (let [lines (str/split-lines (or contents ""))
+  (let [rows (with-open [reader (StringReader. (or contents ""))]
+               (doall (csv/read-csv reader)))
 
         header
         (mapv (comp str/lower-case str/trim)
-              (str/split (or (first lines) "") #","))
+              (first rows))
 
         index (.indexOf header "email")]
     (if (neg? index)
       []
-      (->> (rest lines)
-           (keep #(get (str/split % #",") index))
+      (->> (rest rows)
+           (keep #(get % index))
            (map subscriber/normalize-email)
            (filter subscriber/valid-email?)
            distinct))))

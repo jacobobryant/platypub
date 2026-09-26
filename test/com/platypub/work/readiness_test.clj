@@ -8,9 +8,11 @@
             [{:global/publications [:publication/id]}]]
            (load-publications {})))
     (is (= [:biff.background.fx/submit-jobs
-            :platypub/send-readiness
-            [{:publication-id 1} {:publication-id 2}]]
+            :platypub/check-send-readiness
+            [{:publication/id 1} {:publication/id 2}]]
            (submit {} {:global/publications [{:publication/id 1}
                                              {:publication/id 2}]})))
-    (is (= [:biff.background.fx/submit-jobs :platypub/send-readiness []]
+    (is (= [:biff.background.fx/submit-jobs
+            :platypub/check-send-readiness
+            []]
            (submit {} {:global/publications []})))))

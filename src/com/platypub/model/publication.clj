@@ -8,7 +8,7 @@
   {:select-distinct select
    :from            :post
    :join            [[:publication :publication]
-                     [:= :publication/feed-id :post/feed-id]]
+                     [:= :publication/id publication-id]]
 
    :left-join
    [[:send-post :send-post]
@@ -23,7 +23,9 @@
     [:= :publication/id publication-id]
     [:or
      [:is-not :send/id nil]
-     [:>= :post/present-as-of :publication/feed-id-updated-at]]]
+     [:and
+      [:= :post/feed-id :publication/feed-id]
+      [:>= :post/present-as-of :publication/feed-id-updated-at]]]]
 
    :order-by
    [[:post/fetched-at :desc]
@@ -62,7 +64,9 @@
       :from   :subscriber
       :where  [:and
                [:= :subscriber/publication-id id]
-               [:not= :subscriber/suppressed true]
+               [:or
+                [:is :subscriber/suppressed nil]
+                [:= :subscriber/suppressed false]]
                [:is :subscriber/unsubscribed-at nil]
                [:or
                 [:= :subscriber/require-confirmation false]

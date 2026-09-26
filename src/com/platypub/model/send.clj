@@ -26,7 +26,8 @@
 (defn- subject
   [posts]
   (or (some :post/title posts)
-      (let [content (or (some-> posts first :content/data :text) "")]
+      (let [post    (first posts)
+            content (or (get-in post [:post/content :content/text]) "")]
         (str (subs content 0 (min 40 (count content)))
              (when (> (count content) 40) "…")))))
 
@@ -57,15 +58,36 @@
        :where  [:and
                 [:= :subscriber/publication-id :send/publication-id]
                 [:< :subscriber/subscribed-at started-at]
-                [:not= :subscriber/suppressed true]
+                [:or
+                 [:is :subscriber/suppressed nil]
+                 [:= :subscriber/suppressed false]]
                 [:is :subscriber/unsubscribed-at nil]
                 [:or
                  [:= :subscriber/require-confirmation false]
                  [:is-not :subscriber/confirmed-at nil]]]}]}))
 
 (defresolver rendered-content
-  {:input  [{:send/publication [:publication/title]}
-            {:send/posts [:post/id]}]
+  {:input  [{:send/publication [:publication/title
+                                [:? :publication/intro]
+                                [:? :publication/banner-image-url]
+                                [:? :publication/default-author-name]
+                                [:? :publication/default-author-url]
+                                [:? :publication/default-author-image-url]
+                                :publication/padding-color
+                                :publication/background-color
+                                :publication/text-color
+                                :publication/primary-color]}
+            {:send/posts [:post/id
+                          [:? :post/url]
+                          :post/fetched-at
+                          [:? :post/published-at]
+                          [:? :post/title]
+                          [:? :post/author-name]
+                          [:? :post/author-url]
+                          [:? :post/author-image-url]
+                          [:? :post/excerpt]
+                          {:post/content
+                           [[:? :content/html] [:? :content/text]]}]}]
    :output [:send/subject :send/html :send/text]}
   [_ctx input]
   (let [publication (:send/publication input)
@@ -75,32 +97,46 @@
         same-author (when (and multiple (seq authors) (apply = authors))
                       (first authors))
 
+        link-style (str "color:" (:publication/primary-color publication))
+
         author-view
         (fn [{author-name :name, :keys [url image]}]
           (when author-name
             [:div.author
              (when image [:img {:src image, :alt ""}])
-             (if url [:a {:href url} author-name] author-name)]))
+             (if url
+               [:a {:href url :style link-style} author-name]
+               author-name)]))
 
         post-view
         (fn [post]
           (let [url       (:post/url post)
+                content   (:post/content post)
                 raw       (or (not multiple) (nil? url))
-                content   (if raw
+                body      (if raw
                             (chassis/raw
-                             (get-in post [:content/data :html]))
+                             (or (:content/html content)
+                                 (when-let [plain (:content/text content)]
+                                   (chassis/html [:<> plain]))))
                             (:post/excerpt post))
                 published (some-> (:post/published-at post) rfc-1123)]
             [:article
              (when-let [title (:post/title post)]
                [:h2 title])
-             (when (and multiple (not same-author))
+             (when (not same-author)
                (author-view (author publication post)))
              (when published
-               (if url [:a {:href url} published] published))
-             [:div content]
+               (if url
+                 [:a {:href url :style link-style} published]
+                 published))
+             [:div body]
              (when (and url (or (not multiple) (nil? published)))
-               [:p [:a {:href url} "Read online"]])]))
+               [:p
+                [:a {:href  url
+                     :style (str link-style
+                                 ";display:inline-block;padding:10px 14px;"
+                                 "border:1px solid currentColor")}
+                 "Read online"]])]))
 
         html
         (chassis/html
@@ -127,7 +163,7 @@
              (map post-view posts)
              [:footer
               [:a
-               {:href email/unsubscribe-placeholder}
+               {:href email/unsubscribe-placeholder :style link-style}
                "Unsubscribe"]]]]]])]
     {:send/subject (subject posts)
      :send/html    html

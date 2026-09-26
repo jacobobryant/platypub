@@ -26,10 +26,13 @@
              app.publication-subscribers]
             [com.platypub.app.subscription :as app.subscription]
             [com.platypub.app.unsubscribe :as app.unsubscribe]
+            [com.platypub.api.mock-cdn :as api.mock-cdn]
             [com.platypub.api.mock-mailersend :as api.mock-mailersend]
             [com.platypub.fx :as platypub.fx]
+            [com.platypub.modules.minio :as minio]
             [com.platypub.lib.ui :as lib.ui]
             [com.platypub.model.feed :as model.feed]
+            [com.platypub.model.content :as model.content]
             [com.platypub.model.global :as model.global]
             [com.platypub.model.publication :as model.publication]
             [com.platypub.model.request :as model.request]
@@ -63,8 +66,10 @@
    (biff.datastar/module)
    (biff.background/module)
    (biff.fx/module)
+   minio/module
    platypub.fx/module
    (biff.graph/module)
+   model.content/module
    model.feed/module
    model.global/module
    model.publication/module
@@ -94,10 +99,12 @@
    app.subscription/module
    app.unsubscribe/module
    app.mock-mailersend/module
+   api.mock-cdn/module
    api.mock-mailersend/module])
 
 (def start-order
   [:biff.config/module
+   :platypub/local-minio
    :biff.sqlite/module
    :biff.admin/module
    :biff.background/module

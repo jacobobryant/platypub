@@ -8,14 +8,15 @@
 (def publication
   {:publication/id                       1
    :publication/title                    "Publication"
+   :publication/user                     {:user/email "owner@example.com"}
    :publication/automatic-send-threshold now})
 (def post
-  {:post/id (UUID/fromString "00000000-0000-0000-0000-000000000004")
-
-   :content/data {:html "<p>Hello</p>" :text "Hello"}})
+  {:post/id      (UUID/fromString "00000000-0000-0000-0000-000000000004")
+   :post/content {:content/html "<p>Hello</p>"
+                  :content/text "Hello"}})
 
 (deftest readiness-consumer-states
-  (let [[load-publication select-posts render-content create-send submit]
+  (let [[load-publication select-posts render-content create-send]
         (readiness/readiness-consumer)
 
         id-strings
@@ -30,21 +31,23 @@
              {:publication/id 1}
              [:publication/id
               :publication/title
-              :publication/intro
-              :publication/banner-image-url
-              :publication/default-author-name
-              :publication/default-author-url
-              :publication/default-author-image-url
+              [:? :publication/intro]
+              [:? :publication/banner-image-url]
+              [:? :publication/default-author-name]
+              [:? :publication/default-author-url]
+              [:? :publication/default-author-image-url]
               :publication/padding-color
               :publication/background-color
               :publication/text-color
-              :publication/filter-tag
-              :publication/remove-tag
-              :publication/automatic-send-threshold
+              :publication/primary-color
+              [:? :publication/filter-tag]
+              [:? :publication/remove-tag]
+              [:? :publication/automatic-send-threshold]
               :publication/active-subscriber-count
+              {:publication/user [:user/email]}
               {:publication/sends [:send/id :send/status :send/started-at]}]]}
            (load-publication
-            {:biff.background/job {:publication-id 1}})))
+            {:biff.background/job {:publication/id 1}})))
     (testing "ineligible publications exit without a post query"
       (is (= {:biff.fx/return nil}
              (select-posts {:biff.fx/now now}
@@ -93,17 +96,24 @@
              {:publication publication
               :posts       {:publication/automatic-posts [post]}})
 
-            created
-            (create-send
-             {:biff.fx/now              now
-              :biff.fx/random-uuid7-seq ids}
-             (assoc rendered :content {:send/subject "Subject"
-                                       :send/html    "<p>Hello</p>"
-                                       :send/text    "Hello"}))]
+            effects
+            (:biff.fx/seq
+             (create-send
+              {:biff.fx/now              now
+               :biff.fx/random-uuid7-seq ids}
+              (assoc rendered
+                     :content
+                     {:send/subject "Subject"
+                      :send/html    "<p>Hello</p>"
+                      :send/text    "Hello"})))]
         (is (= :biff.graph.fx/query (get-in rendered [:content 0])))
-        (is (= (first ids) (:send-id created)))
-        (is (= :biff.sqlite.fx/execute-tx (first (:_write created))))
+        (is (= :platypub.fx/put-object
+               (get-in effects [0 :_content 0])))
+        (is (= "owner@example.com"
+               (get-in effects [1 :_write 1 0 :values 0 :send/reply-to])))
+        (is (= :biff.sqlite.fx/execute-tx
+               (get-in effects [1 :_write 0])))
         (is (= [:biff.background.fx/submit-jobs
                 :platypub/send
                 [{:send-id (first ids)}]]
-               (submit {} created)))))))
+               (get-in effects [2 :_submit])))))))

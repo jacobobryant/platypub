@@ -8,11 +8,6 @@ CREATE TABLE biff_sqlite_kv (
   UNIQUE(namespace, k)
 ) STRICT;
 
-CREATE TABLE content (
-  id BLOB PRIMARY KEY NOT NULL,
-  data BLOB NOT NULL
-) STRICT;
-
 CREATE TABLE feed (
   id BLOB PRIMARY KEY NOT NULL,
   created_at INT NOT NULL,
@@ -33,8 +28,8 @@ CREATE TABLE user (
   id BLOB PRIMARY KEY NOT NULL,
   email TEXT NOT NULL,
   joined_at INT NOT NULL,
+  tier INT NOT NULL CHECK (tier IN (0, 1, 2)), -- waitlist (0), free (1), admin (2)
   display_name TEXT,
-  tier INT CHECK (tier IN (0, 1, 2)), -- waitlist (0), free (1), admin (2)
   UNIQUE(email)
 ) STRICT;
 
@@ -55,7 +50,6 @@ CREATE TABLE post (
   tags BLOB,
   title TEXT,
   url TEXT,
-  FOREIGN KEY(content_id) REFERENCES content(id),
   FOREIGN KEY(feed_id) REFERENCES feed(id)
 ) STRICT;
 
@@ -92,10 +86,10 @@ CREATE TABLE send (
   progress_at INT NOT NULL,
   provenance INT NOT NULL CHECK (provenance IN (0, 1)), -- manual (0), automatic (1)
   publication_id BLOB NOT NULL,
+  reply_to TEXT NOT NULL,
   started_at INT NOT NULL,
   status INT NOT NULL CHECK (status IN (0, 1)), -- pending (0), finished (1)
   subject TEXT NOT NULL,
-  FOREIGN KEY(content_id) REFERENCES content(id),
   FOREIGN KEY(publication_id) REFERENCES publication(id)
 ) STRICT;
 

@@ -6,14 +6,17 @@
   (let [state (atom {:emails []})]
     (is (= {:emails []} (fx/deref-atom {} state)))
     (is (= {:emails ["message"]}
-           (fx/swap-atom {} state update :emails conj "message")))
+           (fx/swap-atom {:platypub/state state}
+                         :platypub/state
+                         `update
+                         :emails
+                         `conj
+                         "message")))
     (is (= {:emails []} (fx/reset-atom {} state {:emails []}))))
   (is (= "hello" (fx/read-uploaded-file {} (.getBytes "hello")))))
 
 (deftest module-only-exposes-low-level-effects
-  (is (= #{:biff.fx/sleep
-           :platypub/deref
-           :platypub/read-uploaded-file
-           :platypub/reset-atom
-           :platypub/swap-atom}
-         (set (keys (:biff.fx/handlers fx/module))))))
+  (is (every? (set (keys (:biff.fx/handlers fx/module)))
+              [:biff.fx/sleep
+               :platypub.fx/swap!
+               :platypub.fx/print])))

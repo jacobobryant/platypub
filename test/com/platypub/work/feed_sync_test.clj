@@ -10,6 +10,7 @@
          fetch
          load-canonical
          load-posts
+         store-content
          persist
          finish
          load-publications
@@ -41,7 +42,9 @@
             :biff.fx/random-uuid7-seq [(random-uuid)]}
            (assoc canonical :canonical feed))
 
-          persisted (persist {} (assoc posts :existing {:feed/posts []}))]
+          stored (store-content {} (assoc posts :existing {:feed/posts []}))
+
+          persisted (persist {} stored)]
       (is (= "https://feed" (:url started)))
       (is (= :biff.graph.fx/query (get-in existing [:old-feed 0])))
       (is (= :biff.fx/http (get-in fetched [:response 0])))
@@ -58,11 +61,11 @@
                     {:success true :data {:feed feed}})]
         (is (= :biff.graph.fx/query (first (:publications loaded))))
         (is (= [:biff.background.fx/submit-jobs
-                :platypub/send-readiness
-                [{:publication-id 2}]]
+                :platypub/check-send-readiness
+                [{:publication/id 2}]]
                (submit {} {:publications
                            {:feed/publications [{:publication/id 2}]}})))
         (is (= [:biff.background.fx/submit-jobs
-                :platypub/send-readiness
+                :platypub/check-send-readiness
                 []]
                (submit {} {:publications {:feed/publications []}})))))))

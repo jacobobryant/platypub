@@ -25,8 +25,9 @@
 
     (fn [_ctx {:keys [publications]}]
       [:biff.background.fx/submit-jobs
-       :platypub/send-readiness
-       (mapv #(hash-map :publication-id (:publication/id %))
+       :platypub/check-send-readiness
+       (mapv (fn [publication]
+               {:publication/id (:publication/id publication)})
              (:feed/publications publications))])]))
 
 (def module

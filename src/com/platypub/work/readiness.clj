@@ -10,8 +10,9 @@
 
   (fn [_ctx {:global/keys [publications]}]
     [:biff.background.fx/submit-jobs
-     :platypub/send-readiness
-     (mapv #(hash-map :publication-id (:publication/id %)) publications)]))
+     :platypub/check-send-readiness
+     (mapv (fn [publication] {:publication/id (:publication/id publication)})
+           publications)]))
 
 (def module
   {:biff.background/tasks

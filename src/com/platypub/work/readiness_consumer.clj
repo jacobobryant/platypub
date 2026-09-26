@@ -1,21 +1,14 @@
 (ns com.platypub.work.readiness-consumer
-  (:require [com.biffweb.fx :refer [defpipeline]]
+  (:require [cheshire.core :as json]
+            [com.biffweb.fx :refer [defpipeline]]
             [tick.core :as tick]))
 
 (defn- send-statements
   [now ids publication posts content]
-  (let [send-id      (first ids)
-        content-id   (second ids)
-        post-ids     (drop 2 ids)
-        content-data {:subject (:send/subject content)
-                      :html    (:send/html content)
-                      :text    (:send/text content)}]
+  (let [[send-id content-id & post-ids] ids]
     {:send-id send-id
      :_write  [:biff.sqlite.fx/execute-tx
-               (into [{:insert-into :content
-                       :values      [{:content/id   content-id
-                                      :content/data [:lift content-data]}]}
-                      {:insert-into :send
+               (into [{:insert-into :send
                        :values      [{:send/id send-id
 
                                       :send/publication-id
@@ -29,7 +22,13 @@
                                       :send/from-name
                                       (:publication/title publication)
 
-                                      :send/subject    (:send/subject content)
+                                      :send/reply-to
+                                      (get-in publication
+                                              [:publication/user :user/email])
+
+                                      :send/subject
+                                      (:send/subject content)
+
                                       :send/content-id content-id
 
                                       :send/provenance
@@ -46,23 +45,25 @@
 
 (defpipeline readiness-consumer
   (fn [{:biff.background/keys [job]}]
-    (let [publication-id (:publication-id job)]
+    (let [publication-id (:publication/id job)]
       {:publication [:biff.graph.fx/query
                      {:publication/id publication-id}
                      [:publication/id
                       :publication/title
-                      :publication/intro
-                      :publication/banner-image-url
-                      :publication/default-author-name
-                      :publication/default-author-url
-                      :publication/default-author-image-url
+                      [:? :publication/intro]
+                      [:? :publication/banner-image-url]
+                      [:? :publication/default-author-name]
+                      [:? :publication/default-author-url]
+                      [:? :publication/default-author-image-url]
                       :publication/padding-color
                       :publication/background-color
                       :publication/text-color
-                      :publication/filter-tag
-                      :publication/remove-tag
-                      :publication/automatic-send-threshold
+                      :publication/primary-color
+                      [:? :publication/filter-tag]
+                      [:? :publication/remove-tag]
+                      [:? :publication/automatic-send-threshold]
                       :publication/active-subscriber-count
+                      {:publication/user [:user/email]}
                       {:publication/sends
                        [:send/id :send/status :send/started-at]}]]}))
 
@@ -87,15 +88,17 @@
                               (:send/started-at latest))
                        [{:publication/automatic-posts
                          [:post/id
-                          :post/url
+                          [:? :post/url]
                           :post/fetched-at
-                          :post/published-at
-                          :post/title
-                          :post/author-name
-                          :post/author-url
-                          :post/author-image-url
-                          :post/excerpt
-                          :content/data]}]]}
+                          [:? :post/published-at]
+                          [:? :post/title]
+                          [:? :post/author-name]
+                          [:? :post/author-url]
+                          [:? :post/author-image-url]
+                          [:? :post/excerpt]
+                          :post/content-id
+                          {:post/content
+                           [[:? :content/html] [:? :content/text]]}]}]]}
         {:biff.fx/return nil})))
 
   (fn [_ctx {:keys [publication posts]}]
@@ -113,11 +116,24 @@
 
   (fn [{:biff.fx/keys [now random-uuid7-seq]}
        {:keys [publication posts content]}]
-    (send-statements now random-uuid7-seq publication posts content))
-
-  (fn [_ctx {:keys [send-id]}]
-    [:biff.background.fx/submit-jobs :platypub/send [{:send-id send-id}]]))
+    (let [content-id (second random-uuid7-seq)
+          send       (send-statements now
+                                      random-uuid7-seq
+                                      publication
+                                      posts
+                                      content)]
+      {:biff.fx/seq
+       [{:_content [:platypub.fx/put-object
+                    content-id
+                    (json/generate-string
+                     {:html (:send/html content) :text (:send/text content)})
+                    "application/json"]}
+        {:_write (:_write send)}
+        {:_submit [:biff.background.fx/submit-jobs
+                   :platypub/send
+                   [{:send-id (:send-id send)}]]}]})))
 
 (def module
   {:biff.background/queues
-   {:platypub/send-readiness {:consumer readiness-consumer :n-threads 1}}})
+   {:platypub/check-send-readiness
+    {:consumer readiness-consumer :n-threads 1}}})

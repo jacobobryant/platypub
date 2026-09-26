@@ -10,13 +10,13 @@
         user-id (random-uuid)]
     (is (= [:biff.graph.fx/query
             {:user/email "person@example.com"}
-            [:user/id]]
+            [[:? :user/id]]]
            (query {} "person@example.com")))
     (is (= user-id
            (result {} {:user/id user-id})))))
 
 (deftest create-user-states
-  (let [[count-users insert-user result] (auth/create-user)
+  (let [[insert-user result] (auth/create-user)
 
         user-id
         (UUID/fromString
@@ -25,26 +25,23 @@
 
         now (tick/instant "2026-01-01T00:00:00Z")
 
-        state {:email "person@example.com", :users {:global/user-count 1}}
+        state {:email "person@example.com"}
 
         insert-ctx
         {:biff.fx/now               now,
          :biff.fx/random-uuid7-seq  [user-id],
          :platypub/waitlist-enabled false}]
-    (is (= {:email "person@example.com",
-            :users [:biff.graph.fx/query [:global/user-count]]}
-           (count-users {} {:email "person@example.com"})))
-    (testing "tier selection"
-      (doseq [[users waitlist-enabled expected-tier]
-              [[0 false :user.tier/admin]
-               [1 true :user.tier/waitlist]
-               [1 false :user.tier/free]]]
-        (is (= expected-tier
-               (get-in (insert-user
-                        (assoc insert-ctx
-                               :platypub/waitlist-enabled waitlist-enabled)
-                        (assoc state :users {:global/user-count users}))
-                       [:_write 1 :values 0 :user/tier 1])))))
+    (testing "tier selection is atomic with the insert"
+      (let [tier (get-in (insert-user insert-ctx state)
+                         [:_write 1 :values 0 :user/tier])]
+        (is (= :case (first tier)))
+        (is (= :user.tier/admin (get-in tier [2 1])))
+        (is (= :user.tier/free (get-in tier [4 1]))))
+      (is (= :user.tier/waitlist
+             (get-in (insert-user
+                      (assoc insert-ctx :platypub/waitlist-enabled true)
+                      state)
+                     [:_write 1 :values 0 :user/tier 4 1]))))
     (is (= :biff.sqlite.fx/execute
            (get-in (insert-user insert-ctx state) [:_write 0])))
     (is (= user-id (result {} {:user-id user-id})))))

@@ -42,6 +42,40 @@
                     (assoc publication
                            :publication/feed {:feed/url "https://feed.example"})}))))))
 
+(deftest upload-image-states-test
+  (let [[prepare write] (settings/upload-image)
+        publication-id  (:publication/id publication)
+        object-id       (random-uuid)]
+    (is (= {:biff.fx/return {:status 422}}
+           (prepare {} {})))
+    (let [tab-id (random-uuid)
+
+          prepared
+          (prepare
+           {:path-params              {:field "banner"}
+            :biff.datastar/signals    {:request/image
+                                       {:content-type "image/png"
+                                        :tempfile     "/tmp/image.png"}}
+            :biff.datastar/tab-id     tab-id
+            :biff.fx/random-uuid7-seq [object-id]}
+           {:request/publication {:publication/id publication-id}
+            :request/tab         {}})
+
+          result
+          (write {:platypub/cdn-url-template "https://cdn.example/%s"}
+                 prepared)]
+      (is (= [:platypub.fx/put-object
+              (str object-id ".png")
+              (get-in prepared [:_upload 2])
+              "image/png"]
+             (:_upload prepared)))
+      (is (= :biff.sqlite.fx/execute (get-in result [:_write 0])))
+      (is (= (str "https://cdn.example/" object-id ".png")
+             (get-in result [:_write 1 :values 0 :tab-state/data 1
+                             :tab/publication-images
+                             :publication/banner-image-url])))
+      (is (= 204 (get-in result [:biff.fx/return :status]))))))
+
 (deftest save-settings-states-test
   (let [[save
          start
@@ -49,6 +83,7 @@
          fetch
          load-canonical
          load-posts
+         store-content
          persist
          finish
          write]
@@ -84,18 +119,28 @@
 
             canonical
             (load-canonical
-             {}
+             {:biff.fx/now now}
              (assoc fetched
-                    :response {:status 304
-                               :uri    "https://new-feed.example"}))
+                    :response
+                    {:status  200
+                     :uri     "https://new-feed.example"
+                     :headers {"content-type" "application/rss+xml"}
+                     :body    (str "<rss><channel><item><guid>1</guid>"
+                                   "<description>Body</description>"
+                                   "</item></channel></rss>")}))
 
             posts
             (load-posts
              {:biff.fx/now              now
-              :biff.fx/random-uuid7-seq [(random-uuid)]}
+              :biff.fx/random-uuid7-seq (repeatedly 4 random-uuid)}
              (assoc canonical :canonical old-feed))
 
-            persisted (persist {} (assoc posts :existing {:feed/posts []}))
+            stored
+            (store-content
+             {:biff.fx/random-uuid7-seq (repeatedly random-uuid)}
+             (assoc posts :existing {:feed/posts []}))
+
+            persisted (persist {} stored)
 
             synced (finish {} persisted)]
         (is (= "https://new-feed.example" (:url started)))
@@ -109,6 +154,9 @@
           (is (= :biff.sqlite.fx/authorized-write-tx
                  (get-in written [:_write 0])))
           (is (< 2 (count (get-in written [:_write 1]))))
+          (is (= (:publication/feed-id publication)
+                 (some #(get-in % [:set :publication/feed-id])
+                       (get-in written [:_write 1]))))
           (is (= {:status 204} (:biff.fx/return written)))))
       (let [automatic-publication
             (assoc publication :publication/automatic-send-threshold now)
@@ -117,8 +165,9 @@
             (write
              {:biff.fx/now now}
              {:data             {:publication automatic-publication}
-              :feed/id          (:publication/feed-id publication)
-              :post-ids         []
+              :feed             {:feed/id (:publication/feed-id publication)}
+              :post-ids         [(random-uuid)]
+              :success          true
               :write-statements []})]
         (is (= now
                (get-in written

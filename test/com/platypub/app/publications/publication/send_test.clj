@@ -33,7 +33,9 @@
 (deftest preview-send-state-test
   (let [[load-content write-preview] (send/preview-send)
 
-        publication {:publication/id (random-uuid)}
+        publication {:publication/id    (random-uuid)
+                     :publication/title "Frozen publication"
+                     :publication/user  {:user/email "owner@example.com"}}
 
         post {:post/id (random-uuid)}
 
@@ -50,14 +52,20 @@
       (is (= :biff.graph.fx/query (get-in loaded [:content 0])))
       (let [result (write-preview
                     {}
-                    (assoc loaded :content {:send/subject "Subject"
-                                            :send/html    "<p>Body</p>"}))]
+                    (assoc loaded
+                           :content
+                           {:send/subject "Subject"
+                            :send/html    "<p>Body</p>"}))]
         (is (= :biff.sqlite.fx/execute
                (get-in result [:_preview 0])))
+        (is (= "owner@example.com"
+               (get-in result [:_preview 1 :values 0 :tab-state/data
+                               1 :tab/send-preview :send/reply-to])))
         (is (= {:status 204} (:biff.fx/return result)))))))
 
 (deftest confirm-send-states-test
-  (let [[load-content create submit] (send/confirm-send)
+  (let [[prepare-content store-content create clear-preview submit]
+        (send/confirm-send)
 
         publication {:publication/id (random-uuid)}
 
@@ -69,28 +77,37 @@
 
         tab-id (random-uuid)]
     (is (= {:biff.fx/return {:status 204}}
-           (load-content {}
-                         {:request/publication publication
-                          :request/send-posts  []})))
+           (prepare-content {}
+                            {:request/publication publication
+                             :request/send-posts  []})))
     (let [loaded
-          (load-content
+          (prepare-content
            {:biff.fx/now              now
             :biff.fx/random-uuid7-seq ids
             :biff.datastar/tab-id     tab-id}
-           {:request/publication publication
-            :request/send-posts  [post]
-            :request/tab         {}})
+           {:request/publication  publication
+            :request/send-posts   [post]
+            :request/send-preview {:send/subject   "Subject"
+                                   :send/html      "<p>Body</p>"
+                                   :send/text      "Body"
+                                   :send/from-name "Frozen name"
+                                   :send/reply-to  "frozen@example.com"}
+            :request/tab          {}})
 
-          created
-          (create
-           {}
-           (assoc loaded :content {:send/subject "Subject"
-                                   :send/html    "<p>Body</p>"
-                                   :send/text    "Body"}))]
-      (is (= :biff.graph.fx/query (get-in loaded [:content 0])))
-      (is (= (first ids) (:send-id created)))
+          stored (store-content {} loaded)
+
+          created (create {} stored)
+
+          cleared (clear-preview {} created)]
+      (is (= :platypub.fx/put-object (get-in stored [:_content 0])))
       (is (= :biff.sqlite.fx/authorized-write-tx
-             (get-in created [:_write 0]))))
+             (get-in created [:_write 0])))
+      (is (= "Frozen name"
+             (get-in created [:_write 1 0 :values 0 :send/from-name])))
+      (is (= "frozen@example.com"
+             (get-in created [:_write 1 0 :values 0 :send/reply-to])))
+      (is (= :biff.sqlite.fx/execute
+             (get-in cleared [:_clear-preview 0]))))
     (let [send-id (random-uuid)
 
           result (submit {} {:send-id send-id})]
