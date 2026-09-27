@@ -18,8 +18,9 @@
 
 (defn- bytes->token [value] (b64-encode value))
 
-(defn- submitted-response []
-  (datastar/patch-signals {:subscription/submitted true}))
+(defn- submitted-response [email-address]
+  (datastar/patch-signals {:subscription/email     email-address
+                           :subscription/submitted true}))
 
 (defn- json-bytes [value]
   (.getBytes (json/generate-string value) StandardCharsets/UTF_8))
@@ -45,7 +46,7 @@
 
 (defpipeline subscribe-page
   [:biff.graph.fx/query
-   [{:request/subscription-publication
+   [{[:? :request/subscription-publication]
      [:publication/id
       :publication/title
       [:? :publication/description]
@@ -82,7 +83,7 @@
            [:img {:src image, :class ["mb-5 max-w-full"]}])
          [:h1
           {:class ["text-3xl font-bold"]}
-          (:publication/title publication)]
+          (str "Subscribe to " (:publication/title publication))]
          [:p
           {:class ["my-3"]}
           (:publication/description publication)]
@@ -91,7 +92,9 @@
           [:h2 {:class ["text-2xl font-bold"]} "Check your inbox"]
           [:p
            {:class ["mt-3"]}
-           "Thanks! If confirmation is needed, we've sent you an email."]]
+           "We've sent you a confirmation email to "
+           [:strong {:data-text "$subscription_email"}]
+           "."]]
          [:form
           {:data-on:submit
            "@post(el.dataset.action)",
@@ -161,7 +164,7 @@
 
 (defpipeline submit-subscription
   [:biff.graph.fx/query
-   [{:request/subscription-publication
+   [{[:? :request/subscription-publication]
      [:publication/id
       :publication/title
       :publication/require-confirmation
@@ -195,7 +198,7 @@
         (nil? publication) {:biff.fx/return {:status 404}}
 
         (not (subscriber/valid-email? email-address))
-        {:biff.fx/return (submitted-response)}
+        {:biff.fx/return (submitted-response email-address)}
 
         :else
         (let [turnstile (:request/turnstile-token request-data)
@@ -242,7 +245,7 @@
                [:? :subscriber/confirmed-at]
                [:? :subscriber/require-confirmation]
                [:? :subscriber/active]]])
-      {:biff.fx/return (submitted-response)}))
+      {:biff.fx/return (submitted-response email)}))
 
   (fn [{:biff.fx/keys [now random-uuid7-seq]}
        {:keys [publication email request-data existing]}]
@@ -323,7 +326,7 @@
           send-welcome (and (not previously-active) (:subscriber/active active))
 
           token (when send-confirmation (confirmation-token random-uuid4-seq))]
-      (cond-> {:biff.fx/return (submitted-response)}
+      (cond-> {:biff.fx/return (submitted-response email)}
         send-confirmation
         (assoc
          :biff.fx/seq

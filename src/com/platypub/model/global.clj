@@ -18,7 +18,8 @@
      [:biff.sqlite.fx/execute
       {:select-distinct [:feed/id]
        :from            :feed
-       :join            [:publication [:= :publication/feed-id :feed/id]]}]}))
+       :join            [:publication [:= :publication/feed-id :feed/id]]
+       :where           [:is :publication/archived-at nil]}]}))
 
 (defresolver publications
   {:output [{:global/publications [:publication/id]}]}
@@ -26,7 +27,8 @@
     {:global/publications
      [:biff.sqlite.fx/execute
       {:select [:publication/id]
-       :from   :publication}]}))
+       :from   :publication
+       :where  [:is :publication/archived-at nil]}]}))
 
 (defresolver user-count
   {:output [:global/user-count]}

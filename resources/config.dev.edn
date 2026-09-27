@@ -11,7 +11,7 @@
  :platypub.object-store/access-key "minioadmin"
  :platypub.object-store/secret-key "minioadmin"
 
- :platypub/cdn-url-template        "http://localhost:8080/_mock/cdn/%s"
+ :platypub/cdn-url-template        "/_mock/cdn/%s"
  :platypub/local-minio-enabled     true
  :platypub/mock-mailersend-enabled true
  :platypub/waitlist-enabled        true}

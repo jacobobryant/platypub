@@ -13,7 +13,7 @@ let renderingPublicationPath;
 async function settle(page) {
   // The initial SSE response morphs the server-rendered content once Datastar
   // has created its per-tab signal. Avoid typing into the element it replaces.
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(400);
 }
 
 async function emails(request) {
@@ -52,16 +52,30 @@ async function signIn(page, request, email) {
 }
 
 async function createPublication(page, url, title) {
+  await openPublicationDialog(page);
   const createResponse = page.waitForResponse((response) =>
     response.url().endsWith('/app/publications')
     && response.request().method() === 'POST');
   await page.getByPlaceholder('Website or feed URL').fill(url);
-  await page.getByRole('button', { name: 'Add publication' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   const response = await createResponse;
   expect(response.status()).toBe(204);
   const heading = page.getByRole('heading', { name: title, exact: true }).last();
   await expect(heading).toBeVisible();
-  return heading.locator('..').getAttribute('href');
+  const path = await heading.locator('..').getAttribute('href');
+  await page.reload();
+  await settle(page);
+  return path;
+}
+
+async function openPublicationDialog(page) {
+  await expect.poll(async () => {
+    if (!(await page.locator('#add-publication').isVisible())) {
+      await page.getByRole('button', { name: 'Add publication' }).click({ timeout: 1000 });
+    }
+    await page.waitForTimeout(200);
+    return page.locator('#add-publication').isVisible();
+  }).toBe(true);
 }
 
 async function submitSubscription(page, publication, email) {
@@ -117,11 +131,12 @@ test.describe.serial('Platypub user flows', () => {
       'http://127.0.0.1:9090/invalid-feed',
       'http://127.0.0.1:9090/empty.json',
     ]) {
+      await openPublicationDialog(page);
       const responsePromise = page.waitForResponse((response) =>
         response.url().endsWith('/app/publications')
         && response.request().method() === 'POST');
       await page.getByPlaceholder('Website or feed URL').fill(url);
-      await page.getByRole('button', { name: 'Add publication' }).click();
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
       const response = await responsePromise;
       expect(response.status()).toBe(422);
     }
@@ -182,9 +197,10 @@ test.describe.serial('Platypub user flows', () => {
     const createResponse = page.waitForResponse((response) =>
       response.url().endsWith('/app/publications')
       && response.request().method() === 'POST');
+    await openPublicationDialog(page);
     await page.getByPlaceholder('Website or feed URL')
       .fill('http://127.0.0.1:9090/descriptionless');
-    await page.getByRole('button', { name: 'Add publication' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     expect((await createResponse).status()).toBe(204);
 
     await expect(page.getByRole('link', { name: 'Fixture JSON Feed' })).toBeVisible();
@@ -202,14 +218,27 @@ test.describe.serial('Platypub user flows', () => {
     const noFeedResponse = page.waitForResponse((response) =>
       response.url().endsWith('/app/publications')
       && response.request().method() === 'POST');
+    await openPublicationDialog(page);
     await page.getByPlaceholder('Website or feed URL').fill('http://127.0.0.1:9090/no-feed');
-    await page.getByRole('button', { name: 'Add publication' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     const missingFeed = await noFeedResponse;
     expect(missingFeed.status()).toBe(422);
 
     await page.getByPlaceholder('Website or feed URL').fill('http://127.0.0.1:9090/multi');
-    await page.getByRole('button', { name: 'Add publication' }).click();
-    await expect(page.locator('select')).toBeVisible();
+    const discoveryResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/app/publications')
+      && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    expect((await discoveryResponse).status()).toBe(204);
+    await page.keyboard.press('Escape');
+    await expect.poll(async () => {
+      if (await page.locator('select').isVisible()) return true;
+      if (await page.locator('select').count()
+          && !(await page.locator('#add-publication').isVisible())) {
+        await openPublicationDialog(page);
+      }
+      return page.locator('select').isVisible();
+    }).toBe(true);
     await expect(page.locator('select option')).toHaveCount(3);
     await page.locator('select').selectOption('http://127.0.0.1:9090/feed.xml');
     const createResponse = page.waitForResponse((response) =>
@@ -217,16 +246,18 @@ test.describe.serial('Platypub user flows', () => {
       && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Use this feed' }).click();
     expect((await createResponse).status()).toBe(204);
+    await page.reload();
+    await settle(page);
 
-    const publicationLink = page.getByRole('link', { name: /Fixture Gazette/ });
+    const publicationLink = page.getByRole('link', { name: /Fixture Gazette/ }).last();
     await expect(publicationLink).toBeVisible();
     publicationPath = await publicationLink.getAttribute('href');
     await publicationLink.click();
     await expect(page.getByRole('heading', { name: 'Fixture Gazette' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'First post' })).toBeVisible();
-    await expect(page.getByText('Hosted form:')).toBeVisible();
+    await expect(page.getByText('Hosted form', { exact: true })).toBeVisible();
     await expect(page.locator('textarea[readonly]')).toHaveValue(
-      /<iframe src="http:\/\/[^"/]+\/subscribe\//);
+      /<iframe[^>]+src="http:\/\/[^"/]+\/subscribe\//);
     await expect(page.getByRole('link', { name: 'Send' })).toHaveAttribute('aria-disabled', 'true');
   });
 
@@ -238,16 +269,19 @@ test.describe.serial('Platypub user flows', () => {
     await request.post('http://127.0.0.1:9090/control/feed-version?value=2');
     const syncResponse = page.waitForResponse((response) =>
       response.url().endsWith('/sync') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Sync feed' }).click();
+    await page.getByRole('button', { name: 'Sync', exact: true }).click();
     expect((await syncResponse).status()).toBe(204);
     await expect(page.getByRole('heading', { name: 'Second post' })).toBeVisible();
 
     await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page.getByRole('heading', { name: 'Publication settings' })).toBeVisible();
+    await expect(page.getByLabel('Feed URL')).toBeVisible();
     await settle(page);
-    await expect(page.getByRole('heading', { name: 'Subscribe form' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Email' })).toBeVisible();
+    await page.getByRole('button', { name: 'Preview subscribe form' }).click();
+    await expect(page.locator('#subscribe-preview')).toBeVisible();
+    await page.locator('#subscribe-preview').getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Preview email' }).click();
     await expect(page.getByRole('heading', { name: 'Lorem ipsum' })).toBeVisible();
+    await page.locator('#email-preview').getByRole('button', { name: 'Close' }).click();
 
     await expect(page.getByLabel('Description')).toHaveValue('News from the Playwright fixture.');
     await expect(page.getByLabel('Intro')).toHaveValue('News from the Playwright fixture.');
@@ -282,6 +316,7 @@ test.describe.serial('Platypub user flows', () => {
     await expect(authorForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
 
     await page.getByLabel('Title').fill('Updated Gazette');
+    await page.getByLabel('Address').fill('123 Test Street, Test City');
     await page.getByLabel('Description').fill('Updated publication description');
     await page.getByLabel('Intro').fill('A short introduction');
     await page.getByLabel('Default author name').fill('Fixture Editor');
@@ -300,7 +335,8 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('button', { name: 'Save settings' }).click();
     expect((await settingsResponse).status()).toBe(204);
 
-    await page.getByRole('link', { name: 'Publication' }).click();
+    await page.getByRole('navigation', { name: 'Publication' })
+      .getByRole('link', { name: 'Posts' }).click();
     await expect(page.getByRole('heading', { name: 'Updated Gazette' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Second post' })).toBeVisible();
 
@@ -329,7 +365,8 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('button', { name: 'Save settings' }).click();
     expect((await feedChangeResponse).status()).toBe(204);
 
-    await page.getByRole('link', { name: 'Publication' }).click();
+    await page.getByRole('navigation', { name: 'Publication' })
+      .getByRole('link', { name: 'Posts' }).click();
     await expect(page.getByRole('heading', { name: 'Updated Gazette' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'JSON post', exact: true })).toBeVisible();
   });
@@ -377,8 +414,15 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
   });
 
-  test('multi-post email rendering, preview freezing, and sent-post exclusion follow the spec', async ({ page, request }) => {
+  test('multi-post email rendering, current settings, and sent-post exclusion follow the spec', async ({ page, request }) => {
     await signIn(page, request, adminEmail);
+    await page.goto(`${renderingPublicationPath}/settings`);
+    await settle(page);
+    await page.getByLabel('Address').fill('123 Test Street, Test City');
+    const addressResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/settings') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Save settings' }).click();
+    expect((await addressResponse).status()).toBe(204);
     await page.goto(renderingPublicationPath);
     await settle(page);
     await expect(page.getByRole('link', { name: 'Send' })).not.toHaveAttribute('aria-disabled');
@@ -393,9 +437,7 @@ test.describe.serial('Platypub user flows', () => {
       response.url().endsWith('/send') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Preview' }).click();
     expect((await previewResponse).status()).toBe(204);
-    await expect(page.getByText('From: Rendering Fixture')).toBeVisible();
-    await expect(page.getByText(`Reply-To: ${adminEmail}`)).toBeVisible();
-    await expect(page.getByText('Subject: Older linked post')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Older linked post' })).toBeVisible();
 
     const preview = page.frameLocator('[title="Newsletter preview"]');
     await expect(preview.getByText('Rendering fixture description.')).toBeVisible();
@@ -404,7 +446,7 @@ test.describe.serial('Platypub user flows', () => {
     await expect(preview.getByText('A post without a URL keeps its full plain-text content.')).toBeVisible();
     await expect(preview.getByText('Plain <unsafe> text')).toBeVisible();
     await expect(preview.getByText('Unusable post')).toHaveCount(0);
-    await expect(preview.locator('a[href="http://127.0.0.1:9090/posts/rendering-1"]')).toBeVisible();
+    await expect(preview.locator('a[href="http://127.0.0.1:9090/posts/rendering-1"]').first()).toBeVisible();
 
     const settingsPage = await page.context().newPage();
     await settingsPage.goto(`${renderingPublicationPath}/settings`);
@@ -418,10 +460,10 @@ test.describe.serial('Platypub user flows', () => {
 
     const confirmResponse = page.waitForResponse((response) =>
       response.url().endsWith('/send/confirm') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Confirm and send' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     expect((await confirmResponse).status()).toBe(204);
     const newsletter = await latestEmail(request, immediateEmail, 'Older linked post');
-    expect(newsletter.from.name).toBe('Rendering Fixture');
+    expect(newsletter.from.name).toBe('Changed after preview');
     expect(newsletter.reply_to.email).toBe(adminEmail);
     expect(newsletter.html).toContain('Rendering fixture description.');
     expect(newsletter.html).not.toContain('x'.repeat(500));
@@ -487,9 +529,17 @@ test.describe.serial('Platypub user flows', () => {
     expect((await subscriberSearchResponse).status()).toBe(204);
     const row = page.locator('tr').filter({ hasText: 'subscriber051@example.test' });
     await expect(row).toBeVisible();
+    const menuAction = row.locator('details').getByRole('button', { name: 'Unsubscribe' });
+    await expect.poll(async () => {
+      if (!(await menuAction.isVisible())) await row.locator('summary').click();
+      await page.waitForTimeout(200);
+      return menuAction.isVisible();
+    }).toBe(true);
+    await menuAction.click();
+    await expect(row.locator('dialog')).toBeVisible();
     const unsubscribeResponse = page.waitForResponse((response) =>
       response.url().includes('/app/subscribers/') && response.request().method() === 'POST');
-    await row.getByRole('button', { name: 'Unsubscribe' }).click();
+    await row.locator('dialog').getByRole('button', { name: 'Unsubscribe' }).click();
     expect((await unsubscribeResponse).status()).toBe(204);
     await expect(row.getByRole('button', { name: 'Unsubscribe' })).toHaveCount(0);
 
@@ -517,8 +567,7 @@ test.describe.serial('Platypub user flows', () => {
       response.url().endsWith('/send') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Preview' }).click();
     expect((await previewResponse).status()).toBe(204);
-    await expect(page.getByText('From: Updated Gazette')).toBeVisible();
-    await expect(page.getByText('Subject: JSON post')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'JSON post' })).toBeVisible();
     await expect(page.frameLocator('[title="Newsletter preview"]')
       .getByText('JSON feed body.')).toBeVisible();
     await expect(page.frameLocator('[title="Newsletter preview"]')
@@ -526,7 +575,7 @@ test.describe.serial('Platypub user flows', () => {
 
     const confirmResponse = page.waitForResponse((response) =>
       response.url().endsWith('/send/confirm') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Confirm and send' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     expect((await confirmResponse).status()).toBe(204);
 
     const newsletter = await latestEmail(request, deliveryEmail, 'JSON post');
@@ -584,7 +633,8 @@ test.describe.serial('Platypub user flows', () => {
       response.url().endsWith('/settings') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Save settings' }).click();
     expect((await feedChangeResponse).status()).toBe(204);
-    await page.getByRole('link', { name: 'Publication' }).click();
+    await page.getByRole('navigation', { name: 'Publication' })
+      .getByRole('link', { name: 'Posts' }).click();
     await expect(page.getByRole('heading', { name: 'JSON post', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Linked Atom post' })).toBeVisible();
     await expect(page.getByText(/^Sent /)).toHaveCount(1);

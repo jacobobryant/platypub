@@ -66,6 +66,8 @@ CREATE TABLE publication (
   title TEXT NOT NULL,
   user_id BLOB NOT NULL,
   welcome_html TEXT NOT NULL,
+  address TEXT,
+  archived_at INT,
   automatic_send_threshold INT,
   banner_image_url TEXT,
   default_author_image_url TEXT,

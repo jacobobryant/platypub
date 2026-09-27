@@ -1,2 +1,14 @@
 @import "tailwindcss";
 @source "../src/**/*.clj";
+
+@theme {
+  --color-background: #e8e6e1;
+  --color-surface: #ffffff;
+  --color-text: #625d52;
+  --color-muted: #b8b2a7;
+  --color-border: #d3cec4;
+  --color-primary: #0a6c74;
+  --color-primary-light: #54d1db;
+  --color-primary-soft: #e0fcff;
+  --color-accent: #2680c2;
+}

@@ -8,6 +8,7 @@
 (def publication
   {:publication/id                       1
    :publication/title                    "Publication"
+   :publication/address                  "123 Main St"
    :publication/user                     {:user/email "owner@example.com"}
    :publication/automatic-send-threshold now})
 (def post
@@ -31,6 +32,7 @@
              {:publication/id 1}
              [:publication/id
               :publication/title
+              :publication/address
               [:? :publication/intro]
               [:? :publication/banner-image-url]
               [:? :publication/default-author-name]

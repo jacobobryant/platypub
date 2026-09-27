@@ -47,7 +47,7 @@
        [:main
         {:class ["mx-auto max-w-5xl p-6"]}
         [:a
-         {:href (routes/app), :class ["text-blue-700"]}
+         {:href (routes/app), :class ["text-primary"]}
          "← Publications"]
         [:h1
          {:class ["my-4 text-3xl font-bold"]}
@@ -118,7 +118,7 @@
              :accept    ".csv,text/csv",
              :required  true}]
            [:button
-            {:class ["rounded bg-blue-600 px-3 py-2 text-white"]}
+            {:class ["rounded bg-primary px-3 py-2 text-white"]}
             "Import"]])]))))
 
 (defpipeline update-search

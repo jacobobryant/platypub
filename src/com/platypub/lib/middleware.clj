@@ -63,6 +63,6 @@
              :data-signals__ifmissing (datastar/signals-json {})
              :class                   ["mt-6"]}
             [:button
-             {:class ["text-blue-600"]}
+             {:class ["text-primary"]}
              "Sign out"]]])
          (handler (assoc ctx :platypub/user user)))))))

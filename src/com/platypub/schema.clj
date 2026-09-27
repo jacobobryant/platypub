@@ -108,6 +108,10 @@
    :publication/primary-color            (text :required)
    :publication/welcome-html             (text :required)
    :publication/require-confirmation     (bool :required)
+   ;; Kept nullable in SQLite so existing databases can add the column. New
+   ;; publications initialize it to "", and send workflows require it to be
+   ;; non-blank.
+   :publication/address                  (text)
    :publication/description              (text)
    :publication/intro                    (text)
    :publication/banner-image-url         (text)
@@ -117,6 +121,7 @@
    :publication/filter-tag               (text)
    :publication/remove-tag               (text)
    :publication/automatic-send-threshold (inst)
+   :publication/archived-at              (inst)
 
    :subscriber/id                        primary-key
    :subscriber/email                     (text :required :index :unique-with
@@ -186,6 +191,7 @@
   [:publication/feed-id
    :publication/feed-id-updated-at
    :publication/title
+   :publication/address
    :publication/padding-color
    :publication/background-color
    :publication/text-color
@@ -200,7 +206,8 @@
    :publication/default-author-url
    :publication/default-author-image-url
    :publication/filter-tag
-   :publication/remove-tag])
+   :publication/remove-tag
+   :publication/archived-at])
 
 (defn only-fields-edited?
   [before after fields]
@@ -263,7 +270,8 @@
       :join   [:publication [:= :publication/feed-id :feed/id]]
       :where  [:and
                [:= :feed/id feed-id]
-               [:= :publication/user-id user-id]]})))
+               [:= :publication/user-id user-id]
+               [:is :publication/archived-at nil]]})))
 
 (defn- owns-subscriber?
   [ctx subscriber-id]
@@ -291,7 +299,8 @@
                [:= :publication/feed-id :post/feed-id]]
       :where  [:and
                [:= :post/id post-id]
-               [:= :publication/user-id user-id]]})))
+               [:= :publication/user-id user-id]
+               [:is :publication/archived-at nil]]})))
 
 (defn- owns-send?
   [ctx send-id]
@@ -305,7 +314,8 @@
                [:= :publication/id :send/publication-id]]
       :where  [:and
                [:= :send/id send-id]
-               [:= :publication/user-id user-id]]})))
+               [:= :publication/user-id user-id]
+               [:is :publication/archived-at nil]]})))
 
 (defn- owns-send-post?
   [ctx send-post-id]
@@ -343,7 +353,11 @@
         :create (= (:publication/user-id after) (current-user-id ctx))
         :update (and (owns-publication? ctx publication-id)
                      (only-fields-edited?
-                      before after editable-publication-fields))
+                      before
+                      after
+                      (if (:publication/archived-at before)
+                        [:publication/archived-at]
+                        editable-publication-fields)))
         false))
 
     :feed

@@ -12,7 +12,7 @@
 
 (defpipeline subscribers-page
   [:biff.graph.fx/query
-   [{:request/publication [:publication/id]}
+   [{[:? :request/publication] [:publication/id :publication/title]}
     {:request/subscriber-search [:subscriber/search]}
     {:request/pagination [:page/number :page/limit :page/offset]}
     {:request/subscribers
@@ -32,14 +32,11 @@
         (ui/app-shell
          request
          [:main
-          {:class ["mx-auto w-full max-w-5xl p-6"]}
-          [:a
-           {:href  (routes/publication (:publication/id
-                                        publication)),
-            :class ["text-blue-700"]} "← Publication"]
-          [:h1
-           {:class ["my-4 text-3xl font-bold"]}
-           "Subscribers"]
+          {:data-signals__ifmissing
+           (datastar/signals-json {:subscriber/activedialog nil})
+
+           :class ["mx-auto w-full max-w-5xl p-6"]}
+          (ui/publication-header publication :subscribers)
           [:form
            {:data-on:submit "@post(el.dataset.action)",
 
@@ -78,35 +75,75 @@
                 (:subscriber/email subscriber)]
                [:td
                 {:class ["border p-2"]}
-                (str (:subscriber/subscribed-at subscriber))]
+                (ui/timestamp (:subscriber/subscribed-at subscriber))]
                [:td
                 {:class ["border p-2"]}
-                (str (:subscriber/unsubscribed-at
-                      subscriber))]
+                (ui/timestamp (:subscriber/unsubscribed-at subscriber))]
                [:td
                 {:class ["border p-2"]}
                 (when (:subscriber/active subscriber)
-                  [:form
-                   {:data-on:submit "@post(el.dataset.action)",
+                  [:div
+                   [:details
+                    [:summary {:class ["cursor-pointer list-none"]} "⋯"]
+                    [:button
+                     {:type "button"
 
-                    :data-action
-                    (subscriber-path (:subscriber/id subscriber)),
+                      :data-on:click
+                      (str "el.closest('details').nextElementSibling"
+                           ".showModal(); "
+                           "$subscriber_activedialog = '"
+                           (:subscriber/id subscriber)
+                           "'")
 
-                    :data-signals__ifmissing (datastar/signals-json {})}
-                   [:button {:class ["text-blue-700"]} "Unsubscribe"]])]])]
+                      :class ["text-primary"]}
+                     "Unsubscribe"]]
+                   [:dialog
+                    (merge {:id    (str "unsubscribe-"
+                                        (:subscriber/id subscriber))
+                            :class ["w-full max-w-md rounded border"
+                                    "border-border p-6"
+                                    "shadow-xl"]}
+                           (ui/dialog-state-attrs
+                            (str "$subscriber_activedialog === '"
+                                 (:subscriber/id subscriber)
+                                 "'")
+                            (str "if ($subscriber_activedialog === '"
+                                 (:subscriber/id subscriber)
+                                 "') $subscriber_activedialog = null")))
+                    [:h2 {:class ["text-xl font-semibold"]}
+                     "Unsubscribe subscriber?"]
+                    [:p {:class ["my-4"]} (:subscriber/email subscriber)]
+                    [:div {:class ["flex justify-end gap-2"]}
+                     [:button {:type "button"
+
+                               :data-on:click
+                               (str "el.closest('dialog').close(); "
+                                    "$subscriber_activedialog = null")
+
+                               :class
+                               ["rounded border border-border px-4 py-2"]}
+                      "Cancel"]
+                     [:form
+                      {:data-on:submit          "@post(el.dataset.action)"
+                       :data-action             (subscriber-path
+                                                 (:subscriber/id subscriber))
+                       :data-signals__ifmissing (datastar/signals-json {})}
+                      [:button
+                       {:class ["rounded bg-primary px-4 py-2 text-white"]}
+                       "Unsubscribe"]]]]])]])]
            (let [page (or (get-in result [:request/pagination :page/number]) 1)]
              [:nav {:class ["mt-4 flex gap-4"]}
               (when (> page 1)
-                [:a {:href (str "?page=" (dec page)) :class ["text-blue-700"]}
+                [:a {:href (str "?page=" (dec page)) :class ["text-primary"]}
                  "Previous"])
               (when (= 50 (count subscribers))
-                [:a {:href (str "?page=" (inc page)) :class ["text-blue-700"]}
+                [:a {:href (str "?page=" (inc page)) :class ["text-primary"]}
                  "Next"])])]]))
       {:status 404})))
 
 (defpipeline update-search
   [:biff.graph.fx/query
-   [{:request/publication [:publication/id]}
+   [{[:? :request/publication] [:publication/id]}
     {:request/subscriber-search [:subscriber/search]}
     {:request/tab
      [{[:? :tab/subscriber-search]

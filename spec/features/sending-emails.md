@@ -66,9 +66,10 @@ The publication page includes a "Send" button. It is only enabled if there is at
 least one post that isn't already associated with a send and if there's at least
 one active subscriber. After clicking, the user selects which post(s) to include
 in the send. Only posts not already associated with a send can be selected. The
-user sees a preview of the full HTML that will be sent and also the from name
-and subject. After the user confirms, a send is created (with `status = pending`
-and `provenance = manual`) and is placed on the send processing queue. Email
-content is rendered and stored at that time. In case the feed/posts were updated
-after the preview was rendered, the email is rendered using the same data used
-to render the preview.
+user sees a preview of the full HTML that will be sent and also the subject.
+
+After the user confirms, a send is created (with `status = pending` and
+`provenance = manual`) and is placed on the send processing queue. Email content
+is rendered and stored at that time using whatever is currently in the database.
+We don't need to handle the edge case where the publication/post(s) is updated
+between previewing and sending.

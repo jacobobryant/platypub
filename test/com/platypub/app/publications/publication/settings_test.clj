@@ -7,6 +7,7 @@
   {:publication/id                   (random-uuid)
    :publication/feed-id              (random-uuid)
    :publication/title                "News"
+   :publication/address              "123 Main St"
    :publication/padding-color        "#fff"
    :publication/background-color     "#fff"
    :publication/text-color           "#111"
@@ -16,6 +17,7 @@
 
 (def request-settings
   {:publication/title                    " Updated news "
+   :publication/address                  " 123 Main St\nSuite 4 "
    :publication/description              " Description "
    :publication/intro                    ""
    :publication/banner-image-url         ""
@@ -102,6 +104,8 @@
     (is (= {:biff.fx/return {:status 404}} (save {} {})))
     (let [saved (save {:biff.fx/now now} result)]
       (is (= "Updated news" (get-in saved [:set-values :publication/title])))
+      (is (= "123 Main St Suite 4"
+             (get-in saved [:set-values :publication/address])))
       (is (= now
              (get-in saved
                      [:set-values :publication/automatic-send-threshold])))

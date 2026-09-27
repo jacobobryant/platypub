@@ -16,3 +16,7 @@ Publication settings page:
 
 Each preview button opens a modal that renders the data currently in the form,
 even if it hasn't been saved yet.
+
+Notes on settings form fields:
+
+- `address` is a single-line text input.

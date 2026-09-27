@@ -6,6 +6,9 @@
 (defpath signin "/signin")
 (defpath signout "/_biff/auth/signout")
 (defpath publication "/app/publications/:publication-id")
+(defpath archived-publications "/app/archived-publications")
+(defpath archive-publication "/app/publications/:publication-id/archive")
+(defpath unarchive-publication "/app/publications/:publication-id/unarchive")
 (defpath publication-settings "/app/publications/:publication-id/settings")
 (defpath publication-subscribers
   "/app/publications/:publication-id/subscribers")

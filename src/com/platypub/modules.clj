@@ -14,6 +14,9 @@
              :as
              app.mock-mailersend]
             [com.platypub.app.publications :as app.publications]
+            [com.platypub.app.publications.archived
+             :as
+             app.archived-publications]
             [com.platypub.app.publications.publication :as app.publication]
             [com.platypub.app.publications.publication.send
              :as
@@ -93,6 +96,7 @@
    work.suppress-bounces/module
    app.publication/module
    app.publications/module
+   app.archived-publications/module
    app.publication-settings/module
    app.publication-subscribers/module
    app.publication-send/module

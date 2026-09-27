@@ -29,3 +29,9 @@
 
 After clicking `Send` and finishing the manual send flow, users are redirected
 back to this page (posts).
+
+Posts are sorted by:
+
+1. fetched-at descending
+2. published-at descending (nil last)
+3. post ID

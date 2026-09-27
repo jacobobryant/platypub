@@ -13,3 +13,4 @@
 /playwright-report/
 config.env
 config.prod.env
+color-palettes.pdf

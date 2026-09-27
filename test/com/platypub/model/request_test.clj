@@ -27,9 +27,11 @@
            (resolve-resolver request/user {:session {:uid (str user-id)}})))
     (is (= {:request/subscription-publication
             {:publication/id publication-id}}
-           (resolve-resolver
+           (resolve-with-effects
             request/subscription-publication
-            {:path-params {:publication-id (str publication-id)}}))))
+            {:path-params {:publication-id (str publication-id)}}
+            {}
+            (fn [_ _] [{:publication/id publication-id}])))))
   (is (= {:request/new-publication {:publication/url "https://example.com/feed"}}
          (resolve-resolver
           request/publication-url
@@ -54,7 +56,8 @@
             (fn [_ statement]
               (is (= [:and
                       [:= :publication/id publication-id]
-                      [:= :publication/user-id user-id]]
+                      [:= :publication/user-id user-id]
+                      [:is :publication/archived-at nil]]
                      (:where statement)))
               [{:publication/id publication-id}]))))
     (is (nil? (resolve-with-effects
@@ -69,6 +72,20 @@
                 :path-params {:publication-id (str publication-id)}}
                {}
                (fn [_ _] []))))))
+
+(deftest archived-publication-resolver-test
+  (let [user-id        (random-uuid)
+        publication-id (random-uuid)]
+    (is (= {:request/archived-publication {:publication/id publication-id}}
+           (resolve-with-effects
+            request/archived-publication
+            {:session     {:uid (str user-id)}
+             :path-params {:publication-id (str publication-id)}}
+            {}
+            (fn [_ statement]
+              (is (= [:is-not :publication/archived-at nil]
+                     (last (:where statement))))
+              [{:publication/id publication-id}]))))))
 
 (deftest tab-state-resolver-test
   (is (= {:request/tab {:tab/background-color :white}}

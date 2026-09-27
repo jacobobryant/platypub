@@ -33,9 +33,10 @@
 (deftest preview-send-state-test
   (let [[load-content write-preview] (send/preview-send)
 
-        publication {:publication/id    (random-uuid)
-                     :publication/title "Frozen publication"
-                     :publication/user  {:user/email "owner@example.com"}}
+        publication {:publication/id      (random-uuid)
+                     :publication/title   "Frozen publication"
+                     :publication/address "123 Main St"
+                     :publication/user    {:user/email "owner@example.com"}}
 
         post {:post/id (random-uuid)}
 
@@ -67,7 +68,10 @@
   (let [[prepare-content store-content create clear-preview submit]
         (send/confirm-send)
 
-        publication {:publication/id (random-uuid)}
+        publication {:publication/id      (random-uuid)
+                     :publication/title   "Current name"
+                     :publication/address "123 Main St"
+                     :publication/user    {:user/email "current@example.com"}}
 
         post {:post/id (random-uuid)}
 
@@ -94,7 +98,13 @@
                                    :send/reply-to  "frozen@example.com"}
             :request/tab          {}})
 
-          stored (store-content {} loaded)
+          stored (store-content
+                  {}
+                  (assoc loaded
+                         :content
+                         {:send/subject "Current subject"
+                          :send/html    "<p>Current body</p>"
+                          :send/text    "Current body"}))
 
           created (create {} stored)
 
@@ -102,9 +112,9 @@
       (is (= :platypub.fx/put-object (get-in stored [:_content 0])))
       (is (= :biff.sqlite.fx/authorized-write-tx
              (get-in created [:_write 0])))
-      (is (= "Frozen name"
+      (is (= "Current name"
              (get-in created [:_write 1 0 :values 0 :send/from-name])))
-      (is (= "frozen@example.com"
+      (is (= "current@example.com"
              (get-in created [:_write 1 0 :values 0 :send/reply-to])))
       (is (= :biff.sqlite.fx/execute
              (get-in cleared [:_clear-preview 0]))))

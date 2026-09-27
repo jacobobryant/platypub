@@ -6,7 +6,10 @@
 
 (deftest publications-page-state-test
   (let [[state] (publications/publications-page)]
-    (is (= 200 (:status (state {} {:request/user {:user/publications []}}))))))
+    (is (= 200
+           (:status
+            (state {} {:request/user {:user/active-publications   []
+                                      :user/archived-publications []}}))))))
 
 (deftest create-publication-states-test
   (let [[prepare

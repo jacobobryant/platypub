@@ -15,6 +15,7 @@
 
 (def setting-fields
   [[:publication/title "Title" "text"]
+   [:publication/address "Address" "text"]
    [:publication/description "Description" "text"]
    [:publication/intro "Intro" "text"]
    [:publication/default-author-name
@@ -31,6 +32,14 @@
    [:publication/primary-color "Primary color" "color"]
    [:publication/filter-tag "Filter tag" "text"]
    [:publication/remove-tag "Remove tag" "text"]])
+
+(defn- setting-value
+  [field value]
+  (let [value (str/trim (or value ""))]
+    (not-empty
+     (if (= field :publication/address)
+       (str/replace value #"[\r\n]+" " ")
+       value))))
 
 (defn- settings-signals
   [publication feed-url]
@@ -56,9 +65,10 @@
 
 (defpipeline settings-page
   [:biff.graph.fx/query
-   [{:request/publication
+   [{[:? :request/publication]
      [:publication/id
       :publication/title
+      [:? :publication/address]
       [:? :publication/description]
       [:? :publication/intro]
       [:? :publication/banner-image-url]
@@ -90,14 +100,11 @@
         (ui/app-shell
          request
          [:main
-          {:class ["mx-auto w-full max-w-5xl p-6"]}
-          [:a
-           {:href  (routes/publication (:publication/id
-                                        publication)),
-            :class ["text-blue-700"]} "← Publication"]
-          [:h1
-           {:class ["my-4 text-3xl font-bold"]}
-           "Publication settings"]
+          {:data-signals__ifmissing
+           (datastar/signals-json {:settings/activedialog nil})
+
+           :class ["mx-auto w-full max-w-5xl p-6"]}
+          (ui/publication-header publication :settings)
           [:div
            {:class ["mb-6 grid gap-4 sm:grid-cols-2"]}
            (for [[field label image]
@@ -172,63 +179,145 @@
               {:data-bind (datastar/signal-name :publication/welcome-html),
 
                :class ["mt-1 h-32 w-full rounded border p-2"]}]]
-            [:button
-             {:class ["rounded bg-blue-600 px-4 py-2 text-white"]}
-             "Save settings"]]
-           [:aside
-            {:class ["rounded border p-6"]}
-            [:h2
-             {:class ["text-xl font-semibold"]}
-             "Previews"]
-            [:h3 {:class ["mt-4 font-semibold"]} "Subscribe form"]
-            [:div
-             {:style (str "background:"
-                          (:publication/background-color
-                           publication)
-                          ";color:" (:publication/text-color
-                                     publication)),
-              :class ["mt-4 p-6"]}
-             (when-let [image (:publication/banner-image-url
-                               publication)]
-               [:img
-                {:src image, :class ["mb-4 max-w-full"]}])
-             [:h3
-              {:class ["text-2xl font-bold"]}
-              (:publication/title publication)]
-             [:p (:publication/intro publication)]
-             [:div {:class ["mt-3 flex gap-2"]}
-              [:input {:type        "email"
-                       :placeholder "you@example.com"
-                       :class       ["min-w-0 flex-1 rounded border p-2"]}]
-              [:button
-               {:style (str "background:"
-                            (:publication/primary-color publication))
-                :class ["rounded px-3 py-2 text-white"]}
-               "Subscribe"]]]
-            [:h3 {:class ["mt-6 font-semibold"]} "Email"]
-            [:div
-             {:style (str "background:"
-                          (:publication/background-color publication)
-                          ";color:" (:publication/text-color publication))
-              :class ["mt-2 p-6"]}
-             [:h3 {:class ["text-2xl font-bold"]} "Lorem ipsum"]
-             [:p "Lorem ipsum dolor sit amet, consectetur adipiscing elit."]
-             [:a
-              {:href  "#"
-               :style (str "color:"
-                           (:publication/primary-color publication))}
-              "Read online"]]]]]))
+            [:div {:class ["flex flex-wrap items-center gap-4"]}
+             [:button
+              {:type "button"
+
+               :data-on:click
+               (str "document.getElementById('subscribe-preview').showModal(); "
+                    "$settings_activedialog = 'subscribe-preview'")
+
+               :class ["text-primary hover:underline"]}
+              "Preview subscribe form"]
+             [:button
+              {:type "button"
+
+               :data-on:click
+               (str "document.getElementById('email-preview').showModal(); "
+                    "$settings_activedialog = 'email-preview'")
+
+               :class ["text-primary hover:underline"]}
+              "Preview email"]]
+            [:div {:class ["flex justify-between gap-4"]}
+             [:button
+              {:type "button"
+
+               :data-on:click
+               (str "document.getElementById('archive-publication')"
+                    ".showModal(); "
+                    "$settings_activedialog = 'archive-publication'")
+
+               :class ["rounded border border-border px-4 py-2"]}
+              "Archive"]
+             [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
+              "Save settings"]]]
+           [:div
+            [:dialog#subscribe-preview
+             (merge {:class ["w-full max-w-2xl rounded border border-border p-0"
+                             "shadow-xl"]}
+                    (ui/dialog-state-attrs
+                     "$settings_activedialog === 'subscribe-preview'"
+                     (str "if ($settings_activedialog === "
+                          "'subscribe-preview') "
+                          "$settings_activedialog = null")))
+             [:div
+              {:data-attr:style
+               (str "'background:' + $publication_padding_color"
+                    " + ';color:' + $publication_text_color")
+
+               :class ["p-8"]}
+              [:img
+               {:data-attr:src "$publication_banner_image_url"
+                :data-show     "$publication_banner_image_url"
+                :alt           ""
+                :class         ["mb-4 max-w-full"]}]
+              [:h3 {:data-text "'Subscribe to ' + $publication_title"
+                    :class     ["text-2xl font-bold"]}]
+              [:p {:data-text "$publication_description"}]
+              [:div {:class ["mt-3 flex gap-2"]}
+               [:input {:type        "email"
+                        :placeholder "you@example.com"
+                        :class       ["min-w-0 flex-1 rounded border p-2"]}]
+               [:button
+                {:type            "button"
+                 :data-attr:style "'background:' + $publication_primary_color"
+                 :class           ["rounded px-3 py-2 text-white"]}
+                "Subscribe"]]
+              [:button {:type "button"
+
+                        :data-on:click
+                        (str "el.closest('dialog').close(); "
+                             "$settings_activedialog = null")
+
+                        :class ["mt-5 text-primary"]} "Close"]]]
+            [:dialog#email-preview
+             (merge {:class ["w-full max-w-2xl rounded border border-border p-0"
+                             "shadow-xl"]}
+                    (ui/dialog-state-attrs
+                     "$settings_activedialog === 'email-preview'"
+                     (str "if ($settings_activedialog === 'email-preview') "
+                          "$settings_activedialog = null")))
+             [:div
+              {:data-attr:style
+               (str "'background:' + $publication_background_color"
+                    " + ';color:' + $publication_text_color")
+
+               :class ["p-8"]}
+              [:h3 {:class ["text-2xl font-bold"]} "Lorem ipsum"]
+              [:p {:data-text "$publication_intro" :class ["italic"]}]
+              [:p "Lorem ipsum dolor sit amet, consectetur adipiscing elit."]
+              [:a {:href            "#"
+                   :data-attr:style "'color:' + $publication_primary_color"}
+               "Read online"]
+              [:button {:type "button"
+
+                        :data-on:click
+                        (str "el.closest('dialog').close(); "
+                             "$settings_activedialog = null")
+
+                        :class ["mt-5 block text-primary"]} "Close"]]]
+            [:dialog#archive-publication
+             (merge {:class ["w-full max-w-md rounded border border-border p-6"
+                             "shadow-xl"]}
+                    (ui/dialog-state-attrs
+                     "$settings_activedialog === 'archive-publication'"
+                     (str "if ($settings_activedialog === "
+                          "'archive-publication') "
+                          "$settings_activedialog = null")))
+             [:h2 {:class ["text-xl font-semibold"]} "Archive publication?"]
+             [:p {:class ["my-4"]}
+              (str "Subscribers will no longer be able to subscribe and "
+                   "sending will stop.")]
+             [:div {:class ["flex justify-end gap-2"]}
+              [:button {:type "button"
+
+                        :data-on:click
+                        (str "el.closest('dialog').close(); "
+                             "$settings_activedialog = null")
+
+                        :class
+                        ["rounded border border-border px-4 py-2"]}
+               "Cancel"]
+              [:form
+               {:data-on:submit          "@post(el.dataset.action)"
+                :data-action             (routes/archive-publication
+                                          (:publication/id publication))
+                :data-signals__ifmissing (datastar/signals-json {})}
+               [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
+                "Archive"]]]]]]]))
       {:status 404})))
 
 (defpipeline save-settings
   [:biff.graph.fx/query
-   [{:request/publication
+   [{[:? :request/publication]
      [:publication/id
+      [:? :publication/address]
       [:? :publication/automatic-send-threshold]
       {:publication/feed [:feed/url]}]}
     {:request/feed [:feed/url]}
     {:request/publication-settings
      [:publication/title
+      [:? :publication/address]
       [:? :publication/description]
       [:? :publication/intro]
       [:? :publication/banner-image-url]
@@ -264,10 +353,7 @@
             (merge
              (into {}
                    (map (fn [[field _ _]]
-                          [field
-                           (not-empty
-                            (str/trim
-                             (or (get settings field) "")))])
+                          [field (setting-value field (get settings field))])
                         setting-fields))
              (select-keys settings
                           [:publication/banner-image-url
@@ -358,7 +444,7 @@
 
 (defpipeline upload-image
   [:biff.graph.fx/query
-   [{:request/publication [:publication/id]}
+   [{[:? :request/publication] [:publication/id]}
     {:request/tab
      [{[:? :tab/publication-images]
        [:publication/id

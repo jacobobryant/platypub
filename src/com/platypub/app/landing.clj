@@ -1,31 +1,23 @@
 (ns com.platypub.app.landing
   (:require [com.biffweb.ring :refer [defpath]]
-            [com.platypub.lib.ui :as ui]
             [com.platypub.routes :as routes]))
 
 (defpath root-path "")
 (defpath home-path "/")
 
-(defn- wrap-redirect-signed-in
+(defn- wrap-root-redirect
   [handler]
   (fn [{:keys [session], :as ctx}]
-    (if (some? (:uid session))
-      {:status 303, :headers {"location" (routes/app)}}
-      (handler ctx))))
+    (handler
+     (assoc ctx
+            :root/location
+            (if (some? (:uid session)) (routes/app) (routes/signin))))))
 
-(defn home [_]
-  (ui/page
-   {}
-   [:main
-    {:class ["grid min-h-full flex-1 grid-rows-[1fr_auto_2fr]"
-             "justify-items-center"]}
-    [:a
-     {:class ["row-start-2 rounded bg-blue-600 px-4 py-2 text-white"]
-      :href  (routes/signin)}
-     "Click here to sign in."]]))
+(defn home [{:root/keys [location]}]
+  {:status 303, :headers {"location" location}})
 
 (def module
   {:biff.ring/routes
    [(root-path)
-    {:middleware [wrap-redirect-signed-in]}
+    {:middleware [wrap-root-redirect]}
     [(home-path) {:get home}]]})

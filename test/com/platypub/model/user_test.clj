@@ -11,4 +11,12 @@
   (is (= {:user/publications [{:publication/id 2}]}
          (helpers/resolve-sql user/publications
                               {:user/id 1}
+                              [{:publication/id 2}])))
+  (is (= {:user/active-publications [{:publication/id 2}]}
+         (helpers/resolve-sql user/active-publications
+                              {:user/id 1}
+                              [{:publication/id 2}])))
+  (is (= {:user/archived-publications [{:publication/id 2}]}
+         (helpers/resolve-sql user/archived-publications
+                              {:user/id 1}
                               [{:publication/id 2}]))))

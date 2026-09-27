@@ -68,3 +68,6 @@ list of archived publications. For archived publications:
 - they are not eligible for automatic sends.
 - the subscribe page/embedded subscribe form are disabled, as if the publication
   didn't exist.
+- you cannot view the posts/subscribers/settings pages for them.
+- feeds are not synced manually or automatically (except if those feeds are
+  attached to other non-archived publications).

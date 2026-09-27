@@ -1,5 +1,6 @@
 (ns com.platypub.work.readiness-consumer
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [com.biffweb.fx :refer [defpipeline]]
             [tick.core :as tick]))
 
@@ -50,6 +51,7 @@
                      {:publication/id publication-id}
                      [:publication/id
                       :publication/title
+                      :publication/address
                       [:? :publication/intro]
                       [:? :publication/banner-image-url]
                       [:? :publication/default-author-name]
@@ -78,6 +80,7 @@
                                    now)))]
       (if (and publication
                (:publication/automatic-send-threshold publication)
+               (not (str/blank? (:publication/address publication)))
                (not pending)
                elapsed
                (pos? active))

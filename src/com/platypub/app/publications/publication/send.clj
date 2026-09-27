@@ -1,5 +1,6 @@
 (ns com.platypub.app.publications.publication.send
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.biffweb.ring :refer [defpath]]
@@ -13,7 +14,7 @@
 
 (defpipeline send-page
   [:biff.graph.fx/query
-   [{:request/publication
+   [{[:? :request/publication]
      [:publication/id
       :publication/title
       {:publication/sends [{:send/posts [:post/id]}]}
@@ -37,67 +38,74 @@
         (ui/app-shell
          request
          [:main
-          {:class ["mx-auto max-w-3xl p-6"]}
+          {:data-signals
+           (datastar/signals-json {:send/dialogopen (boolean preview)})
+
+           :class ["mx-auto max-w-3xl p-6"]}
           [:a
            {:href  (routes/publication (:publication/id
                                         publication)),
-            :class ["text-blue-700"]} "← Publication"]
+            :class ["text-primary"]} "← Publication"]
           [:h1
            {:class ["my-4 text-3xl font-bold"]}
            "Send newsletter"]
-          (if preview
-            [:<>
-             [:p
-              {:class ["my-2"]}
-              [:strong "From: "]
-              (:send/from-name preview)]
-             [:p
-              {:class ["my-2"]}
-              [:strong "Reply-To: "]
-              (:send/reply-to preview)]
-             [:p
-              {:class ["mb-4"]}
-              [:strong "Subject: "]
+          [:form
+           {:data-on:submit "@post(el.dataset.action)"
+            :data-action    (routes/publication-send
+                             (:publication/id publication))
+
+            :data-signals__ifmissing
+            (datastar/signals-json {:send/post-ids []})}
+           (for [post posts]
+             [:label {:class ["mb-2 flex gap-3 rounded border border-border"
+                              "bg-surface p-4"]}
+              [:input {:type      "checkbox"
+                       :data-bind (datastar/signal-name :send/post-ids)
+                       :value     (:post/id post)}]
+              (or (:post/title post) "Untitled post")])
+           [:button {:class ["mt-4 rounded bg-primary px-4 py-2 text-white"]}
+            "Preview"]]
+          (when preview
+            [:dialog
+             (merge {:class ["w-full max-w-3xl rounded border border-border p-0"
+                             "shadow-xl"]}
+                    (ui/dialog-state-attrs "$send_dialogopen"
+                                           "$send_dialogopen = false"))
+             [:h2 {:class ["border-b border-border p-5 text-xl font-semibold"]}
               (:send/subject preview)]
-             [:iframe
-              {:title  "Newsletter preview"
-               :srcdoc (:send/html preview)
-               :class  ["min-h-96 w-full rounded border"]}]
-             [:form
-              {:data-on:submit "@post(el.dataset.action)",
+             [:iframe {:title  "Newsletter preview"
+                       :srcdoc (:send/html preview)
+                       :class  ["min-h-96 w-full"]}]
+             [:div
+              {:class ["flex justify-end gap-2 border-t border-border p-5"]}
+              [:button {:type "button"
 
-               :data-action (confirm-path (:publication/id publication)),
+                        :data-on:click
+                        "el.closest('dialog').close(); $send_dialogopen = false"
 
-               :data-signals__ifmissing (datastar/signals-json {})}
-              [:button
-               {:class ["mt-4 rounded bg-blue-600 px-4 py-2 text-white"]}
-               "Confirm and send"]]]
-            [:form
-             {:data-on:submit "@post(el.dataset.action)",
+                        :class
+                        ["rounded border border-border px-4 py-2"]}
+               "Cancel"]
+              [:form
+               {:data-on:submit
+                (str "@post(el.dataset.action).then(() => "
+                     "window.location.href='"
+                     (routes/publication (:publication/id publication))
+                     "')")
 
-              :data-action
-              (routes/publication-send (:publication/id publication)),
-
-              :data-signals__ifmissing
-              (datastar/signals-json {:send/post-ids []})}
-             (for [post posts]
-               [:label
-                {:class ["mb-2 flex gap-3 rounded border p-4"]}
-                [:input
-                 {:type      "checkbox",
-                  :data-bind (datastar/signal-name :send/post-ids),
-                  :value     (:post/id post)}]
-                (or (:post/title post) "Untitled post")])
-             [:button
-              {:class ["mt-4 rounded bg-blue-600 px-4 py-2 text-white"]}
-              "Preview"]])]))
+                :data-action             (confirm-path
+                                          (:publication/id publication))
+                :data-signals__ifmissing (datastar/signals-json {})}
+               [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
+                "Send"]]]])]))
       {:status 404})))
 
 (defpipeline preview-send
   [:biff.graph.fx/query
-   [{:request/publication
+   [{[:? :request/publication]
      [:publication/id
       :publication/title
+      [:? :publication/address]
       [:? :publication/intro]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
@@ -133,6 +141,9 @@
 
   (fn [{:keys [biff.datastar/tab-id]} result]
     (if (and (:request/publication result)
+             (not (str/blank?
+                   (get-in result [:request/publication
+                                   :publication/address])))
              (seq (:request/send-posts result)))
       {:tab-id tab-id
        :result result
@@ -167,7 +178,20 @@
 
 (defpipeline confirm-send
   [:biff.graph.fx/query
-   [{:request/publication [:publication/id]}
+   [{[:? :request/publication]
+     [:publication/id
+      :publication/title
+      [:? :publication/address]
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      [:? :publication/default-author-name]
+      [:? :publication/default-author-url]
+      [:? :publication/default-author-image-url]
+      :publication/padding-color
+      :publication/background-color
+      :publication/text-color
+      :publication/primary-color
+      {:publication/user [:user/email]}]}
     {:request/send-posts
      [:post/id
       [:? :post/url]
@@ -199,19 +223,25 @@
     (let [publication (:request/publication result)
 
           posts (:request/send-posts result)]
-      (if (and publication (seq posts))
+      (if (and publication
+               (not (str/blank? (:publication/address publication)))
+               (seq posts))
         {:now    now
          :ids    random-uuid7-seq
          :tab-id tab-id
-         :result result}
+         :result result
+
+         :content
+         [:biff.graph.fx/query
+          {:send/publication publication
+           :send/posts       posts}
+          [:send/subject :send/html :send/text]]}
         {:biff.fx/return {:status 204}})))
 
-  (fn [_ctx {:keys [now ids tab-id result]}]
+  (fn [_ctx {:keys [now ids tab-id result content]}]
     (let [publication (:request/publication result)
 
           posts (:request/send-posts result)
-
-          preview (:request/send-preview result)
 
           send-id (first ids)
 
@@ -219,11 +249,11 @@
 
           row-ids (drop 2 ids)
 
-          content {:html (:send/html preview)
-                   :text (:send/text preview)}]
+          stored-content {:html (:send/html content)
+                          :text (:send/text content)}]
       {:send-id    send-id
        :content-id content-id
-       :content    content
+       :content    stored-content
        :write-data {:now         now
                     :tab-id      tab-id
                     :result      result
@@ -232,11 +262,12 @@
                     :row-ids     row-ids
                     :send-id     send-id
                     :content-id  content-id
-                    :content     content}
+                    :content     stored-content
+                    :rendered    content}
 
        :_content [:platypub.fx/put-object
                   content-id
-                  (json/generate-string content)
+                  (json/generate-string stored-content)
                   "application/json"]}))
 
   (fn [_ctx {:keys [write-data]}]
@@ -244,7 +275,7 @@
                   content-id]}
           write-data
 
-          preview (:request/send-preview result)]
+          rendered (:rendered write-data)]
       {:send-id send-id
 
        :clear-preview
@@ -260,9 +291,11 @@
                           :send/started-at     now
                           :send/progress-at    now
                           :send/status         [:lift :send.status/pending]
-                          :send/from-name      (:send/from-name preview)
-                          :send/reply-to       (:send/reply-to preview)
-                          :send/subject        (:send/subject preview)
+                          :send/from-name      (:publication/title publication)
+                          :send/reply-to       (get-in publication
+                                                       [:publication/user
+                                                        :user/email])
+                          :send/subject        (:send/subject rendered)
                           :send/content-id     content-id
 
                           :send/provenance [:lift :send.provenance/manual]}]}]

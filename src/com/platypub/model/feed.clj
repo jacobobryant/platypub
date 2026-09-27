@@ -19,7 +19,9 @@
      [:biff.sqlite.fx/execute
       {:select [:publication/id]
        :from   :publication
-       :where  [:= :publication/feed-id id]}]}))
+       :where  [:and
+                [:= :publication/feed-id id]
+                [:is :publication/archived-at nil]]}]}))
 
 (defresolver posts
   {:input  [:feed/id]

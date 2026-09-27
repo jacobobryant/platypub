@@ -88,6 +88,7 @@
 
 (def settings-fields
   [:publication/title
+   :publication/address
    :publication/description
    :publication/intro
    :publication/banner-image-url
@@ -166,11 +167,30 @@
           :from   :publication
           :where  [:and
                    [:= :publication/id publication-id]
-                   [:= :publication/user-id user-id]]}])))
+                   [:= :publication/user-id user-id]
+                   [:is :publication/archived-at nil]]}])))
 
   (fn [_ctx rows]
     (when-let [publication (first rows)]
       {:request/publication publication})))
+
+(defresolver archived-publication
+  {:output [{:request/archived-publication [:publication/id]}]}
+
+  (fn [{:keys [session] :as ctx} _]
+    (when-let [user-id (request/uuid (:uid session))]
+      (when-let [publication-id (request/path-uuid ctx :publication-id)]
+        [:biff.sqlite.fx/execute
+         {:select [:publication/id]
+          :from   :publication
+          :where  [:and
+                   [:= :publication/id publication-id]
+                   [:= :publication/user-id user-id]
+                   [:is-not :publication/archived-at nil]]}])))
+
+  (fn [_ctx rows]
+    (when-let [publication (first rows)]
+      {:request/archived-publication publication})))
 
 (defresolver subscription-publication
   {:output
@@ -187,9 +207,21 @@
       :publication/require-confirmation
       :publication/welcome-html]}]}
 
-  [ctx _]
-  (when-let [publication-id (request/path-uuid ctx :publication-id)]
-    {:request/subscription-publication {:publication/id publication-id}}))
+  (fn [ctx _]
+    (when-let [publication-id (request/path-uuid ctx :publication-id)]
+      {:publication-id publication-id
+
+       :publication
+       [:biff.sqlite.fx/execute
+        {:select [:publication/id]
+         :from   :publication
+         :where  [:and
+                  [:= :publication/id publication-id]
+                  [:is :publication/archived-at nil]]}]}))
+
+  (fn [_ctx {:keys [publication-id publication]}]
+    (when (= publication-id (:publication/id (first publication)))
+      {:request/subscription-publication {:publication/id publication-id}})))
 
 (defresolver tab-state
   {:output [{:request/tab tab-state-query}]}
@@ -309,7 +341,8 @@
                     [:= :publication/id :subscriber/publication-id]]
            :where  [:and
                     [:= :subscriber/id subscriber-id]
-                    [:= :publication/user-id user-id]]}]})))
+                    [:= :publication/user-id user-id]
+                    [:is :publication/archived-at nil]]}]})))
 
   (fn [_ {:keys [subscriber-id subscriber]}]
     (when (and subscriber-id
@@ -414,6 +447,7 @@
   {:output [{:request/feed [:feed/url]}
             {:request/publication-settings
              [:publication/title
+              [:? :publication/address]
               [:? :publication/description]
               [:? :publication/intro]
               [:? :publication/banner-image-url]
@@ -520,6 +554,7 @@
    [user
     publication-url
     publication
+    archived-publication
     subscription-publication
     tab-state
     pagination

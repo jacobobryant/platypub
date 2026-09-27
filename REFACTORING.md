@@ -60,3 +60,12 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - don't use BIFF_PROFILE=prod in the e2e tests. add a new `test` profile if
   needed or something.
+
+- biff.sqlite: support :default, then make :publication/address required with a
+  default
+
+- biff.sqlite: add execute-one probably (handy for resolvers)
+
+- biff.datastar: make sure we're propagating :status appropriately
+
+- revisit the way dialogs/modals work

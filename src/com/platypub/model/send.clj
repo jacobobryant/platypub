@@ -68,6 +68,7 @@
 
 (defresolver rendered-content
   {:input  [{:send/publication [:publication/title
+                                :publication/address
                                 [:? :publication/intro]
                                 [:? :publication/banner-image-url]
                                 [:? :publication/default-author-name]
@@ -120,23 +121,23 @@
                                    (chassis/html [:<> plain]))))
                             (:post/excerpt post))
                 published (some-> (:post/published-at post) rfc-1123)]
-            [:article
-             (when-let [title (:post/title post)]
-               [:h2 title])
+            [:article {:style "margin-top:28px"}
+             (when (and multiple (:post/title post))
+               [:h2
+                (if url
+                  [:a {:href url :style link-style} (:post/title post)]
+                  (:post/title post))])
              (when (not same-author)
                (author-view (author publication post)))
-             (when published
-               (if url
-                 [:a {:href url :style link-style} published]
-                 published))
-             [:div body]
-             (when (and url (or (not multiple) (nil? published)))
+             (when (and (not multiple) url)
                [:p
-                [:a {:href  url
-                     :style (str link-style
-                                 ";display:inline-block;padding:10px 14px;"
-                                 "border:1px solid currentColor")}
-                 "Read online"]])]))
+                [:a {:href url :style link-style} "Read online"]])
+             [:div
+              body
+              (when (and multiple url)
+                ["… " [:a {:href url :style link-style} "Read more"]])]
+             (when published
+               [:p {:style "font-size:14px;opacity:.75"} published])]))
 
         html
         (chassis/html
@@ -156,12 +157,24 @@
                [:img {:style "max-width:100%"
                       :src   banner
                       :alt   ""}])
-             [:h1 (:publication/title publication)]
+             [:h1
+              (if multiple
+                (:publication/title publication)
+                (let [post  (first posts)
+                      title (or (:post/title post)
+                                (:publication/title publication))]
+                  (if-let [url (:post/url post)]
+                    [:a {:href url :style link-style} title]
+                    title)))]
              (when-let [intro (:publication/intro publication)]
                [:p [:em intro]])
              (author-view same-author)
              (map post-view posts)
              [:footer
+              {:style (str "margin-top:32px;padding-top:20px;"
+                           "border-top:1px solid currentColor")}
+              [:span (:publication/address publication)]
+              " · "
               [:a
                {:href email/unsubscribe-placeholder :style link-style}
                "Unsubscribe"]]]]]])]

@@ -41,6 +41,7 @@ Required:
 - `require confirmation`. If true, new subscribers must confirm their
   subscription by clicking a link in an email ("double opt-in"). Default false.
 - `address`. This is rendered in send emails next to the unsubscribe link.
+  Sending is not allowed if this value is blank.
 
 Optional:
 
@@ -59,6 +60,8 @@ Optional:
   have this tag.
 - `remove tag`. Text. If set, posts are not automatically sent if they have this
   tag.
+- `archived at`. If set, the publication cannot be sent, subscribed to, or
+  edited, except to unarchive it.
 
 Details:
 

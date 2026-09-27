@@ -20,6 +20,7 @@
          {}
          {:send/publication
           {:publication/title            "News"
+           :publication/address          "123 Main St"
            :publication/padding-color    "#fff"
            :publication/background-color "#fff"
            :publication/text-color       "#111"}
@@ -33,4 +34,5 @@
                               :content/text "Body"}}]})]
     (is (= "Hello" (:send/subject result)))
     (is (str/includes? (:send/html result) "<p>Body</p>"))
+    (is (str/includes? (:send/html result) "123 Main St"))
     (is (str/includes? (:send/text result) "Unsubscribe:"))))

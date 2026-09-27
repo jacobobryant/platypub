@@ -19,6 +19,7 @@
    :publication/text-color           "#111827"
    :publication/primary-color        "#2563eb"
    :publication/welcome-html         "Thanks for subscribing."
+   :publication/address              ""
    :publication/require-confirmation false})
 
 (defn- discover-feed-urls
@@ -57,15 +58,24 @@
       (datastar/signals-json {:request/publication-url url
                               :request/feed-url        nil})
 
-      :class ["my-8 flex gap-2"]}
-     [:select {:data-bind (datastar/signal-name :request/feed-url)
-               :required  true
-               :class     ["min-w-0 flex-1 rounded border p-3"]}
-      [:option {:value ""} "Choose a feed"]
-      (for [feed-url feed-urls]
-        [:option {:value feed-url} feed-url])]
-     [:button {:class ["rounded bg-blue-600 px-5 py-3 text-white"]}
-      "Use this feed"]]
+      :class ["grid gap-5"]}
+     [:label "Feed"
+      [:select {:data-bind (datastar/signal-name :request/feed-url)
+                :required  true
+                :class     ["mt-1 w-full rounded border border-border p-3"]}
+       [:option {:value ""} "Choose a feed"]
+       (for [feed-url feed-urls]
+         [:option {:value feed-url} feed-url])]]
+     [:div {:class ["flex justify-end gap-2"]}
+      [:button {:type "button"
+
+                :data-on:click
+                "el.closest('dialog').close(); $publication_dialogopen = false"
+
+                :class ["rounded border border-border px-5 py-3"]}
+       "Cancel"]
+      [:button {:class ["rounded bg-primary px-5 py-3 text-white"]}
+       "Use this feed"]]]
     [:form
      {:data-on:submit "@post(el.dataset.action)"
       :data-action    (publications-path)
@@ -74,53 +84,90 @@
       (datastar/signals-json {:request/publication-url ""
                               :request/feed-url        nil})
 
-      :class ["my-8 flex gap-2"]}
-     [:input {:data-bind   (datastar/signal-name :request/publication-url)
-              :type        "url"
-              :required    true
-              :placeholder "Website or feed URL"
-              :class       ["min-w-0 flex-1 rounded border p-3"]}]
-     [:button {:class ["rounded bg-blue-600 px-5 py-3 text-white"]}
-      "Add publication"]]))
+      :class ["grid gap-5"]}
+     [:label "Website or feed URL"
+      [:input {:data-bind   (datastar/signal-name :request/publication-url)
+               :type        "url"
+               :required    true
+               :placeholder "Website or feed URL"
+               :class       ["mt-1 w-full rounded border border-border p-3"]}]]
+     [:div {:class ["flex justify-end gap-2"]}
+      [:button {:type "button"
+
+                :data-on:click
+                "el.closest('dialog').close(); $publication_dialogopen = false"
+
+                :class ["rounded border border-border px-5 py-3"]}
+       "Cancel"]
+      [:button {:class ["rounded bg-primary px-5 py-3 text-white"]}
+       "Save"]]]))
 
 (defpipeline publications-page
   [:biff.graph.fx/query
    [{:request/user
      [:user/id
-      {:user/publications
+      {:user/active-publications
        [:publication/id
         :publication/title
-        [:? :publication/description]]}]}
+        [:? :publication/description]]}
+      {:user/archived-publications [:publication/id]}]}
     {:request/tab
      [{[:? :tab/new-publication]
        [:publication/url :publication/feed-urls]}]}]]
 
   (fn [request result]
-    (let [publications (get-in result [:request/user :user/publications])
+    (let [publications (get-in result
+                               [:request/user :user/active-publications])
+          archived     (get-in result
+                               [:request/user :user/archived-publications])
           tab-state    (:request/tab result)]
       (ui/app-shell
        request
        [:main
-        {:class ["mx-auto w-full max-w-5xl p-6"]}
+        {:data-signals__ifmissing
+         (datastar/signals-json
+          {:publication/dialogopen (boolean (:tab/new-publication tab-state))})
+
+         :class ["mx-auto w-full max-w-5xl p-6 lg:p-10"]}
         [:div
          {:class ["flex items-center justify-between"]}
-         [:h1 {:class ["text-3xl font-bold"]} "Publications"]]
-        (publication-form tab-state)
+         [:h1 {:class ["text-3xl font-bold"]} "Publications"]
+         [:div {:class ["flex items-center gap-4"]}
+          (when (seq archived)
+            [:a {:href  (routes/archived-publications)
+                 :class ["text-primary hover:underline"]}
+             "Archived publications"])
+          [:button
+           {:type "button"
+
+            :data-on:click "$publication_dialogopen = true"
+
+            :class ["rounded bg-primary px-4 py-2 text-white"]}
+           "Add publication"]]]
+        [:dialog#add-publication
+         (merge {:class ["w-full max-w-xl rounded border border-border"
+                         "bg-surface p-0 shadow-xl"]}
+                (ui/dialog-state-attrs "$publication_dialogopen"
+                                       "$publication_dialogopen = false"))
+         [:div {:class ["border-b border-border p-5 text-xl font-semibold"]}
+          "Add publication"]
+         [:div {:class ["p-5"]} (publication-form tab-state)]]
         (if (seq publications)
           [:div
-           {:class ["grid gap-4"]}
+           {:class ["mt-8 grid gap-4"]}
            (for [publication publications]
              [:a
               {:href  (routes/publication (:publication/id publication))
-               :class ["rounded border bg-white p-5 hover:border-blue-500"]}
+               :class ["rounded border border-border bg-surface p-5"
+                       "hover:border-primary"]}
               [:h2
                {:class ["text-xl font-semibold"]}
                (:publication/title publication)]
               [:p
-               {:class ["text-sm text-gray-600"]}
+               {:class ["text-sm text-muted"]}
                (:publication/description publication)]])]
           [:p
-           {:class ["text-gray-600"]}
+           {:class ["mt-8 text-muted"]}
            "Add your first publication using its website or feed URL."])]))))
 
 (defpipeline create-publication

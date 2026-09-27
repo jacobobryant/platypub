@@ -156,3 +156,34 @@
             {:table :post
              :op    :create
              :after {:post/id (random-uuid)}}])))))
+
+(deftest archived-publication-authorization-test
+  (let [user-id        (random-uuid)
+        publication-id (random-uuid)
+        archived-at    (tick/instant "2026-09-27T00:00:00Z")
+        ctx            {:session                 {:uid user-id}
+                        :biff.sqlite/before-conn :before}]
+    (with-redefs [sqlite/execute (fn [_ _] [{:publication/id publication-id}])]
+      (is (schema/authorize
+           ctx
+           [{:table  :publication
+             :op     :update
+             :before {:publication/id          publication-id
+                      :publication/user-id     user-id
+                      :publication/archived-at archived-at}
+             :after  {:publication/id          publication-id
+                      :publication/user-id     user-id
+                      :publication/archived-at nil}}]))
+      (is (not
+           (schema/authorize
+            ctx
+            [{:table  :publication
+              :op     :update
+              :before {:publication/id          publication-id
+                       :publication/user-id     user-id
+                       :publication/title       "Old"
+                       :publication/archived-at archived-at}
+              :after  {:publication/id          publication-id
+                       :publication/user-id     user-id
+                       :publication/title       "New"
+                       :publication/archived-at archived-at}}]))))))

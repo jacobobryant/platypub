@@ -13,7 +13,8 @@
    :ui/icon        nil})
 
 (def ^:private datastar-script-url
-  "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js")
+  (str "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/"
+       "bundles/datastar.js"))
 
 (defn- static-path
   [path]
@@ -90,25 +91,83 @@
       (html-response content*)
       (page (assoc ctx :ui/init-datastar true) content*))))
 
+(defn dialog-state-attrs
+  [open-expression close-expression]
+  {:data-effect
+   (str "if (" open-expression " && !el.open) el.showModal(); "
+        "else if (!(" open-expression ") && el.open) el.close()")
+
+   :data-on:close close-expression})
+
 (defn app-shell
   [request & body]
-  (apply app-page
-         request
-         [:header
-          {:class ["border-b bg-white"]}
-          [:nav
-           {:class ["mx-auto flex max-w-5xl items-center"
-                    "justify-between p-4"]}
-           [:a {:href (routes/app), :class ["text-xl font-bold"]} "Platypub"]
-           [:div
-            {:class ["flex gap-4"]}
-            (when (= :user.tier/admin
-                     (get-in request [:platypub/user :user/tier]))
-              [:a
-               {:href (routes/app-admin), :class ["text-sm text-blue-700"]}
-               "Admin"])
-            [:form
-             {:data-on:submit "@post(el.dataset.action)",
-              :data-action    (routes/signout)}
-             [:button {:class ["text-sm text-blue-700"]} "Sign out"]]]]]
-         body))
+  (app-page
+   request
+   [:header
+    {:class                   ["border-b border-border bg-surface"]
+     :data-signals__ifmissing "{navOpen: false}"}
+    [:nav
+     {:class ["flex items-center justify-between px-5 py-4"]}
+     [:a {:href (routes/app), :class ["text-xl font-bold text-text"]}
+      "Platypub"]
+     [:button
+      {:type          "button"
+       :aria-label    "Toggle menu"
+       :data-on:click "$navOpen = !$navOpen"
+
+       :class
+       ["rounded border border-border px-3 py-2 lg:hidden"]}
+      "☰"]]]
+   [:div {:class ["flex min-h-0 flex-1 bg-background text-text"]}
+    [:aside
+     {:data-show
+      "$navOpen || window.matchMedia('(min-width: 1024px)').matches"
+
+      :class ["fixed inset-y-0 left-0 z-20 mt-17 w-64 border-r"
+              "border-border bg-surface p-5"
+              "lg:static lg:mt-0 lg:block"]}
+     [:nav {:class ["grid gap-3"]}
+      [:a {:href (routes/app), :class ["text-primary hover:underline"]}
+       "Publications"]
+      (when (= :user.tier/admin
+               (get-in request [:platypub/user :user/tier]))
+        [:a {:href  (routes/app-admin)
+             :class ["text-primary hover:underline"]}
+         "Admin"])
+      [:form
+       {:data-on:submit "@post(el.dataset.action)"
+        :data-action    (routes/signout)}
+       [:button {:class ["text-primary hover:underline"]} "Sign out"]]]]
+    [:div {:class ["min-w-0 flex-1"]} body]]))
+
+(defn publication-header
+  [publication active-tab]
+  (let [publication-id (:publication/id publication)]
+    [:header
+     [:a {:href (routes/app), :class ["text-primary hover:underline"]}
+      "← Publications"]
+     [:h1 {:class ["mt-4 text-3xl font-bold"]}
+      (:publication/title publication)]
+     [:nav {:aria-label "Publication"
+            :class      ["mt-4 flex gap-5 border-b border-border"]}
+      (for [[tab label path]
+            [[:posts "Posts" (routes/publication publication-id)]
+             [:subscribers "Subscribers"
+              (routes/publication-subscribers publication-id)]
+             [:settings
+              "Settings"
+              (routes/publication-settings publication-id)]]]
+        [:a {:href  path
+             :class ["border-b-2 px-1 py-3"
+                     (if (= active-tab tab)
+                       "border-primary font-semibold text-primary"
+                       "border-transparent text-muted hover:text-text")]}
+         label])]]))
+
+(defn timestamp
+  [instant]
+  (when instant
+    [:time
+     {:datetime  (str instant)
+      :data-text (str "window.platypubTimestamp('" instant "')")}
+     (str instant)]))
