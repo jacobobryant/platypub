@@ -278,22 +278,32 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('link', { name: 'Settings' }).click();
     await expect(page.getByLabel('Feed URL')).toBeVisible();
     await settle(page);
+    await page.getByLabel('Title').fill('Unsaved preview title');
+    await page.getByLabel('Description').fill('Unsaved preview description');
     await page.getByRole('button', { name: 'Preview subscribe form' }).click();
-    await expect(page.locator('#subscribe-preview')).toBeVisible();
-    const otherApp = await page.context().newPage();
-    await otherApp.bringToFront();
-    await page.bringToFront();
-    await page.locator('#subscribe-preview').getByRole('heading', { name: /Subscribe to/ }).click();
-    await expect(page.locator('#subscribe-preview')).toBeVisible();
+    const preview = page.locator('#settings-preview');
+    const frame = page.frameLocator('#settings-preview iframe');
+    await expect(preview).toBeVisible();
+    await expect(frame.getByRole('heading', { name: 'Subscribe to Unsaved preview title' }))
+      .toBeVisible();
+    await expect(frame.getByText('Unsaved preview description')).toBeVisible();
+    await expect(frame.getByPlaceholder('you@example.com')).toBeDisabled();
+    await expect(frame.locator('.cf-turnstile, .h-captcha')).toHaveCount(0);
     await page.mouse.click(10, 10);
-    await expect(page.locator('#subscribe-preview')).toBeHidden();
-    await page.getByLabel('Intro').fill('Still editable');
-    await expect(page.getByLabel('Intro')).toHaveValue('Still editable');
+    await expect(preview).toBeHidden();
+    await page.getByLabel('Title').fill('Fixture Gazette');
+    await page.getByLabel('Description').fill('News from the Playwright fixture.');
+    await page.getByLabel('Intro').fill('<strong>Unsaved intro</strong>');
+    await page.getByRole('button', { name: 'Preview email (one post)' }).click();
+    await expect(preview).toBeVisible();
+    await expect(frame.locator('strong')).toHaveText('Unsaved intro');
+    await expect(frame.locator('article')).toHaveCount(1);
+    await preview.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Preview email (multiple posts)' }).click();
+    await expect(preview).toBeVisible();
+    await expect(frame.locator('article')).toHaveCount(2);
+    await preview.getByRole('button', { name: 'Close' }).click();
     await page.getByLabel('Intro').fill('News from the Playwright fixture.');
-    await otherApp.close();
-    await page.getByRole('button', { name: 'Preview email' }).click();
-    await expect(page.getByRole('heading', { name: 'Lorem ipsum' })).toBeVisible();
-    await page.locator('#email-preview').getByRole('button', { name: 'Close' }).click();
 
     await expect(page.getByLabel('Description')).toHaveValue('News from the Playwright fixture.');
     await expect(page.getByLabel('Intro')).toHaveValue('News from the Playwright fixture.');
@@ -389,7 +399,7 @@ test.describe.serial('Platypub user flows', () => {
     const subscribePath = publicationPath.replace('/app/publications/', '/subscribe/');
     await page.goto(subscribePath);
     await expect(page.getByRole('heading', { name: 'Updated Gazette' })).toBeVisible();
-    await expect(page.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
+    await expect(page.locator('img')).toHaveCount(0);
 
     const subscribeResponse = page.waitForResponse((response) =>
       response.url().includes('/subscribe/') && response.request().method() === 'POST');
@@ -397,6 +407,8 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('button', { name: 'Subscribe' }).click();
     expect((await subscribeResponse).status()).toBe(200);
     await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Subscribe to Updated Gazette' }))
+      .toBeHidden();
 
     const confirmation = await latestEmail(request, confirmedEmail, 'Confirm your subscription');
     const confirmationUrl = confirmation.text.match(/https?:\/\/\S+\/confirm\/\S+/)?.[0];

@@ -10,7 +10,7 @@ Publication settings page:
 
   <settings form>
 
-  [btn link: preview subscribe from] [btn link: preview email]
+  [btn:preview-form] [btn:preview-one] [btn:preview-multi]
   [primary btn: Save settings]
 
   ## Archive publication
@@ -21,8 +21,20 @@ Publication settings page:
   [Archive publication]
 
 
+Labels:
+  preview-form: Preview subscribe form
+  preview-one:  Preview email (one post)
+  preview-multi: Preview email (multiple posts)
+
 Each preview button opens a modal that renders the data currently in the form,
-even if it hasn't been saved yet.
+even if it hasn't been saved yet. The previews are rendered using the same code
+that renders the actual subscribe form/emails, though that code can accept a
+flag saying it's in "preview mode" if needed.
+
+In the subscribe form preview, the email input form is not be editable, and
+the captcha widget is not included.
+
+Previews are rendered with DOMPurify.
 
 Notes on settings form fields:
 

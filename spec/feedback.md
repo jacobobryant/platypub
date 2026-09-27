@@ -1,4 +1,4 @@
-- the sidebar should use the same native modal stuff as the modals/dialogs in
-  other parts of the code.
-
-- the send button is disabled even for my publication that has one subscriber.
+- pub settings form: color inputs are squished vertically on tablet and can't
+  see the color; image inputs need better padding (and background color?),
+  "archive publication" placement is weird on lg screen (it should always come
+  below the publication settings form).

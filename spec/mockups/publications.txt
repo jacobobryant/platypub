@@ -37,3 +37,6 @@ Add publication modal:
 
 The publications page is shown immediately after signing in. `Archived
 publications` is only shown if there is at least one archived publication.
+
+After clicking `Save`, an in-progress indicator is shown until the publication
+is created.

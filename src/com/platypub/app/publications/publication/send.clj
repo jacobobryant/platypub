@@ -68,12 +68,12 @@
                        :value     (:post/id post)}]
               (or (:post/title post) "Untitled post")])
            [:button
-            {:class ["mt-4 rounded bg-primary px-4 py-2 text-white"
-                     "disabled:opacity-60"]
+            {:class              ["mt-4 rounded bg-primary px-4 py-2 text-white"
+                                  "disabled:opacity-60"]
              :data-attr:disabled "$send_previewing"}
             [:span {:data-show "!$send_previewing"} "Preview"]
             [:span {:data-show "$send_previewing"
-                    :style "display: none"}
+                    :style     "display: none"}
              "Preparing preview…"]]]
           (when preview
             (ui/modal
@@ -83,9 +83,9 @@
              "$send_dialogopen = false"
              [:h2 {:class ["border-b border-border p-5 text-xl font-semibold"]}
               (:send/subject preview)]
-             [:iframe {:title  "Newsletter preview"
-                       :srcdoc (:send/html preview)
-                       :class  ["min-h-96 w-full"]}]
+             [:iframe {:title             "Newsletter preview"
+                       :data-preview-html (:send/html preview)
+                       :class             ["min-h-96 w-full"]}]
              [:div
               {:class ["flex justify-end gap-2 border-t border-border p-5"]}
               [:button {:type "button"

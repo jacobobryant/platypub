@@ -20,6 +20,11 @@
 
            :platypub/read-uploaded-file (fn [_ value] (str "read:" value))})))
 
+(deftest settings-preview-kind-test
+  (is (= {:request/preview-kind "multi"}
+         (resolve-resolver request/settings-preview-kind
+                           {:path-params {:kind "multi"}}))))
+
 (deftest request-parameter-resolvers-test
   (let [user-id        (random-uuid)
         publication-id (random-uuid)]

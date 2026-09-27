@@ -49,10 +49,9 @@ Optional:
   are sent automatically. Default `created at`. When set, automatic sending is
   enabled.
 - `description`. Text shown on the subscribe form.
-- `intro`. Text placed before email text content e.g. to remind subscribers what
-  this publication is.
-- `banner image URL`. An image placed at at the top of emails and on the
-  subscribe form.
+- `intro`. HTML placed before email content e.g. to remind subscribers what this
+  publication is.
+- `banner image URL`. An image placed at at the top of emails.
 - `default author name`. Used in email content.
 - `default author URL`. Used in email content.
 - `default author image URL`. Used in email content.

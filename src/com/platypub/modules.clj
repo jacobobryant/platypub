@@ -44,6 +44,7 @@
             [com.platypub.model.sqlite :as model.sqlite]
             [com.platypub.model.subscriber :as model.subscriber]
             [com.platypub.model.user :as model.user]
+            [com.platypub.uicomp.publication :as uicomp.publication]
             [com.platypub.work.feed-sync :as work.feed-sync]
             [com.platypub.work.feeds :as work.feeds]
             [com.platypub.work.readiness :as work.readiness]
@@ -82,6 +83,7 @@
    model.subscriber/module
    model.user/module
    model.sqlite/module
+   uicomp.publication/module
    app.biff-admin/module
    app.landing/module
    app.auth/module

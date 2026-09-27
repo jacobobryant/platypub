@@ -73,6 +73,8 @@
         [:link
          {:rel  "stylesheet",
           :href (static-path "/css/main.css")}]
+        [:script
+         {:src "https://cdn.jsdelivr.net/npm/dompurify@3.2.7/dist/purify.min.js"}]
         [:script {:src (static-path "/js/main.js")}]
         (when (= "1" (get-in opts [:query-params "debug"]))
           [[:script
@@ -99,16 +101,18 @@
   [{:keys [overlay-class] :as attrs} open-expression close-expression
    & contents]
   [:div
-   {:data-show              open-expression
-    :data-on:click          (str "evt.target === el && ("
-                                 close-expression ")")
+   {:data-show     open-expression
+    :data-on:click (str "evt.target === el && ("
+                        close-expression ")")
+
     :data-on:keydown__window
     (str "(" open-expression ") && evt.key === 'Escape' && ("
          close-expression ")")
-    :style                  "display: none"
-    :class                  ["fixed inset-0 z-50 flex items-center"
-                             "justify-center overflow-y-auto bg-black/45 p-4"
-                             overlay-class]}
+
+    :style "display: none"
+    :class ["fixed inset-0 z-50 flex items-center"
+            "justify-center overflow-y-auto bg-black/45 p-4"
+            overlay-class]}
    (into [:div
           (-> attrs
               (dissoc :overlay-class)
@@ -141,6 +145,7 @@
    [:header
     {:data-signals__ifmissing
      (biff.datastar/signals-json {:navigation/open false})
+
      :class ["border-b border-border bg-surface"]}
     [:nav
      {:class ["flex items-center justify-between px-5 py-4"]}
@@ -157,11 +162,11 @@
        ["rounded border border-border px-3 py-2 lg:hidden"]}
       "☰"]]]
    (modal
-    {:id "mobile-navigation"
-     :aria-label "Navigation"
+    {:id            "mobile-navigation"
+     :aria-label    "Navigation"
      :overlay-class ["justify-start p-0 lg:hidden"]
-     :class      ["h-dvh max-h-dvh w-64 max-w-full border-r border-border"
-                  "bg-surface p-5 shadow-xl"]}
+     :class         ["h-dvh max-h-dvh w-64 max-w-full border-r border-border"
+                     "bg-surface p-5 shadow-xl"]}
     "$navigation_open"
     "$navigation_open = false"
     [:button

@@ -1,6 +1,9 @@
 (ns com.platypub.app.publications.publication.settings-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer [deftest is]]
             [com.platypub.app.publications.publication.settings :as settings]
+            [com.platypub.test-helpers :as helpers]
+            [com.platypub.uicomp.publication :as uicomp.publication]
             [tick.core :as tick]))
 
 (def publication
@@ -43,6 +46,51 @@
                    {:request/publication
                     (assoc publication
                            :publication/feed {:feed/url "https://feed.example"})}))))))
+
+(deftest settings-preview-states-test
+  (let [[prepare respond] (settings/settings-preview)
+        now               (tick/instant "2026-01-01T00:00:00Z")
+        ctx               {:biff.fx/now              now
+                           :biff.fx/random-uuid7-seq (repeatedly random-uuid)}
+        result            {:request/preview-kind "form"
+                           :request/publication  publication
+
+                           :request/publication-settings
+                           {:publication/title       "Unsaved title"
+                            :publication/description "Unsaved description"}}]
+    (is (= {:biff.fx/return {:status 404}}
+           (prepare ctx {})))
+    (is (= {:biff.fx/return {:status 404}}
+           (prepare ctx (assoc result :request/preview-kind "unknown"))))
+    (let [prepared (prepare ctx result)
+          render   (get (helpers/resolve-resolver
+                         uicomp.publication/subscribe-form
+                         {}
+                         (get-in prepared [:form 1]))
+                        :publication/ui-subscribe-form)
+          response (get-in
+                    (respond {} (assoc prepared :form
+                                       {:publication/ui-subscribe-form render}))
+                    [:biff.fx/return])
+          html     (:html (json/parse-string (:body response) true))]
+      (is (= [:publication/ui-subscribe-form] (get-in prepared [:form 2])))
+      (is (= 200 (:status response)))
+      (is (re-find #"Subscribe to Unsaved title" html))
+      (is (re-find #"Unsaved description" html))
+      (is (nil? (re-find #"cf-turnstile" html))))
+    (doseq [kind ["one" "multi"]]
+      (let [prepared (prepare ctx (assoc result :request/preview-kind kind))
+            posts    (get-in prepared [:content 1 :send/posts])]
+        (is (= (if (= kind "one") 1 2) (count posts)))
+        (is (= "Unsaved title"
+               (get-in prepared [:content 1 :send/publication
+                                 :publication/title])))
+        (is (= "<p>Rendered</p>"
+               (:html (json/parse-string
+                       (get-in
+                        (respond {} {:content {:send/html "<p>Rendered</p>"}})
+                        [:biff.fx/return :body])
+                       true))))))))
 
 (deftest upload-image-states-test
   (let [[prepare write] (settings/upload-image)

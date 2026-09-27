@@ -32,3 +32,5 @@ After clicking `Send`, you're redirected back to the publication page.
 If any publication settings or post fields happen to change between clicking
 `Preview` and clicking `Send`, still just use whatever's in the database. That
 edge case doesn't matter.
+
+Previews are rendered with DOMPurify.

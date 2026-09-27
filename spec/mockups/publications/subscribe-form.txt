@@ -1,10 +1,10 @@
 Subscribe form:
 
 
-  <banner image>
   Subscribe to My Publication
   <description>
   [text: you@example.com] [primary btn: Subscribe]
+  [captcha widget]
 
 
 After submitting:
@@ -14,3 +14,4 @@ After submitting:
   We've sent you a confirmation email to **<email>**.
 
 
+Note that "Subscribe to <publication>" is NOT shown after submitting the form.

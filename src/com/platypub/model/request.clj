@@ -123,19 +123,22 @@
   {:tab/background-color :white})
 
 (defn- publication-settings [ctx]
-  (let [signals (:biff.datastar/signals ctx)]
-    {:request/feed
-     {:feed/url (request/text (request/value ctx :request/feed-url))}
+  {:request/feed
+   {:feed/url (request/text (request/value ctx :request/feed-url))}
 
-     :request/publication-settings
-     (merge
-      (select-keys signals settings-fields)
-      {:publication/automatic-sending
-       (boolean-value (request/value ctx :publication/automatic-sending))
+   :request/publication-settings
+   (merge
+    (into {}
+          (keep (fn [field]
+                  (when-let [value (request/value ctx field)]
+                    [field value])))
+          settings-fields)
+    {:publication/automatic-sending
+     (boolean-value (request/value ctx :publication/automatic-sending))
 
-       :publication/require-confirmation
-       (boolean-value (request/value ctx
-                                     :publication/require-confirmation))})}))
+     :publication/require-confirmation
+     (boolean-value (request/value ctx
+                                   :publication/require-confirmation))})})
 
 (defresolver user
   {:output [{:request/user [:user/id]}]}
@@ -466,6 +469,11 @@
   [ctx _]
   (publication-settings ctx))
 
+(defresolver settings-preview-kind
+  {:output [:request/preview-kind]}
+  [ctx _]
+  {:request/preview-kind (request/text (request/value ctx :kind))})
+
 (defresolver send-selection
   {:input  [{:request/publication [:publication/id]}
             {:request/tab
@@ -573,6 +581,7 @@
     admin-user-tier
     admin-publication-import
     publication-settings-request
+    settings-preview-kind
     send-selection
     send-posts
     send-preview]})

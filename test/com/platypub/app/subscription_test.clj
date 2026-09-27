@@ -1,18 +1,24 @@
 (ns com.platypub.app.subscription-test
   (:require [clojure.test :refer [deftest is testing]]
             [com.platypub.app.subscription :as subscription]
+            [com.platypub.test-helpers :as helpers]
+            [com.platypub.uicomp.publication :as uicomp.publication]
             [tick.core :as tick]))
 
 (deftest subscribe-page-state-test
-  (let [[state]  (subscription/subscribe-page)
-        response (state {}
-                        {:request/subscription-publication
-                         {:publication/id               (random-uuid)
-                          :publication/title            "News"
-                          :publication/padding-color    "#fff"
-                          :publication/background-color "#fff"
-                          :publication/text-color       "#111"
-                          :publication/primary-color    "#00f"}})]
+  (let [[state]     (subscription/subscribe-page)
+        publication {:publication/id               (random-uuid)
+                     :publication/title            "News"
+                     :publication/padding-color    "#fff"
+                     :publication/background-color "#fff"
+                     :publication/text-color       "#111"
+                     :publication/primary-color    "#00f"}
+        render      (get (helpers/resolve-resolver
+                          uicomp.publication/subscribe-form {} publication)
+                         :publication/ui-subscribe-form)
+        with-form   (assoc publication :publication/ui-subscribe-form render)
+        response    (state {}
+                           {:request/subscription-publication with-form})]
     (is (= {:status 404} (state {} {})))
     (is (= 200 (:status response)))
     (is (nil? (re-find #"biff-datastar-sse" (:body response))))

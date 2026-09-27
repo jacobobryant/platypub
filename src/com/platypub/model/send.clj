@@ -167,7 +167,7 @@
                     [:a {:href url :style link-style} title]
                     title)))]
              (when-let [intro (:publication/intro publication)]
-               [:p [:em intro]])
+               [:div (chassis/raw intro)])
              (author-view same-author)
              (map post-view posts)
              [:footer
