@@ -1,6 +1,7 @@
 (ns com.platypub.app.subscription
   (:require [cheshire.core :as json]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [com.biffweb.datastar :as datastar]
             [com.biffweb.fx :refer [defpipeline]]
             [com.platypub.lib.email :as email]
@@ -21,6 +22,15 @@
 (defn- submitted-response [email-address]
   (datastar/patch-signals {:subscription/email     email-address
                            :subscription/submitted true}))
+
+(defn- failed-subscription
+  [email publication-id reason details]
+  (log/warn "Subscription rejected"
+            (merge {:email          email
+                    :publication-id publication-id
+                    :reason         reason}
+                   details))
+  {:biff.fx/return (submitted-response email)})
 
 (defn- json-bytes [value]
   (.getBytes (json/generate-string value) StandardCharsets/UTF_8))
@@ -195,24 +205,32 @@
                  (or (:form-params ctx) {:email email-address})
                  :subscriber/query-params (:query-params ctx))]
       (cond
-        (nil? publication) {:biff.fx/return {:status 404}}
+        (nil? publication)
+        (do
+          (failed-subscription email-address
+                               (get-in ctx [:path-params :publication-id])
+                               :publication-not-found
+                               {})
+          {:biff.fx/return {:status 404}})
 
         (not (subscriber/valid-email? email-address))
-        {:biff.fx/return (submitted-response email-address)}
+        (failed-subscription email-address (:publication/id publication)
+                             :invalid-email {})
 
         :else
-        (let [turnstile (:request/turnstile-token request-data)
-              hcaptcha  (:request/hcaptcha-token request-data)
+        (let [turnstile (not-empty (:request/turnstile-token request-data))
+              hcaptcha  (not-empty (:request/hcaptcha-token request-data))
               provider  (cond turnstile :turnstile hcaptcha :hcaptcha)]
           (cond->
-           {:publication   publication
-            :email         email-address
-            :captcha-valid skip-captcha
-            :request-data  (select-keys
-                            request-data
-                            [:subscriber/headers
-                             :subscriber/form-params
-                             :subscriber/query-params])}
+           {:publication      publication
+            :email            email-address
+            :captcha-valid    skip-captcha
+            :captcha-provider provider
+            :request-data     (select-keys
+                               request-data
+                               [:subscriber/headers
+                                :subscriber/form-params
+                                :subscriber/query-params])}
             (and (not skip-captcha) provider)
             (assoc :_captcha
                    [:biff.fx/http
@@ -229,9 +247,10 @@
 
                                         :response (or turnstile hcaptcha)}
                      :as               :json
+                     :coerce           :always
                      :throw-exceptions false}]))))))
 
-  (fn [_ctx {:keys [publication email captcha-valid _captcha]
+  (fn [_ctx {:keys [publication email captcha-valid captcha-provider _captcha]
              :as   state}]
     (if (or captcha-valid (true? (get-in _captcha [:body :success])))
       (assoc state
@@ -245,7 +264,15 @@
                [:? :subscriber/confirmed-at]
                [:? :subscriber/require-confirmation]
                [:? :subscriber/active]]])
-      {:biff.fx/return (submitted-response email)}))
+      (failed-subscription
+       email (:publication/id publication)
+       (if captcha-provider :captcha-verification-failed :captcha-token-missing)
+       (cond-> {:captcha-provider captcha-provider}
+         _captcha
+         (assoc :captcha-status (:status _captcha)
+                :captcha-error-codes (get-in _captcha [:body :error-codes])
+                :captcha-exception
+                (some-> (:exception _captcha) .getMessage))))))
 
   (fn [{:biff.fx/keys [now random-uuid7-seq]}
        {:keys [publication email request-data existing]}]

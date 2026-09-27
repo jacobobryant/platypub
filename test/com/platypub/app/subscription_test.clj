@@ -66,6 +66,7 @@
               {:subscriber/email        "person@example.com"
                :request/turnstile-token "token"}})]
         (is (= :biff.fx/http (get-in verification [:_captcha 0])))
+        (is (= :always (get-in verification [:_captcha 1 :coerce])))
         (is (= "secret"
                (get-in verification [:_captcha 1 :form-params :secret])))
         (is (= 200
@@ -73,7 +74,33 @@
                         {}
                         (assoc verification
                                :_captcha {:body {:success false}}))
-                       [:biff.fx/return :status])))))
+                       [:biff.fx/return :status]))))
+      (let [fallback
+            (prepare
+             {:biff.auth/skip-captcha       false
+              :biff.auth/turnstile-secret   (delay "secret")
+              :platypub/hcaptcha-secret-key (delay "fallback")}
+             {:request/subscription-publication publication
+
+              :request/subscription
+              {:subscriber/email        "person@example.com"
+               :request/turnstile-token ""
+               :request/hcaptcha-token  "fallback-token"}})]
+        (is (= :hcaptcha (:captcha-provider fallback)))
+        (is (= "fallback-token"
+               (get-in fallback [:_captcha 1 :form-params :response])))
+        (is (= "fallback"
+               (get-in fallback [:_captcha 1 :form-params :secret]))))
+      (let [missing
+            (prepare
+             {:biff.auth/skip-captcha false}
+             {:request/subscription-publication publication
+
+              :request/subscription
+              {:subscriber/email        "person@example.com"
+               :request/turnstile-token ""}})]
+        (is (nil? (:_captcha missing)))
+        (is (contains? (load-existing {} missing) :biff.fx/return))))
     (let [loaded
           (prepare
            {:biff.auth/skip-captcha true
