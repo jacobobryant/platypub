@@ -69,3 +69,6 @@ These are areas that are known to be ugly/in need of refactoring:
 - biff.datastar: make sure we're propagating :status appropriately
 
 - revisit the way dialogs/modals work
+
+- application code shouldn't use biff.auth config for subscriptions. it's ok for
+  config.edn to use the same env var for both though, at least as a default

@@ -54,6 +54,11 @@
               (str/blank? (:publication/address publication))
               "Add a mailing address in Settings to enable sending.")
 
+            hosted-url
+            (str (:platypub/base-url request)
+                 (routes/subscribe (:publication/id
+                                    publication)))
+
             embed (chassis/html
                    [:iframe
                     {:title "Subscribe to publication"
@@ -71,11 +76,9 @@
             [:div {:class ["font-semibold"]} "Hosted form"]
             [:a
              {:class ["text-primary hover:underline"]
-              :href  (routes/subscribe (:publication/id
-                                        publication))}
-             (str (:platypub/base-url request)
-                  (routes/subscribe (:publication/id
-                                     publication)))]]
+              :target "_blank"
+              :href  hosted-url}
+             hosted-url]]
            [:div {:class ["mt-4 flex items-center justify-between"]}
             [:label {:for "embed-code" :class ["font-semibold"]}
              "Embedded form"]
