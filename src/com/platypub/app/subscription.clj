@@ -73,7 +73,7 @@
                                        [:request/subscription-publication
                                         :publication/title])
                            (:request/subscription-publication result))]
-      (ui/app-page
+      (ui/page
        request
        [:main
         {:style (str "background:"

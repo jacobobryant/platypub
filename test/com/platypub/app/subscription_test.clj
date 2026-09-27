@@ -4,18 +4,19 @@
             [tick.core :as tick]))
 
 (deftest subscribe-page-state-test
-  (let [[state] (subscription/subscribe-page)]
+  (let [[state]  (subscription/subscribe-page)
+        response (state {}
+                        {:request/subscription-publication
+                         {:publication/id               (random-uuid)
+                          :publication/title            "News"
+                          :publication/padding-color    "#fff"
+                          :publication/background-color "#fff"
+                          :publication/text-color       "#111"
+                          :publication/primary-color    "#00f"}})]
     (is (= {:status 404} (state {} {})))
-    (is (= 200
-           (:status
-            (state {}
-                   {:request/subscription-publication
-                    {:publication/id               (random-uuid)
-                     :publication/title            "News"
-                     :publication/padding-color    "#fff"
-                     :publication/background-color "#fff"
-                     :publication/text-color       "#111"
-                     :publication/primary-color    "#00f"}}))))))
+    (is (= 200 (:status response)))
+    (is (nil? (re-find #"biff-datastar-sse" (:body response))))
+    (is (some? (re-find #"cf-turnstile" (:body response))))))
 
 (deftest embeddable-middleware-test
   (let [handler (subscription/wrap-embeddable
