@@ -28,7 +28,7 @@
    [#ref [:form 0 :biff.tasks/css-output-path]
     {:dest "config.env", :src "config.prod.env"}],
 
-   :biff.tasks/deployment-name #or [#biff/env DEPLOYMENT_NAME "biff-demo"],
+   :biff.tasks/deployment-name #or [#biff/env DEPLOYMENT_NAME "platypub"],
    :biff.tasks/domain          #biff/env DOMAIN,
    :biff.tasks/main-ns         com.platypub,
    :biff.tasks/nrepl-port      #long #or [#biff/env NREPL_PORT "7888"],
@@ -37,7 +37,7 @@
    :mailersend/base-url  #or [#biff/env MAILERSEND_BASE_URL
                               "https://api.mailersend.com"],
    :mailersend/from      #biff/env MAILERSEND_FROM,
-   :mailersend/from-name "My Application",
+   :mailersend/from-name "Platypub",
    :mailersend/plan      #keyword #or [#biff/env MAILERSEND_PLAN "free"]
    :mailersend/reply-to  #biff/env MAILERSEND_REPLY_TO,
    :mailersend/domain-id #biff/env MAILERSEND_DOMAIN_ID,

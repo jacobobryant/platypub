@@ -72,3 +72,8 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - application code shouldn't use biff.auth config for subscriptions. it's ok for
   config.edn to use the same env var for both though, at least as a default
+
+- prod-setup task used 8080 for caddy port but 8087 for systemd port
+
+- prod-logs still doing that thing where it doesn't follow the latest logs
+  properly
