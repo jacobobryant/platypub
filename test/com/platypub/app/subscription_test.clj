@@ -65,15 +65,16 @@
               :request/subscription
               {:subscriber/email        "person@example.com"
                :request/turnstile-token "token"}})]
-        (is (= :biff.fx/http (get-in verification [:_captcha 0])))
-        (is (= :always (get-in verification [:_captcha 1 :coerce])))
+        (is (= :biff.fx/http (get-in verification [:captcha-response 0])))
+        (is (= :always (get-in verification [:captcha-response 1 :coerce])))
         (is (= "secret"
-               (get-in verification [:_captcha 1 :form-params :secret])))
+               (get-in verification
+                       [:captcha-response 1 :form-params :secret])))
         (is (= 200
                (get-in (load-existing
                         {}
                         (assoc verification
-                               :_captcha {:body {:success false}}))
+                               :captcha-response {:body {:success false}}))
                        [:biff.fx/return :status]))))
       (let [fallback
             (prepare
@@ -88,9 +89,11 @@
                :request/hcaptcha-token  "fallback-token"}})]
         (is (= :hcaptcha (:captcha-provider fallback)))
         (is (= "fallback-token"
-               (get-in fallback [:_captcha 1 :form-params :response])))
+               (get-in fallback
+                       [:captcha-response 1 :form-params :response])))
         (is (= "fallback"
-               (get-in fallback [:_captcha 1 :form-params :secret]))))
+               (get-in fallback
+                       [:captcha-response 1 :form-params :secret]))))
       (let [missing
             (prepare
              {:biff.auth/skip-captcha false}
@@ -99,7 +102,7 @@
               :request/subscription
               {:subscriber/email        "person@example.com"
                :request/turnstile-token ""}})]
-        (is (nil? (:_captcha missing)))
+        (is (nil? (:captcha-response missing)))
         (is (contains? (load-existing {} missing) :biff.fx/return))))
     (let [loaded
           (prepare
@@ -204,3 +207,40 @@
           (is (= 200 (get-in confirmation [:biff.fx/return :status])))
           (is (= 1 (count (:biff.fx/seq welcome))))
           (is (nil? (:biff.fx/seq no-email))))))))
+
+(deftest verified-captcha-reaches-subscriber-write-test
+  (let [publication-id (random-uuid)
+        writes         (atom [])
+        publication    {:publication/id                   publication-id
+                        :publication/title                "News"
+                        :publication/require-confirmation false
+                        :publication/welcome-html         "<p>Welcome</p>"}
+
+        result
+        (subscription/submit-subscription
+         {:biff.auth/skip-captcha     false
+          :biff.auth/turnstile-secret (delay "secret")
+
+          :biff.fx/handlers
+          {:biff.graph.fx/query
+           (fn [_ctx & args]
+             (if (= 1 (count args))
+               {:request/subscription-publication publication
+
+                :request/subscription
+                {:subscriber/email        "person@example.com"
+                 :request/turnstile-token "token"}}
+               (when (contains? (first args) :subscriber/id)
+                 {:subscriber/active true})))
+
+           :biff.fx/http
+           (fn [_ctx _request]
+             {:status 200 :body {:success true}})
+
+           :biff.sqlite.fx/execute
+           (fn [_ctx statement]
+             (swap! writes conj statement))}})]
+    (is (= 200 (:status result)))
+    (is (= 1 (count @writes)))
+    (is (= "person@example.com"
+           (get-in (first @writes) [:values 0 :subscriber/email])))))
