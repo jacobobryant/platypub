@@ -75,9 +75,9 @@
            [:div
             [:div {:class ["font-semibold"]} "Hosted form"]
             [:a
-             {:class ["text-primary hover:underline"]
+             {:class  ["text-primary hover:underline"]
               :target "_blank"
-              :href  hosted-url}
+              :href   hosted-url}
              hosted-url]]
            [:div {:class ["mt-4 flex items-center justify-between"]}
             [:label {:for "embed-code" :class ["font-semibold"]}
