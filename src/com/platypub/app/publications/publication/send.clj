@@ -66,11 +66,11 @@
            [:button {:class ["mt-4 rounded bg-primary px-4 py-2 text-white"]}
             "Preview"]]
           (when preview
-            [:dialog
-             (merge {:class ["w-full max-w-3xl rounded border border-border p-0"
-                             "shadow-xl"]}
-                    (ui/dialog-state-attrs "$send_dialogopen"
-                                           "$send_dialogopen = false"))
+            (ui/modal
+             {:class ["w-full max-w-3xl rounded border border-border p-0"
+                      "bg-surface shadow-xl"]}
+             "$send_dialogopen"
+             "$send_dialogopen = false"
              [:h2 {:class ["border-b border-border p-5 text-xl font-semibold"]}
               (:send/subject preview)]
              [:iframe {:title  "Newsletter preview"
@@ -81,7 +81,7 @@
               [:button {:type "button"
 
                         :data-on:click
-                        "el.closest('dialog').close(); $send_dialogopen = false"
+                        "$send_dialogopen = false"
 
                         :class
                         ["rounded border border-border px-4 py-2"]}
@@ -97,7 +97,7 @@
                                           (:publication/id publication))
                 :data-signals__ifmissing (datastar/signals-json {})}
                [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
-                "Send"]]]])]))
+                "Send"]]]))]))
       {:status 404})))
 
 (defpipeline preview-send

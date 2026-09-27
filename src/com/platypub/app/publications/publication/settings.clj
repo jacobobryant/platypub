@@ -101,7 +101,7 @@
          request
          [:main
           {:data-signals__ifmissing
-           (datastar/signals-json {:settings/activedialog nil})
+           (datastar/signals-json {:settings/activedialog false})
 
            :class ["mx-auto w-full max-w-5xl p-6"]}
           (ui/publication-header publication :settings)
@@ -184,8 +184,7 @@
               {:type "button"
 
                :data-on:click
-               (str "document.getElementById('subscribe-preview').showModal(); "
-                    "$settings_activedialog = 'subscribe-preview'")
+               "$settings_activedialog = 'subscribe-preview'"
 
                :class ["text-primary hover:underline"]}
               "Preview subscribe form"]
@@ -193,8 +192,7 @@
               {:type "button"
 
                :data-on:click
-               (str "document.getElementById('email-preview').showModal(); "
-                    "$settings_activedialog = 'email-preview'")
+               "$settings_activedialog = 'email-preview'"
 
                :class ["text-primary hover:underline"]}
               "Preview email"]]
@@ -213,20 +211,16 @@
               {:type "button"
 
                :data-on:click
-               (str "document.getElementById('archive-publication')"
-                    ".showModal(); "
-                    "$settings_activedialog = 'archive-publication'")
+               "$settings_activedialog = 'archive-publication'"
 
                :class ["rounded border border-border px-4 py-2"]}
               "Archive publication"]]
-            [:dialog#subscribe-preview
-             (merge {:class ["w-full max-w-2xl rounded border border-border p-0"
-                             "shadow-xl"]}
-                    (ui/dialog-state-attrs
-                     "$settings_activedialog === 'subscribe-preview'"
-                     (str "if ($settings_activedialog === "
-                          "'subscribe-preview') "
-                          "$settings_activedialog = null")))
+            (ui/modal
+             {:id "subscribe-preview"
+              :class ["w-full max-w-2xl rounded border border-border p-0"
+                      "bg-surface shadow-xl"]}
+             "$settings_activedialog === 'subscribe-preview'"
+             "$settings_activedialog = false"
              [:div
               {:data-attr:style
                (str "'background:' + $publication_padding_color"
@@ -253,17 +247,15 @@
               [:button {:type "button"
 
                         :data-on:click
-                        (str "el.closest('dialog').close(); "
-                             "$settings_activedialog = null")
+                        "$settings_activedialog = false"
 
-                        :class ["mt-5 text-primary"]} "Close"]]]
-            [:dialog#email-preview
-             (merge {:class ["w-full max-w-2xl rounded border border-border p-0"
-                             "shadow-xl"]}
-                    (ui/dialog-state-attrs
-                     "$settings_activedialog === 'email-preview'"
-                     (str "if ($settings_activedialog === 'email-preview') "
-                          "$settings_activedialog = null")))
+                        :class ["mt-5 text-primary"]} "Close"]])
+            (ui/modal
+             {:id "email-preview"
+              :class ["w-full max-w-2xl rounded border border-border p-0"
+                      "bg-surface shadow-xl"]}
+             "$settings_activedialog === 'email-preview'"
+             "$settings_activedialog = false"
              [:div
               {:data-attr:style
                (str "'background:' + $publication_background_color"
@@ -279,18 +271,15 @@
               [:button {:type "button"
 
                         :data-on:click
-                        (str "el.closest('dialog').close(); "
-                             "$settings_activedialog = null")
+                        "$settings_activedialog = false"
 
-                        :class ["mt-5 block text-primary"]} "Close"]]]
-            [:dialog#archive-publication
-             (merge {:class ["w-full max-w-md rounded border border-border p-6"
-                             "shadow-xl"]}
-                    (ui/dialog-state-attrs
-                     "$settings_activedialog === 'archive-publication'"
-                     (str "if ($settings_activedialog === "
-                          "'archive-publication') "
-                          "$settings_activedialog = null")))
+                        :class ["mt-5 block text-primary"]} "Close"]])
+            (ui/modal
+             {:id "archive-publication"
+              :class ["w-full max-w-md rounded border border-border bg-surface"
+                      "p-6 shadow-xl"]}
+             "$settings_activedialog === 'archive-publication'"
+             "$settings_activedialog = false"
              [:h2 {:class ["text-xl font-semibold"]} "Archive publication?"]
              [:p {:class ["my-4"]}
               (str "Subscribers will no longer be able to subscribe and "
@@ -299,8 +288,7 @@
               [:button {:type "button"
 
                         :data-on:click
-                        (str "el.closest('dialog').close(); "
-                             "$settings_activedialog = null")
+                        "$settings_activedialog = false"
 
                         :class
                         ["rounded border border-border px-4 py-2"]}
@@ -314,7 +302,7 @@
                                           (:publication/id publication))
                 :data-signals__ifmissing (datastar/signals-json {})}
                [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
-                "Archive"]]]]]]]))
+                "Archive"]]])]]]))
       {:status 404})))
 
 (defpipeline save-settings

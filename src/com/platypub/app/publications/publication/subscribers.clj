@@ -33,7 +33,7 @@
          request
          [:main
           {:data-signals__ifmissing
-           (datastar/signals-json {:subscriber/activedialog nil})
+           (datastar/signals-json {:subscriber/activedialog false})
 
            :class ["mx-auto w-full max-w-5xl p-6"]}
           (ui/publication-header publication :subscribers)
@@ -89,27 +89,20 @@
                      {:type "button"
 
                       :data-on:click
-                      (str "el.closest('details').nextElementSibling"
-                           ".showModal(); "
-                           "$subscriber_activedialog = '"
+                      (str "$subscriber_activedialog = '"
                            (:subscriber/id subscriber)
                            "'")
 
                       :class ["text-primary"]}
                      "Unsubscribe"]]
-                   [:dialog
-                    (merge {:id    (str "unsubscribe-"
-                                        (:subscriber/id subscriber))
-                            :class ["w-full max-w-md rounded border"
-                                    "border-border p-6"
-                                    "shadow-xl"]}
-                           (ui/dialog-state-attrs
-                            (str "$subscriber_activedialog === '"
-                                 (:subscriber/id subscriber)
-                                 "'")
-                            (str "if ($subscriber_activedialog === '"
-                                 (:subscriber/id subscriber)
-                                 "') $subscriber_activedialog = null")))
+                   (ui/modal
+                    {:id    (str "unsubscribe-"
+                                 (:subscriber/id subscriber))
+                     :class ["w-full max-w-md rounded border"
+                             "border-border bg-surface p-6 shadow-xl"]}
+                    (str "$subscriber_activedialog === '"
+                         (:subscriber/id subscriber) "'")
+                    "$subscriber_activedialog = false"
                     [:h2 {:class ["text-xl font-semibold"]}
                      "Unsubscribe subscriber?"]
                     [:p {:class ["my-4"]} (:subscriber/email subscriber)]
@@ -117,8 +110,7 @@
                      [:button {:type "button"
 
                                :data-on:click
-                               (str "el.closest('dialog').close(); "
-                                    "$subscriber_activedialog = null")
+                               "$subscriber_activedialog = false"
 
                                :class
                                ["rounded border border-border px-4 py-2"]}
@@ -130,7 +122,7 @@
                        :data-signals__ifmissing (datastar/signals-json {})}
                       [:button
                        {:class ["rounded bg-primary px-4 py-2 text-white"]}
-                       "Unsubscribe"]]]]])]])]
+                       "Unsubscribe"]]])])]])]
            (let [page (or (get-in result [:request/pagination :page/number]) 1)]
              [:nav {:class ["mt-4 flex gap-4"]}
               (when (> page 1)

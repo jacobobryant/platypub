@@ -95,13 +95,29 @@
       (html-response content*)
       (page (assoc ctx :ui/init-datastar true) content*))))
 
-(defn dialog-state-attrs
-  [open-expression close-expression]
-  {:data-effect
-   (str "if (" open-expression " && !el.open) el.showModal(); "
-        "else if (!(" open-expression ") && el.open) el.close()")
-
-   :data-on:close close-expression})
+(defn modal
+  [{:keys [overlay-class] :as attrs} open-expression close-expression
+   & contents]
+  [:div
+   {:data-show              open-expression
+    :data-on:click          (str "evt.target === el && ("
+                                 close-expression ")")
+    :data-on:keydown__window
+    (str "(" open-expression ") && evt.key === 'Escape' && ("
+         close-expression ")")
+    :style                  "display: none"
+    :class                  ["fixed inset-0 z-50 flex items-center"
+                             "justify-center overflow-y-auto bg-black/45 p-4"
+                             overlay-class]}
+   (into [:div
+          (-> attrs
+              (dissoc :overlay-class)
+              (assoc :role "dialog"
+                     :aria-modal "true"
+                     :class ["max-h-[calc(100dvh-2rem)] overflow-y-auto"
+                             "text-text"
+                             (:class attrs)]))]
+         contents)])
 
 (defn- app-navigation
   [request]
@@ -123,7 +139,9 @@
   (app-page
    request
    [:header
-    {:class ["border-b border-border bg-surface"]}
+    {:data-signals__ifmissing
+     (biff.datastar/signals-json {:navigation/open false})
+     :class ["border-b border-border bg-surface"]}
     [:nav
      {:class ["flex items-center justify-between px-5 py-4"]}
      [:a {:href (routes/app), :class ["text-xl font-bold text-text"]}
@@ -133,22 +151,26 @@
        :aria-label    "Open menu"
        :aria-haspopup "dialog"
        :aria-controls "mobile-navigation"
-       :data-on:click "document.getElementById('mobile-navigation').showModal()"
+       :data-on:click "$navigation_open = true"
 
        :class
        ["rounded border border-border px-3 py-2 lg:hidden"]}
       "☰"]]]
-   [:dialog#mobile-navigation
-    {:aria-label "Navigation"
-     :class      ["m-0 h-dvh max-h-dvh w-64 max-w-full border-r border-border"
-                  "bg-surface p-5 shadow-xl lg:hidden"]}
+   (modal
+    {:id "mobile-navigation"
+     :aria-label "Navigation"
+     :overlay-class ["justify-start p-0 lg:hidden"]
+     :class      ["h-dvh max-h-dvh w-64 max-w-full border-r border-border"
+                  "bg-surface p-5 shadow-xl"]}
+    "$navigation_open"
+    "$navigation_open = false"
     [:button
      {:type          "button"
       :aria-label    "Close menu"
-      :data-on:click "el.closest('dialog').close()"
+      :data-on:click "$navigation_open = false"
       :class         ["mb-5 rounded border border-border px-3 py-2"]}
      "Close"]
-    (app-navigation request)]
+    (app-navigation request))
    [:div {:class ["flex min-h-0 flex-1 bg-background text-text"]}
     [:aside
      {:class ["hidden w-64 shrink-0 border-r border-border bg-surface p-5"

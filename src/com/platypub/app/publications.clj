@@ -70,7 +70,7 @@
       [:button {:type "button"
 
                 :data-on:click
-                "el.closest('dialog').close(); $publication_dialogopen = false"
+                "$publication_dialogopen = false"
 
                 :class ["rounded border border-border px-5 py-3"]}
        "Cancel"]
@@ -95,7 +95,7 @@
       [:button {:type "button"
 
                 :data-on:click
-                "el.closest('dialog').close(); $publication_dialogopen = false"
+                "$publication_dialogopen = false"
 
                 :class ["rounded border border-border px-5 py-3"]}
        "Cancel"]
@@ -144,14 +144,15 @@
 
             :class ["rounded bg-primary px-4 py-2 text-white"]}
            "Add publication"]]]
-        [:dialog#add-publication
-         (merge {:class ["w-full max-w-xl rounded border border-border"
-                         "bg-surface p-0 shadow-xl"]}
-                (ui/dialog-state-attrs "$publication_dialogopen"
-                                       "$publication_dialogopen = false"))
+        (ui/modal
+         {:id "add-publication"
+          :class ["w-full max-w-xl rounded border border-border"
+                  "bg-surface p-0 shadow-xl"]}
+         "$publication_dialogopen"
+         "$publication_dialogopen = false"
          [:div {:class ["border-b border-border p-5 text-xl font-semibold"]}
           "Add publication"]
-         [:div {:class ["p-5"]} (publication-form tab-state)]]
+         [:div {:class ["p-5"]} (publication-form tab-state)])
         (if (seq publications)
           [:div
            {:class ["mt-8 grid gap-4"]}

@@ -280,7 +280,17 @@ test.describe.serial('Platypub user flows', () => {
     await settle(page);
     await page.getByRole('button', { name: 'Preview subscribe form' }).click();
     await expect(page.locator('#subscribe-preview')).toBeVisible();
-    await page.locator('#subscribe-preview').getByRole('button', { name: 'Close' }).click();
+    const otherApp = await page.context().newPage();
+    await otherApp.bringToFront();
+    await page.bringToFront();
+    await page.locator('#subscribe-preview').getByRole('heading', { name: /Subscribe to/ }).click();
+    await expect(page.locator('#subscribe-preview')).toBeVisible();
+    await page.mouse.click(10, 10);
+    await expect(page.locator('#subscribe-preview')).toBeHidden();
+    await page.getByLabel('Intro').fill('Still editable');
+    await expect(page.getByLabel('Intro')).toHaveValue('Still editable');
+    await page.getByLabel('Intro').fill('News from the Playwright fixture.');
+    await otherApp.close();
     await page.getByRole('button', { name: 'Preview email' }).click();
     await expect(page.getByRole('heading', { name: 'Lorem ipsum' })).toBeVisible();
     await page.locator('#email-preview').getByRole('button', { name: 'Close' }).click();
@@ -342,11 +352,13 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.getByRole('heading', { name: 'Updated Gazette' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Second post' })).toBeVisible();
 
+    const subscribePagePromise = page.context().waitForEvent('page');
     await page.locator('section').getByRole('link').click();
-    await expect(page.locator('main')).toHaveAttribute('style', /background:#f0f1f2/);
-    await expect(page.getByRole('button', { name: 'Subscribe' })).toHaveAttribute('style', /#123456/);
-    await expect(page.locator('.cf-turnstile')).toHaveCount(0);
-    await page.goBack();
+    const subscribePage = await subscribePagePromise;
+    await expect(subscribePage.locator('main')).toHaveAttribute('style', /background:#f0f1f2/);
+    await expect(subscribePage.getByRole('button', { name: 'Subscribe' })).toHaveAttribute('style', /#123456/);
+    await expect(subscribePage.locator('.cf-turnstile')).toHaveCount(0);
+    await subscribePage.close();
 
     await page.getByRole('link', { name: 'Settings' }).click();
     await settle(page);
@@ -538,10 +550,10 @@ test.describe.serial('Platypub user flows', () => {
       return menuAction.isVisible();
     }).toBe(true);
     await menuAction.click();
-    await expect(row.locator('dialog')).toBeVisible();
+    await expect(row.getByRole('dialog')).toBeVisible();
     const unsubscribeResponse = page.waitForResponse((response) =>
       response.url().includes('/app/subscribers/') && response.request().method() === 'POST');
-    await row.locator('dialog').getByRole('button', { name: 'Unsubscribe' }).click();
+    await row.getByRole('dialog').getByRole('button', { name: 'Unsubscribe' }).click();
     expect((await unsubscribeResponse).status()).toBe(204);
     await expect(row.getByRole('button', { name: 'Unsubscribe' })).toHaveCount(0);
 
@@ -651,7 +663,6 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('button', { name: 'Open menu' }).click();
     const navigation = page.locator('#mobile-navigation');
     await expect(navigation).toBeVisible();
-    await expect(navigation).toHaveJSProperty('open', true);
     await page.keyboard.press('Escape');
     await expect(navigation).toBeHidden();
 
