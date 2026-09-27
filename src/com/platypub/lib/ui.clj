@@ -74,6 +74,10 @@
          {:rel  "stylesheet",
           :href (static-path "/css/main.css")}]
         [:script {:src (static-path "/js/main.js")}]
+        (when (= "1" (get-in opts [:query-params "debug"]))
+          [[:script
+            {:src "https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.js"}]
+           [:script "eruda.init();"]])
         [:script
          {:type "module", :src datastar-script-url}]]
        [:body
