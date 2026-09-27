@@ -88,3 +88,23 @@
 
 16. [x] Fix the Chassis fragment error in the manual-send rendering flow.
     [Manual-send feedback](/spec/feedback.md?lines=6-7)
+
+## Staged updates
+
+17. [x] Open the mobile sidebar with a native modal dialog and keep desktop
+    navigation visible. [Navigation](/spec/mockups/nav.txt)
+
+18. [x] Center standard dialogs, give text inputs white backgrounds, and
+    improve interface text and control contrast.
+    [Elements](/spec/mockups/elements.txt)
+
+19. [x] Show temporary plain-text Copied feedback for the embedded form Copy
+    action. [Posts](/spec/mockups/publications/posts.txt)
+
+20. [x] Add a separate Archive publication section and redirect to the
+    publications list after confirmation.
+    [Settings](/spec/mockups/publications/settings.txt)
+
+21. [x] Diagnose why Send appears disabled for a publication with a subscriber
+    and make its prerequisites clear in the posts UI.
+    [Feedback](/spec/feedback.md)

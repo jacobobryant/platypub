@@ -43,12 +43,23 @@
 
             active (:publication/active-subscriber-count publication)
             unsent (remove #(contains? sent-dates (:post/id %)) all-posts)
-            embed  (chassis/html
-                    [:iframe
-                     {:title "Subscribe to publication"
-                      :src   (str (:platypub/base-url request)
-                                  (routes/subscribe
-                                   (:publication/id publication)))}])]
+
+            send-unavailable-reason
+            (cond
+              (empty? unsent) "Add an unsent post to enable sending."
+
+              (zero? active)
+              "Add an active, confirmed subscriber to enable sending."
+
+              (str/blank? (:publication/address publication))
+              "Add a mailing address in Settings to enable sending.")
+
+            embed (chassis/html
+                   [:iframe
+                    {:title "Subscribe to publication"
+                     :src   (str (:platypub/base-url request)
+                                 (routes/subscribe
+                                  (:publication/id publication)))}])]
         (ui/app-shell
          request
          [:main
@@ -71,9 +82,7 @@
             [:button
              {:type "button"
 
-              :data-on:click
-              (str "navigator.clipboard.writeText("
-                   "document.getElementById('embed-code').value)")
+              :data-on:click "window.platypubCopyEmbed(el)"
 
               :class ["text-primary hover:underline"]}
              "Copy"]]
@@ -95,16 +104,21 @@
              [:button {:class ["rounded border border-border px-4 py-2"]}
               "Sync"]]
             [:a
-             (cond->
-              {:href  (routes/publication-send (:publication/id publication))
-               :class ["rounded bg-primary px-4 py-2 text-white"]}
-               (or (empty? unsent)
-                   (zero? active)
-                   (str/blank? (:publication/address publication)))
-               (assoc :aria-disabled "true"
-                      :class ["pointer-events-none rounded bg-border px-4 py-2"
-                              "text-muted"]))
+             (if send-unavailable-reason
+               {:href             (routes/publication-send
+                                   (:publication/id publication))
+                :aria-disabled    "true"
+                :aria-describedby "send-unavailable-reason"
+                :tabindex         -1
+                :class            ["rounded border border-border bg-surface"
+                                   "pointer-events-none px-4 py-2 text-muted"]}
+               {:href  (routes/publication-send (:publication/id publication))
+                :class ["rounded bg-primary px-4 py-2 text-white"]})
              "Send"]]]
+          (when send-unavailable-reason
+            [:p#send-unavailable-reason
+             {:class ["mb-5 text-sm text-muted"]}
+             send-unavailable-reason])
           [:div
            {:class ["divide-y divide-border rounded border border-border"
                     "bg-surface"]}

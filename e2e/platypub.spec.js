@@ -259,6 +259,8 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.locator('textarea[readonly]')).toHaveValue(
       /<iframe[^>]+src="http:\/\/[^"/]+\/subscribe\//);
     await expect(page.getByRole('link', { name: 'Send' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByText('Add an active, confirmed subscriber to enable sending.'))
+      .toBeVisible();
   });
 
   test('an owner syncs the feed and edits publication settings', async ({ page, request }) => {
@@ -638,5 +640,43 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.getByRole('heading', { name: 'JSON post', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Linked Atom post' })).toBeVisible();
     await expect(page.getByText(/^Sent /)).toHaveCount(1);
+  });
+
+  test('mobile navigation, copy feedback, and archive confirmation follow the spec', async ({ page, request, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await signIn(page, request, adminEmail);
+
+    await expect(page.locator('aside')).toBeHidden();
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    const navigation = page.locator('#mobile-navigation');
+    await expect(navigation).toBeVisible();
+    await expect(navigation).toHaveJSProperty('open', true);
+    await page.keyboard.press('Escape');
+    await expect(navigation).toBeHidden();
+
+    await page.goto(atomPublicationPath);
+    await settle(page);
+    await page.getByRole('button', { name: 'Copy' }).click();
+    const copy = page.getByRole('button', { name: 'Copied' });
+    await expect(copy).toBeVisible();
+    await expect(copy).not.toHaveClass(/text-primary|hover:underline/);
+    await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible();
+
+    await page.goto(`${atomPublicationPath}/settings`);
+    await settle(page);
+    await expect(page.getByRole('heading', { name: 'Archive publication' })).toBeVisible();
+    await expect(page.getByLabel('Title')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await page.getByRole('button', { name: 'Archive publication' }).click();
+    const dialog = page.locator('#archive-publication');
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    expect(Math.abs(box.x + box.width / 2 - 375 / 2)).toBeLessThan(2);
+    const archiveResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/archive') && response.request().method() === 'POST');
+    await dialog.getByRole('button', { name: 'Archive', exact: true }).click();
+    expect((await archiveResponse).status()).toBe(204);
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.getByRole('link', { name: 'Archived publications' })).toBeVisible();
   });
 });

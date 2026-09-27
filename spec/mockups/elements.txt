@@ -1,8 +1,6 @@
+Modals should generally be centered when rendered.
 
+Text inputs have white backgrounds.
 
-  --------------------------------------------------------------------
-  |                                                                  |
-  |                                                                  |
-  --------------------------------------------------------------------
-
-
+All text/background color/size combinations get reasonable scores from
+https://webaim.org/resources/contrastchecker/.

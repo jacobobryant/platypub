@@ -27,6 +27,10 @@
   --------------------------------------------------------------------
 
 
+after clicking the "Copy" button, the text of the button should change to
+"Copied" (and it should not be styled as a button/link). after 1 second it
+should change back.
+
 After clicking `Send` and finishing the manual send flow, users are redirected
 back to this page (posts).
 

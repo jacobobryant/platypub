@@ -99,45 +99,57 @@
 
    :data-on:close close-expression})
 
+(defn- app-navigation
+  [request]
+  [:nav {:class ["grid gap-3"]}
+   [:a {:href (routes/app), :class ["text-primary hover:underline"]}
+    "Publications"]
+   (when (= :user.tier/admin
+            (get-in request [:platypub/user :user/tier]))
+     [:a {:href  (routes/app-admin)
+          :class ["text-primary hover:underline"]}
+      "Admin"])
+   [:form
+    {:data-on:submit "@post(el.dataset.action)"
+     :data-action    (routes/signout)}
+    [:button {:class ["text-primary hover:underline"]} "Sign out"]]])
+
 (defn app-shell
   [request & body]
   (app-page
    request
    [:header
-    {:class                   ["border-b border-border bg-surface"]
-     :data-signals__ifmissing "{navOpen: false}"}
+    {:class ["border-b border-border bg-surface"]}
     [:nav
      {:class ["flex items-center justify-between px-5 py-4"]}
      [:a {:href (routes/app), :class ["text-xl font-bold text-text"]}
       "Platypub"]
      [:button
       {:type          "button"
-       :aria-label    "Toggle menu"
-       :data-on:click "$navOpen = !$navOpen"
+       :aria-label    "Open menu"
+       :aria-haspopup "dialog"
+       :aria-controls "mobile-navigation"
+       :data-on:click "document.getElementById('mobile-navigation').showModal()"
 
        :class
        ["rounded border border-border px-3 py-2 lg:hidden"]}
       "☰"]]]
+   [:dialog#mobile-navigation
+    {:aria-label "Navigation"
+     :class      ["m-0 h-dvh max-h-dvh w-64 max-w-full border-r border-border"
+                  "bg-surface p-5 shadow-xl lg:hidden"]}
+    [:button
+     {:type          "button"
+      :aria-label    "Close menu"
+      :data-on:click "el.closest('dialog').close()"
+      :class         ["mb-5 rounded border border-border px-3 py-2"]}
+     "Close"]
+    (app-navigation request)]
    [:div {:class ["flex min-h-0 flex-1 bg-background text-text"]}
     [:aside
-     {:data-show
-      "$navOpen || window.matchMedia('(min-width: 1024px)').matches"
-
-      :class ["fixed inset-y-0 left-0 z-20 mt-17 w-64 border-r"
-              "border-border bg-surface p-5"
-              "lg:static lg:mt-0 lg:block"]}
-     [:nav {:class ["grid gap-3"]}
-      [:a {:href (routes/app), :class ["text-primary hover:underline"]}
-       "Publications"]
-      (when (= :user.tier/admin
-               (get-in request [:platypub/user :user/tier]))
-        [:a {:href  (routes/app-admin)
-             :class ["text-primary hover:underline"]}
-         "Admin"])
-      [:form
-       {:data-on:submit "@post(el.dataset.action)"
-        :data-action    (routes/signout)}
-       [:button {:class ["text-primary hover:underline"]} "Sign out"]]]]
+     {:class ["hidden w-64 shrink-0 border-r border-border bg-surface p-5"
+              "lg:block"]}
+     (app-navigation request)]
     [:div {:class ["min-w-0 flex-1"]} body]]))
 
 (defn publication-header

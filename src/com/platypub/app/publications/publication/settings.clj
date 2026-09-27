@@ -198,7 +198,17 @@
 
                :class ["text-primary hover:underline"]}
               "Preview email"]]
-            [:div {:class ["flex justify-between gap-4"]}
+            [:div
+             [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
+              "Save settings"]]]
+           [:div
+            [:section {:class ["rounded border border-border bg-surface p-5"]}
+             [:h2 {:class ["text-xl font-semibold"]}
+              "Archive publication"]
+             [:p {:class ["my-4"]}
+              (str "If you archive this publication, the subscribe forms "
+                   "will be disabled and no emails will be sent to existing "
+                   "subscribers.")]
              [:button
               {:type "button"
 
@@ -208,10 +218,7 @@
                     "$settings_activedialog = 'archive-publication'")
 
                :class ["rounded border border-border px-4 py-2"]}
-              "Archive"]
-             [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
-              "Save settings"]]]
-           [:div
+              "Archive publication"]]
             [:dialog#subscribe-preview
              (merge {:class ["w-full max-w-2xl rounded border border-border p-0"
                              "shadow-xl"]}
@@ -299,7 +306,10 @@
                         ["rounded border border-border px-4 py-2"]}
                "Cancel"]
               [:form
-               {:data-on:submit          "@post(el.dataset.action)"
+               {:data-on:submit
+                (str "@post(el.dataset.action).then(() => "
+                     "window.location.href='" (routes/app) "')")
+
                 :data-action             (routes/archive-publication
                                           (:publication/id publication))
                 :data-signals__ifmissing (datastar/signals-json {})}

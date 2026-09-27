@@ -51,7 +51,7 @@
                      {:publication/id publication-id}
                      [:publication/id
                       :publication/title
-                      :publication/address
+                      [:? :publication/address]
                       [:? :publication/intro]
                       [:? :publication/banner-image-url]
                       [:? :publication/default-author-name]

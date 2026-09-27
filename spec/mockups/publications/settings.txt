@@ -13,6 +13,13 @@ Publication settings page:
   [btn link: preview subscribe from] [btn link: preview email]
   [primary btn: Save settings]
 
+  ## Archive publication
+
+  If you archive this publication, the subscribe forms will be disabled and no
+  emails will be sent to existing subscribers.
+
+  [Archive publication]
+
 
 Each preview button opens a modal that renders the data currently in the form,
 even if it hasn't been saved yet.
@@ -20,3 +27,6 @@ even if it hasn't been saved yet.
 Notes on settings form fields:
 
 - `address` is a single-line text input.
+
+`Archive publication` opens a confirmation modal. After confirming, the user is
+redirected back to the publication list page.

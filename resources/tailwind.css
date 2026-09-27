@@ -5,10 +5,29 @@
   --color-background: #e8e6e1;
   --color-surface: #ffffff;
   --color-text: #625d52;
-  --color-muted: #b8b2a7;
-  --color-border: #d3cec4;
+  --color-muted: #696358;
+  --color-border: #817b71;
   --color-primary: #0a6c74;
   --color-primary-light: #54d1db;
   --color-primary-soft: #e0fcff;
-  --color-accent: #2680c2;
+  --color-accent: #1a6598;
+}
+
+@layer base {
+  dialog {
+    margin: auto;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 0 0 / 45%);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
 }
