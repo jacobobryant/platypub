@@ -25,8 +25,14 @@
   [])
 
 (def module
-  (biff.admin/module
-   {:biff.admin/get-usage-events   #'get-usage-events
-    :biff.admin/get-revenue-events #'get-revenue-events
-    :biff.admin/get-users          #'get-users
-    :biff.admin/send-email         #'lib.email/send-email}))
+  (let [send-email   #'lib.email/send-email
+        admin-module (biff.admin/module
+                      {:biff.admin/get-usage-events   #'get-usage-events
+                       :biff.admin/get-revenue-events #'get-revenue-events
+                       :biff.admin/get-users          #'get-users
+                       :biff.admin/send-email         send-email})]
+    (update admin-module :biff.core/init
+            (fn [init]
+              (fn [modules-var]
+                (assoc (init modules-var)
+                       :biff.admin/send-email send-email))))))

@@ -2,6 +2,22 @@
   (:require [clojure.test :refer [deftest is]]
             [com.platypub.fx :as fx]))
 
+(deftest digitalocean-object-store-endpoint
+  (is (= "https://sfo3.digitaloceanspaces.com"
+         (fx/object-store-endpoint
+          "https://platypub.sfo3.digitaloceanspaces.com"
+          "platypub")))
+  (is (= "https://sfo3.digitaloceanspaces.com"
+         (fx/object-store-endpoint
+          "https://sfo3.digitaloceanspaces.com"
+          "platypub")))
+  (is (= "http://localhost:9000"
+         (fx/object-store-endpoint "http://localhost:9000" "platypub")))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (fx/object-store-endpoint
+                "https://other.sfo3.digitaloceanspaces.com"
+                "platypub"))))
+
 (deftest low-level-handlers
   (let [state (atom {:emails []})]
     (is (= {:emails []} (fx/deref-atom {} state)))

@@ -77,3 +77,6 @@ These are areas that are known to be ugly/in need of refactoring:
 
 - prod-logs still doing that thing where it doesn't follow the latest logs
   properly
+
+- biff.admin: fix problem with send-email not being in ctx when the listener
+  starts

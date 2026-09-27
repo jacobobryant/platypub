@@ -1,7 +1,15 @@
 (ns com.platypub.app.biff-admin-test
   (:require [clojure.test :refer [deftest is]]
             [com.platypub.app.biff-admin :as admin]
+            [com.platypub.lib.email :as email]
             [tick.core :as tick]))
+
+(deftest alert-email-callback-is-available-at-startup
+  (let [system ((:biff.core/init admin/module) (atom []))]
+    (is (identical? #'email/send-email
+                    (:biff.admin/send-email system)))
+    (is (instance? clojure.lang.IAtom
+                   (:biff.admin/pstats system)))))
 
 (deftest get-users-state-test
   (let [[state] (admin/get-users)

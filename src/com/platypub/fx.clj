@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log])
   (:import [io.minio BucketExistsArgs GetObjectArgs MakeBucketArgs MinioClient
             PutObjectArgs]
+           [io.minio.errors ErrorResponseException]
            [java.io ByteArrayInputStream InputStream]
            [java.nio.charset StandardCharsets]
            [java.nio.file Path]))
@@ -31,12 +32,24 @@
     (.getBytes ^String value StandardCharsets/UTF_8)
     (file-value-bytes value)))
 
+(defn object-store-endpoint
+  [endpoint bucket]
+  (if-let [[_ endpoint-bucket region]
+           (re-matches
+            #"https://([^.]+)\.([^.]+)\.digitaloceanspaces\.com/?"
+            endpoint)]
+    (if (= endpoint-bucket bucket)
+      (str "https://" region ".digitaloceanspaces.com")
+      (throw (ex-info "Object store endpoint names a different bucket."
+                      {:endpoint endpoint :bucket bucket})))
+    endpoint))
+
 (defn- object-store-client
   [{:keys                       [platypub/object-store-client]
-    :platypub.object-store/keys [endpoint access-key secret-key]}]
+    :platypub.object-store/keys [endpoint bucket access-key secret-key]}]
   (or @object-store-client
       (let [new-client (-> (MinioClient/builder)
-                           (.endpoint endpoint)
+                           (.endpoint (object-store-endpoint endpoint bucket))
                            (.credentials
                             ;; access-key should not be a secret. in config.edn
                             ;; use #biff/env instead of #biff/secret, and remove
@@ -62,14 +75,22 @@
   (let [client (object-store-client ctx)
         bucket (:platypub.object-store/bucket ctx)
         data   (object-bytes value)]
-    (ensure-bucket client bucket)
-    (.putObject client
-                (-> (PutObjectArgs/builder)
-                    (.bucket bucket)
-                    (.object (str object-key))
-                    (.contentType (or content-type "application/octet-stream"))
-                    (.stream (ByteArrayInputStream. data) (alength data) -1)
-                    .build))
+    (try
+      (ensure-bucket client bucket)
+      (.putObject client
+                  (-> (PutObjectArgs/builder)
+                      (.bucket bucket)
+                      (.object (str object-key))
+                      (.contentType
+                       (or content-type "application/octet-stream"))
+                      (.stream (ByteArrayInputStream. data) (alength data) -1)
+                      .build))
+      (catch ErrorResponseException e
+        (throw (ex-info
+                (str "Object upload failed: " (.code (.errorResponse e))
+                     " (HTTP " (.code (.response e)) ")")
+                {:bucket bucket :object-key (str object-key)}
+                e))))
     object-key))
 
 (defn get-object
