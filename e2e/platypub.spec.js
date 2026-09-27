@@ -577,15 +577,31 @@ test.describe.serial('Platypub user flows', () => {
 
     const post = page.getByText('JSON post', { exact: true });
     await post.click();
+    await page.route('**/send', async (route) => {
+      if (route.request().method() === 'POST') {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      await route.continue();
+    });
     const previewResponse = page.waitForResponse((response) =>
       response.url().endsWith('/send') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Preview' }).click();
+    await expect(page.getByRole('button', { name: 'Preparing preview…' })).toBeDisabled();
     expect((await previewResponse).status()).toBe(204);
+    await page.unroute('**/send');
     await expect(page.getByRole('heading', { name: 'JSON post' })).toBeVisible();
     await expect(page.frameLocator('[title="Newsletter preview"]')
       .getByText('JSON feed body.')).toBeVisible();
     await expect(page.frameLocator('[title="Newsletter preview"]')
       .getByText('This post should not be in the newsletter.')).toHaveCount(0);
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    const repeatPreviewResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/send') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Preview' }).click();
+    expect((await repeatPreviewResponse).status()).toBe(204);
+    await expect(page.getByRole('dialog')).toBeVisible();
 
     const confirmResponse = page.waitForResponse((response) =>
       response.url().endsWith('/send/confirm') && response.request().method() === 'POST');

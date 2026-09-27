@@ -527,6 +527,7 @@
             {:request/tab
              [{[:? :tab/send-preview]
                [:publication/id
+                [:? :send/revision]
                 :send/subject
                 :send/html
                 :send/text
@@ -534,20 +535,23 @@
                 :send/reply-to
                 :send/post-ids]}]}]
    :output [{:request/send-preview
-             [:send/subject :send/html :send/text :send/from-name :send/reply-to
+             [[:? :send/revision] :send/subject :send/html :send/text
+              :send/from-name :send/reply-to
               {:send/posts [:post/id]}]}]}
   [_ input]
   (let [publication-id (get-in input [:request/publication :publication/id])
         preview        (get-in input [:request/tab :tab/send-preview])]
     (when (= publication-id (:publication/id preview))
       {:request/send-preview
-       {:send/subject   (:send/subject preview)
-        :send/html      (:send/html preview)
-        :send/text      (:send/text preview)
-        :send/from-name (:send/from-name preview)
-        :send/reply-to  (:send/reply-to preview)
-        :send/posts     (mapv (fn [post-id] {:post/id post-id})
-                              (:send/post-ids preview))}})))
+       (cond-> {:send/subject   (:send/subject preview)
+                :send/html      (:send/html preview)
+                :send/text      (:send/text preview)
+                :send/from-name (:send/from-name preview)
+                :send/reply-to  (:send/reply-to preview)
+                :send/posts     (mapv (fn [post-id] {:post/id post-id})
+                                      (:send/post-ids preview))}
+         (:send/revision preview)
+         (assoc :send/revision (:send/revision preview)))})))
 
 (def module
   {:biff.graph/resolvers

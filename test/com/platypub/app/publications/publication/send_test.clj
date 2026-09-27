@@ -40,7 +40,9 @@
 
         post {:post/id (random-uuid)}
 
-        tab-id (random-uuid)]
+        tab-id (random-uuid)
+
+        revision (random-uuid)]
     (is (= {:status 404} (load-content {} {})))
     (is (= {:status 404}
            (load-content {} {:request/publication publication
@@ -52,7 +54,7 @@
                    :request/tab         {}})]
       (is (= :biff.graph.fx/query (get-in loaded [:content 0])))
       (let [result (write-preview
-                    {}
+                    {:biff.fx/random-uuid7-seq [revision]}
                     (assoc loaded
                            :content
                            {:send/subject "Subject"
@@ -62,6 +64,9 @@
         (is (= "owner@example.com"
                (get-in result [:_preview 1 :values 0 :tab-state/data
                                1 :tab/send-preview :send/reply-to])))
+        (is (= revision
+               (get-in result [:_preview 1 :values 0 :tab-state/data
+                               1 :tab/send-preview :send/revision])))
         (is (= {:status 204} (:biff.fx/return result)))))))
 
 (deftest confirm-send-states-test

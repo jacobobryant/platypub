@@ -51,6 +51,7 @@
     ?
     [:map
      [:publication/id :uuid]
+     [:send/revision ? :uuid]
      [:send/subject :string]
      [:send/html :string]
      [:send/text :string]
