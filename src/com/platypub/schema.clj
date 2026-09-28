@@ -42,6 +42,26 @@
      [:publication/id :uuid]
      [:publication/banner-image-url ? :string]
      [:publication/default-author-image-url ? :string]]]
+   [:tab/settings-preview
+    ?
+    [:map
+     [:publication/id :uuid]
+     [:settings/kind [:enum "form" "one" "multi"]]
+     [:settings/revision :uuid]
+     [:settings/values
+      [:map
+       [:publication/title :string]
+       [:publication/address ? :string]
+       [:publication/description ? :string]
+       [:publication/intro ? :string]
+       [:publication/banner-image-url ? :string]
+       [:publication/default-author-name ? :string]
+       [:publication/default-author-url ? :string]
+       [:publication/default-author-image-url ? :string]
+       [:publication/padding-color :string]
+       [:publication/background-color :string]
+       [:publication/text-color :string]
+       [:publication/primary-color :string]]]]]
    [:tab/subscriber-search
     ?
     [:map

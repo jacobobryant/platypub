@@ -52,6 +52,7 @@
            (:tab/new-publication tab-state)]
     [:form
      {:data-on:submit "@post(el.dataset.action)"
+      :data-indicator "publication_creating"
       :data-action    (publications-path)
 
       :data-signals__ifmissing
@@ -74,10 +75,15 @@
 
                 :class ["rounded border border-border px-5 py-3"]}
        "Cancel"]
-      [:button {:class ["rounded bg-primary px-5 py-3 text-white"]}
-       "Use this feed"]]]
+      [:button {:class              ["rounded bg-primary px-5 py-3 text-white"
+                                     "disabled:opacity-60"]
+                :data-attr:disabled "$publication_creating"}
+       [:span {:data-show "!$publication_creating"} "Use this feed"]
+       [:span {:data-show "$publication_creating" :style "display:none"}
+        "Creating…"]]]]
     [:form
      {:data-on:submit "@post(el.dataset.action)"
+      :data-indicator "publication_creating"
       :data-action    (publications-path)
 
       :data-signals__ifmissing
@@ -99,8 +105,12 @@
 
                 :class ["rounded border border-border px-5 py-3"]}
        "Cancel"]
-      [:button {:class ["rounded bg-primary px-5 py-3 text-white"]}
-       "Save"]]]))
+      [:button {:class              ["rounded bg-primary px-5 py-3 text-white"
+                                     "disabled:opacity-60"]
+                :data-attr:disabled "$publication_creating"}
+       [:span {:data-show "!$publication_creating"} "Save"]
+       [:span {:data-show "$publication_creating" :style "display:none"}
+        "Creating…"]]]]))
 
 (defpipeline publications-page
   [:biff.graph.fx/query
@@ -145,7 +155,7 @@
             :class ["rounded bg-primary px-4 py-2 text-white"]}
            "Add publication"]]]
         (ui/modal
-         {:id "add-publication"
+         {:id    "add-publication"
           :class ["w-full max-w-xl rounded border border-border"
                   "bg-surface p-0 shadow-xl"]}
          "$publication_dialogopen"

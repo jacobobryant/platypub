@@ -13,16 +13,25 @@
                      :publication/background-color "#fff"
                      :publication/text-color       "#111"
                      :publication/primary-color    "#00f"}
-        render (:publication/ui-subscribe-form
-                (helpers/resolve-resolver
-                 publication/subscribe-form {} publication))
-        html (chassis/html (render {:request
-                                   {:biff.auth/turnstile-site-key "site"}}))
-        preview (chassis/html (render {:preview true}))]
+        render      (:publication/ui-subscribe-form
+                     (helpers/resolve-resolver
+                      publication/subscribe-form
+                      {:biff.auth/turnstile-site-key "site"}
+                      publication))
+        html        (chassis/html (render {}))
+        preview     (chassis/html (render {:preview true}))
+        skip-render (:publication/ui-subscribe-form
+                     (helpers/resolve-resolver
+                      publication/subscribe-form
+                      {:biff.auth/skip-captcha true}
+                      publication))]
     (is (fn? render))
     (is (str/includes? html "Subscribe to News"))
     (is (str/includes? html "Current stories"))
     (is (str/includes? html "cf-turnstile"))
+    (is (str/includes? html "data-sitekey=\"site\""))
+    (is (not (str/includes? (chassis/html (skip-render {}))
+                            "cf-turnstile")))
     (is (str/includes? preview "Subscribe to News"))
     (is (str/includes? preview "disabled"))
     (is (not (str/includes? preview "cf-turnstile")))))

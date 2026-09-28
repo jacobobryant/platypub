@@ -72,8 +72,7 @@
                                         :publication/title])
                            (:request/subscription-publication result))]
       (ui/page request
-               ((:publication/ui-subscribe-form publication)
-                {:request request}))
+               ((:publication/ui-subscribe-form publication) {}))
       {:status 404})))
 
 (defpipeline submit-subscription

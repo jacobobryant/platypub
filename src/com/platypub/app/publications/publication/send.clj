@@ -41,8 +41,8 @@
          [:main
           {:data-signals
            (datastar/signals-json
-            {:send/dialogopen       (boolean preview)
-             :send/preview-revision (some-> preview :send/revision str)})
+            {:send/dialogopen (boolean preview)
+             :send/revision   (some-> preview :send/revision str)})
 
            :class ["mx-auto max-w-3xl p-6"]}
           [:a
@@ -85,7 +85,13 @@
               (:send/subject preview)]
              [:iframe {:title             "Newsletter preview"
                        :data-preview-html (:send/html preview)
-                       :class             ["min-h-96 w-full"]}]
+
+                       :data-effect
+                       (str "$send_revision; "
+                            "el.srcdoc = DOMPurify.sanitize("
+                            "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})")
+
+                       :class ["min-h-96 w-full"]}]
              [:div
               {:class ["flex justify-end gap-2 border-t border-border p-5"]}
               [:button {:type "button"

@@ -11,6 +11,8 @@
             [com.platypub.routes :as routes]))
 
 (defpath root-path "")
+(defpath preview-path
+  "/app/publications/:publication-id/settings/preview/:kind")
 (defpath image-path "/app/publications/:publication-id/settings/image/:field")
 
 (def setting-fields
@@ -63,6 +65,45 @@
     (when (= (:publication/id publication) (:publication/id images))
       images)))
 
+(def settings-tab-query
+  [{[:? :tab/publication-images]
+    [:publication/id
+     [:? :publication/banner-image-url]
+     [:? :publication/default-author-image-url]]}
+   {[:? :tab/settings-preview]
+    [:publication/id
+     :settings/kind
+     :settings/revision
+     {:settings/values
+      [:publication/title
+       [:? :publication/address]
+       [:? :publication/description]
+       [:? :publication/intro]
+       [:? :publication/banner-image-url]
+       [:? :publication/default-author-name]
+       [:? :publication/default-author-url]
+       [:? :publication/default-author-image-url]
+       :publication/padding-color
+       :publication/background-color
+       :publication/text-color
+       :publication/primary-color]}]}])
+
+(defn- preview-posts
+  [kind now ids]
+  (let [post (fn [id title]
+               {:post/id         id
+                :post/title      title
+                :post/fetched-at now
+                :post/url        "https://example.com/post"
+                :post/excerpt    "Example post excerpt."
+
+                :post/content
+                {:content/html "<p>Example post content.</p>"
+                 :content/text "Example post content."}})]
+    (cond-> [(post (first ids) "Example post")]
+      (= kind "multi")
+      (conj (post (second ids) "Another example post")))))
+
 (defpipeline settings-page
   [:biff.graph.fx/query
    [{[:? :request/publication]
@@ -85,23 +126,55 @@
       [:? :publication/automatic-send-threshold]
       :publication/require-confirmation
       {:publication/feed [:feed/url]}]}
-    {:request/tab
-     [{[:? :tab/publication-images]
-       [:publication/id
-        [:? :publication/banner-image-url]
-        [:? :publication/default-author-image-url]]}]}]]
+    {:request/tab settings-tab-query}]]
 
-  (fn [request result]
+  (fn [{:biff.fx/keys [now random-uuid7-seq]} result]
+    (let [stored      (get-in result [:request/tab :tab/settings-preview])
+          current     (:request/publication result)
+          current-id  (:publication/id current)
+          preview     (when (= (:publication/id stored) current-id) stored)
+          kind        (:settings/kind preview)
+          publication (merge current (:settings/values preview))]
+      (cond-> {:result           result
+               :preview-kind     kind
+               :preview-revision (:settings/revision preview)}
+        (= kind "form")
+        (assoc :preview-form
+               [:biff.graph.fx/query publication
+                [:publication/ui-subscribe-form]])
+
+        (#{"one" "multi"} kind)
+        (assoc :preview-email
+               [:biff.graph.fx/query
+                {:send/publication publication
+                 :send/posts       (preview-posts kind now random-uuid7-seq)}
+                [:send/html]]))))
+
+  (fn [request {:keys [result preview-kind preview-revision
+                       preview-form preview-email]}]
     (if-let [publication (:request/publication result)]
       (let [publication (merge publication
                                (pending-images publication
                                                (:request/tab result)))
-            feed-url    (get-in publication [:publication/feed :feed/url])]
+            feed-url    (get-in publication [:publication/feed :feed/url])
+
+            preview-html
+            (cond
+              (= preview-kind "form")
+              (:body
+               (ui/page request
+                        ((:publication/ui-subscribe-form preview-form)
+                         {:preview true})))
+
+              (#{"one" "multi"} preview-kind)
+              (:send/html preview-email))]
         (ui/app-shell
          request
          [:main
-          {:data-signals__ifmissing
-           (datastar/signals-json {:settings/activedialog false})
+          {:data-signals
+           (datastar/signals-json
+            {:settings/activedialog (if preview-html "preview" false)
+             :settings/revision     (some-> preview-revision str)})
 
            :class ["mx-auto w-full max-w-5xl p-6"]}
           (ui/publication-header publication :settings)
@@ -130,9 +203,11 @@
               [:input {:type     "file"
                        :name     (datastar/signal-name :request/image)
                        :accept   "image/png,image/jpeg,image/gif,image/webp"
-                       :required true}]])]
+                       :required true
+                       :class    ["mt-2 w-full rounded border border-border"
+                                  "bg-surface p-2"]}]])]
           [:div
-           {:class ["grid gap-8 lg:grid-cols-2"]}
+           {:class ["grid gap-8"]}
            [:form
             {:data-on:submit "@post(el.dataset.action)",
 
@@ -143,10 +218,18 @@
              (datastar/signals-json (settings-signals publication feed-url)),
 
              :class ["grid gap-4"]}
+            (mapv
+             (fn [field]
+               [:input {:type      "hidden"
+                        :name      (datastar/signal-name field)
+                        :data-bind (datastar/signal-name field)}])
+             [:publication/banner-image-url
+              :publication/default-author-image-url])
             [:label
              "Feed URL"
              [:input
               {:data-bind (datastar/signal-name :request/feed-url),
+               :name      (datastar/signal-name :request/feed-url),
                :type      "url",
                :required  true,
 
@@ -156,9 +239,12 @@
                label
                [:input
                 {:data-bind (datastar/signal-name field),
+                 :name      (datastar/signal-name field),
                  :type      input-type,
 
-                 :class ["mt-1 block w-full rounded border p-2"]}]])
+                 :class (if (= input-type "color")
+                          ["mt-1 block h-12 w-full rounded border p-1"]
+                          ["mt-1 block w-full rounded border p-2"])}]])
             [:label
              {:class ["flex gap-2"]}
              [:input
@@ -177,105 +263,62 @@
              "Welcome HTML"
              [:textarea
               {:data-bind (datastar/signal-name :publication/welcome-html),
+               :name      (datastar/signal-name :publication/welcome-html),
 
                :class ["mt-1 h-32 w-full rounded border p-2"]}]]
             [:div {:class ["flex flex-wrap items-center gap-4"]}
-             [:button
-              {:type "button"
+             (mapv
+              (fn [[kind label]]
+                [:button
+                 {:type "button"
 
-               :data-on:click
-               "$settings_activedialog = 'subscribe-preview'"
+                  :data-on:click
+                  (str "@post('"
+                       (preview-path (:publication/id publication) kind)
+                       "')")
 
-               :class ["text-primary hover:underline"]}
-              "Preview subscribe form"]
-             [:button
-              {:type "button"
-
-               :data-on:click
-               "$settings_activedialog = 'email-preview'"
-
-               :class ["text-primary hover:underline"]}
-              "Preview email"]]
+                  :class ["text-primary hover:underline"]}
+                 label])
+              [["form" "Preview subscribe form"]
+               ["one" "Preview email (one post)"]
+               ["multi" "Preview email (multiple posts)"]])]
             [:div
              [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
               "Save settings"]]]
+           [:section {:class ["rounded border border-border bg-surface p-5"]}
+            [:h2 {:class ["text-xl font-semibold"]} "Archive publication"]
+            [:p {:class ["my-4"]}
+             (str "If you archive this publication, the subscribe forms "
+                  "will be disabled and no emails will be sent to existing "
+                  "subscribers.")]
+            [:button {:type "button"
+
+                      :data-on:click
+                      "$settings_activedialog = 'archive-publication'"
+
+                      :class ["rounded border border-border px-4 py-2"]}
+             "Archive publication"]]
            [:div
-            [:section {:class ["rounded border border-border bg-surface p-5"]}
-             [:h2 {:class ["text-xl font-semibold"]}
-              "Archive publication"]
-             [:p {:class ["my-4"]}
-              (str "If you archive this publication, the subscribe forms "
-                   "will be disabled and no emails will be sent to existing "
-                   "subscribers.")]
-             [:button
-              {:type "button"
-
-               :data-on:click
-               "$settings_activedialog = 'archive-publication'"
-
-               :class ["rounded border border-border px-4 py-2"]}
-              "Archive publication"]]
             (ui/modal
-             {:id "subscribe-preview"
-              :class ["w-full max-w-2xl rounded border border-border p-0"
+             {:id    "settings-preview"
+              :class ["w-full max-w-3xl rounded border border-border p-0"
                       "bg-surface shadow-xl"]}
-             "$settings_activedialog === 'subscribe-preview'"
+             "$settings_activedialog === 'preview'"
              "$settings_activedialog = false"
-             [:div
-              {:data-attr:style
-               (str "'background:' + $publication_padding_color"
-                    " + ';color:' + $publication_text_color")
+             [:iframe {:title             "Settings preview"
+                       :data-preview-html (or preview-html "")
 
-               :class ["p-8"]}
-              [:img
-               {:data-attr:src "$publication_banner_image_url"
-                :data-show     "$publication_banner_image_url"
-                :alt           ""
-                :class         ["mb-4 max-w-full"]}]
-              [:h3 {:data-text "'Subscribe to ' + $publication_title"
-                    :class     ["text-2xl font-bold"]}]
-              [:p {:data-text "$publication_description"}]
-              [:div {:class ["mt-3 flex gap-2"]}
-               [:input {:type        "email"
-                        :placeholder "you@example.com"
-                        :class       ["min-w-0 flex-1 rounded border p-2"]}]
-               [:button
-                {:type            "button"
-                 :data-attr:style "'background:' + $publication_primary_color"
-                 :class           ["rounded px-3 py-2 text-white"]}
-                "Subscribe"]]
-              [:button {:type "button"
+                       :data-effect
+                       (str "$settings_revision; "
+                            "el.srcdoc = DOMPurify.sanitize("
+                            "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})")
 
-                        :data-on:click
-                        "$settings_activedialog = false"
-
-                        :class ["mt-5 text-primary"]} "Close"]])
+                       :class ["min-h-96 w-full"]}]
+             [:button {:type          "button"
+                       :data-on:click "$settings_activedialog = false"
+                       :class         ["m-4 text-primary"]} "Close"])
             (ui/modal
-             {:id "email-preview"
-              :class ["w-full max-w-2xl rounded border border-border p-0"
-                      "bg-surface shadow-xl"]}
-             "$settings_activedialog === 'email-preview'"
-             "$settings_activedialog = false"
-             [:div
-              {:data-attr:style
-               (str "'background:' + $publication_background_color"
-                    " + ';color:' + $publication_text_color")
-
-               :class ["p-8"]}
-              [:h3 {:class ["text-2xl font-bold"]} "Lorem ipsum"]
-              [:p {:data-text "$publication_intro" :class ["italic"]}]
-              [:p "Lorem ipsum dolor sit amet, consectetur adipiscing elit."]
-              [:a {:href            "#"
-                   :data-attr:style "'color:' + $publication_primary_color"}
-               "Read online"]
-              [:button {:type "button"
-
-                        :data-on:click
-                        "$settings_activedialog = false"
-
-                        :class ["mt-5 block text-primary"]} "Close"]])
-            (ui/modal
-             {:id "archive-publication"
+             {:id    "archive-publication"
               :class ["w-full max-w-md rounded border border-border bg-surface"
                       "p-6 shadow-xl"]}
              "$settings_activedialog === 'archive-publication'"
@@ -304,6 +347,44 @@
                [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
                 "Archive"]]])]]]))
       {:status 404})))
+
+(defpipeline settings-preview
+  [:biff.graph.fx/query
+   [{[:? :request/publication] [:publication/id]}
+    :request/preview-kind
+    {:request/publication-settings
+     [:publication/title
+      [:? :publication/address]
+      [:? :publication/description]
+      [:? :publication/intro]
+      [:? :publication/banner-image-url]
+      [:? :publication/default-author-name]
+      [:? :publication/default-author-url]
+      [:? :publication/default-author-image-url]
+      :publication/padding-color
+      :publication/background-color
+      :publication/text-color
+      :publication/primary-color]}
+    {:request/tab settings-tab-query}]]
+
+  (fn [{:biff.datastar/keys [tab-id]
+        :biff.fx/keys       [random-uuid7-seq]} result]
+    (let [publication (:request/publication result)
+          kind        (:request/preview-kind result)]
+      (if (and publication tab-id (#{"form" "one" "multi"} kind))
+        {:_write
+         [:biff.sqlite.fx/execute
+          (tab/write-statement
+           tab-id
+           (:request/tab result)
+           {:tab/settings-preview
+            {:publication/id    (:publication/id publication)
+             :settings/kind     kind
+             :settings/revision (first random-uuid7-seq)
+             :settings/values   (:request/publication-settings result)}})]
+
+         :biff.fx/return {:status 204}}
+        {:biff.fx/return {:status 404}}))))
 
 (defpipeline save-settings
   [:biff.graph.fx/query
@@ -504,4 +585,5 @@
      {:middleware [mid/wrap-app-access]}
      [(routes/publication-settings)
       {:get settings-page, :post save-settings}]
+     [(preview-path) {:post settings-preview}]
      [(image-path) {:post upload-image}]]]})
