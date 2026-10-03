@@ -60,10 +60,15 @@
      [:publication/id
       :publication/title
       [:? :publication/description]
+      [:? :publication/hide-form-title]
+      [:? :publication/archive-url]
+      [:? :publication/form-placeholder]
+      [:? :publication/form-style]
       :publication/padding-color
       :publication/background-color
       :publication/text-color
       :publication/primary-color
+      {:publication/feed [:feed/url]}
       :publication/ui-subscribe-form]}]]
 
   (fn [request result]
@@ -71,8 +76,12 @@
                                        [:request/subscription-publication
                                         :publication/title])
                            (:request/subscription-publication result))]
-      (ui/page request
-               ((:publication/ui-subscribe-form publication) {}))
+      (let [embed (= "1" (get-in request [:query-params "embed"]))]
+        (ui/page (assoc request
+                        :ui/embed embed
+                        :ui/title (:publication/title publication))
+                 ((:publication/ui-subscribe-form publication)
+                  {:embed embed})))
       {:status 404})))
 
 (defpipeline submit-subscription

@@ -20,7 +20,13 @@
 (def request-settings
   {:publication/title                    " Updated news "
    :publication/address                  " 123 Main St\nSuite 4 "
+   :publication/archive-url              " https://example.com/archive/ "
    :publication/description              " Description "
+   :publication/hide-form-title          true
+   :publication/form-placeholder         " Enter thine email address "
+   :publication/form-style               :publication.form-style/pill
+   :publication/email-style              :publication.email-style/letter
+   :publication/site-url                 " https://example.com "
    :publication/intro                    ""
    :publication/banner-image-url         ""
    :publication/default-author-name      ""
@@ -65,7 +71,7 @@
       (is (= [:publication/ui-subscribe-form]
              (get-in prepared [:preview-form 2])))
       (is (= 200 (:status response)))
-      (is (re-find #"Subscribe to Unsaved title" (:body response)))
+      (is (re-find #"Sign up for Unsaved title" (:body response)))
       (is (re-find #"Unsaved description" (:body response)))
       (is (re-find #"DOMPurify.sanitize" (:body response)))
       (is (nil? (re-find #"cf-turnstile" (:body response)))))
@@ -78,6 +84,10 @@
                                          {:tab/settings-preview stored}))]
         (is (= (if (= kind "one") 1 2)
                (count (get-in prepared [:preview-email 1 :send/posts]))))
+        (let [post (first (get-in prepared [:preview-email 1 :send/posts]))]
+          (is (= 3 (count (re-seq #"<p>"
+                                 (get-in post [:post/content :content/html])))))
+          (is (= 500 (count (:post/excerpt post)))))
         (is (= "Unsaved title"
                (get-in prepared [:preview-email 1 :send/publication
                                  :publication/title])))
@@ -177,6 +187,21 @@
       (is (= "Updated news" (get-in saved [:set-values :publication/title])))
       (is (= "123 Main St Suite 4"
              (get-in saved [:set-values :publication/address])))
+      (is (= "https://example.com/archive/"
+             (get-in saved [:set-values :publication/archive-url])))
+      (is (= "Enter thine email address"
+             (get-in saved [:set-values :publication/form-placeholder])))
+      (is (= :publication.form-style/pill
+             (get-in saved [:set-values :publication/form-style])))
+      (is (true? (get-in saved [:set-values :publication/hide-form-title])))
+      (is (= :publication.email-style/letter
+             (get-in saved [:set-values :publication/email-style])))
+      (is (= [:lift :publication.email-style/letter]
+             (get-in saved [:_write 1 :set :publication/email-style])))
+      (is (= [:lift :publication.form-style/pill]
+             (get-in saved [:_write 1 :set :publication/form-style])))
+      (is (= "https://example.com"
+             (get-in saved [:set-values :publication/site-url])))
       (is (= now
              (get-in saved
                      [:set-values :publication/automatic-send-threshold])))

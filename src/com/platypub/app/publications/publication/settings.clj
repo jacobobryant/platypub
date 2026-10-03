@@ -18,8 +18,11 @@
 (def setting-fields
   [[:publication/title "Title" "text"]
    [:publication/address "Address" "text"]
+   [:publication/archive-url "Archive URL" "url"]
    [:publication/description "Description" "text"]
+   [:publication/form-placeholder "Form placeholder" "text"]
    [:publication/intro "Intro" "text"]
+   [:publication/site-url "Website URL" "url"]
    [:publication/default-author-name
     "Default author name"
     "text"]
@@ -51,6 +54,12 @@
                         [:publication/banner-image-url
                          :publication/default-author-image-url]))
    {:request/feed-url         feed-url
+    :publication/form-style   (name (or (:publication/form-style publication)
+                                        :publication.form-style/rectangle))
+    :publication/email-style  (name (or (:publication/email-style publication)
+                                        :publication.email-style/card))
+    :publication/hide-form-title
+    (boolean (:publication/hide-form-title publication))
     :publication/welcome-html (:publication/welcome-html publication)
 
     :publication/automatic-sending
@@ -77,8 +86,14 @@
      {:settings/values
       [:publication/title
        [:? :publication/address]
+       [:? :publication/archive-url]
        [:? :publication/description]
+      [:? :publication/hide-form-title]
+       [:? :publication/form-placeholder]
+       [:? :publication/form-style]
        [:? :publication/intro]
+       [:? :publication/site-url]
+       [:? :publication/email-style]
        [:? :publication/banner-image-url]
        [:? :publication/default-author-name]
        [:? :publication/default-author-url]
@@ -90,16 +105,34 @@
 
 (defn- preview-posts
   [kind now ids]
-  (let [post (fn [id title]
+  (let [paragraphs
+        [(str "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+              "Integer vitae nibh vitae nisi facilisis finibus. Sed euismod, "
+              "lectus sed varius posuere, sapien purus vulputate nibh, sit "
+              "amet pretium augue felis vitae turpis. Curabitur interdum "
+              "massa at justo feugiat, sed blandit dolor faucibus.")
+         (str "Praesent aliquam magna in nibh tempor, vel porttitor neque "
+              "pulvinar. Donec sit amet lectus non justo faucibus accumsan. "
+              "Mauris tincidunt sem at nibh vestibulum, a viverra lorem "
+              "fermentum. Vivamus dignissim libero vel ante sollicitudin, "
+              "quis posuere mi finibus.")
+         (str "Suspendisse potenti. Aliquam erat volutpat. Nulla facilisi. "
+              "Proin faucibus, felis eget sodales tristique, risus ex "
+              "ultrices risus, et tincidunt dui sem quis lacus. Aenean "
+              "consequat nibh et massa tincidunt, sit amet vestibulum "
+              "augue luctus.")]
+        plain (str/join "\n\n" paragraphs)
+        html (str "<p>" (str/join "</p><p>" paragraphs) "</p>")
+        post (fn [id title]
                {:post/id         id
                 :post/title      title
                 :post/fetched-at now
                 :post/url        "https://example.com/post"
-                :post/excerpt    "Example post excerpt."
+                :post/excerpt    (subs plain 0 (min 500 (count plain)))
 
                 :post/content
-                {:content/html "<p>Example post content.</p>"
-                 :content/text "Example post content."}})]
+                {:content/html html
+                 :content/text plain}})]
     (cond-> [(post (first ids) "Example post")]
       (= kind "multi")
       (conj (post (second ids) "Another example post")))))
@@ -110,8 +143,14 @@
      [:publication/id
       :publication/title
       [:? :publication/address]
+      [:? :publication/archive-url]
       [:? :publication/description]
+      [:? :publication/hide-form-title]
+      [:? :publication/form-placeholder]
+      [:? :publication/form-style]
       [:? :publication/intro]
+      [:? :publication/site-url]
+      [:? :publication/email-style]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
       [:? :publication/default-author-url]
@@ -248,6 +287,26 @@
             [:label
              {:class ["flex gap-2"]}
              [:input
+              {:data-bind (datastar/signal-name :publication/hide-form-title)
+               :type "checkbox"}]
+             "Hide form title"]
+            [:label "Form style"
+             [:select
+              {:data-bind (datastar/signal-name :publication/form-style)
+               :name (datastar/signal-name :publication/form-style)
+               :class ["mt-1 block w-full rounded border p-2"]}
+              [:option {:value "rectangle"} "Rectangle"]
+              [:option {:value "pill"} "Pill"]]]
+            [:label "Email style"
+             [:select
+              {:data-bind (datastar/signal-name :publication/email-style)
+               :name (datastar/signal-name :publication/email-style)
+               :class ["mt-1 block w-full rounded border p-2"]}
+              [:option {:value "card"} "Card"]
+              [:option {:value "letter"} "Letter"]]]
+            [:label
+             {:class ["flex gap-2"]}
+             [:input
               {:data-bind (datastar/signal-name :publication/automatic-sending),
 
                :type "checkbox"}] "Automatic sending"]
@@ -311,9 +370,27 @@
                        :data-effect
                        (str "$settings_revision; "
                             "el.srcdoc = DOMPurify.sanitize("
-                            "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})")
+                            "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})"
+                            (when (= preview-kind "form")
+                              (str ".replace('<head>', '<head><link "
+                                   "rel=\"stylesheet\" "
+                                   "href=\"/css/main.css\">')")))
 
-                       :class ["min-h-96 w-full"]}]
+                       :data-on:load
+                       (str "el._previewObserver?.disconnect(); "
+                            "const resize = () => { "
+                            "el.style.height = '0px'; "
+                            "el.style.height = Math.max(384, "
+                            "el.contentDocument.body.scrollHeight, "
+                            "el.contentDocument.documentElement.scrollHeight) "
+                            "+ 'px' }; "
+                            "resize(); "
+                            "el._previewObserver = new ResizeObserver(resize); "
+                            "el._previewObserver.observe("
+                            "el.contentDocument.body)")
+
+                       :sandbox "allow-same-origin"
+                       :class ["block w-full border-0"]}]
              [:button {:type          "button"
                        :data-on:click "$settings_activedialog = false"
                        :class         ["m-4 text-primary"]} "Close"])
@@ -355,8 +432,14 @@
     {:request/publication-settings
      [:publication/title
       [:? :publication/address]
+      [:? :publication/archive-url]
       [:? :publication/description]
+      [:? :publication/hide-form-title]
+      [:? :publication/form-placeholder]
+      [:? :publication/form-style]
       [:? :publication/intro]
+      [:? :publication/site-url]
+      [:? :publication/email-style]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
       [:? :publication/default-author-url]
@@ -397,8 +480,14 @@
     {:request/publication-settings
      [:publication/title
       [:? :publication/address]
+      [:? :publication/archive-url]
       [:? :publication/description]
+      [:? :publication/hide-form-title]
+      [:? :publication/form-placeholder]
+      [:? :publication/form-style]
       [:? :publication/intro]
+      [:? :publication/site-url]
+      [:? :publication/email-style]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
       [:? :publication/default-author-url]
@@ -437,6 +526,12 @@
              (select-keys settings
                           [:publication/banner-image-url
                            :publication/default-author-image-url])
+             {:publication/form-style
+              (:publication/form-style settings)}
+             {:publication/email-style
+              (:publication/email-style settings)
+              :publication/hide-form-title
+              (boolean (:publication/hide-form-title settings))}
              {:publication/require-confirmation
               (boolean (:publication/require-confirmation settings)),
 
@@ -450,6 +545,11 @@
 
                 :else (:publication/automatic-send-threshold publication))})
 
+            sql-set-values
+            (-> set-values
+                (update :publication/form-style #(when % [:lift %]))
+                (update :publication/email-style #(when % [:lift %])))
+
             feed-url
             (str/trim (or (get-in result [:request/feed :feed/url]) ""))
 
@@ -462,7 +562,7 @@
          :_write
          [:biff.sqlite.fx/authorized-write
           {:update :publication,
-           :set    set-values,
+           :set    sql-set-values,
            :where  [:= :publication/id (:publication/id publication)]}]})
       {:biff.fx/return {:status 404}}))
 

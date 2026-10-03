@@ -67,6 +67,7 @@ CREATE TABLE publication (
   user_id BLOB NOT NULL,
   welcome_html TEXT NOT NULL,
   address TEXT,
+  archive_url TEXT,
   archived_at INT,
   automatic_send_threshold INT,
   banner_image_url TEXT,
@@ -74,9 +75,14 @@ CREATE TABLE publication (
   default_author_name TEXT,
   default_author_url TEXT,
   description TEXT,
+  email_style INT CHECK (email_style IN (0, 1)), -- card (0), letter (1)
   filter_tag TEXT,
+  form_placeholder TEXT,
+  form_style INT CHECK (form_style IN (0, 1)), -- rectangle (0), pill (1)
+  hide_form_title INT,
   intro TEXT,
   remove_tag TEXT,
+  site_url TEXT,
   FOREIGN KEY(feed_id) REFERENCES feed(id),
   FOREIGN KEY(user_id) REFERENCES user(id)
 ) STRICT;

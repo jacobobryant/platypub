@@ -1,70 +1,51 @@
-Email with multiple posts:
+Email with one post, Card (default):
 
 
-  # My Publication
-
-  <author info>
-  <intro>
-
-  [link: <post name>]
-  <excerpt>... [link: Read more]
-  <published at>
-
-  [link: <post name>]
-  <excerpt>... [link: Read more]
-  <published at>
-
-  <address>
-  <unsubscribe>
+  <linked publication banner, if set>
+  +-----------------------------------------+
+  | <intro, if set>                         |
+  | # My Post                               |
+  | [link: Read online, if post URL is set] |
+  | <full post content>                     |
+  | <address>. [link: Unsubscribe].         |
+  +-----------------------------------------+
 
 
-If a post has no URL, its full content is rendered instead of the excerpt. If
-any posts have different author information, then author info is rendered along
-with each post:
+Email with one post, Letter:
 
 
-  <author info>
-  [link: <post name>]
-  <excerpt>... [link: Read more]
-  <published at>
-
-
-Email with one post:
-
-
+  <wide linked publication banner, if set>
+  <intro, if set>
   # [link: My Post]
-
-  <author info>
-  <intro>
-  [link: Read online]
-
-  <post content>
-
-  <address>
-  <unsubscribe>
+  <full post content>
+  -------------------------------------------
+  <address>. [link: Unsubscribe].
 
 
-The address is formatted as a single line.
+Email with multiple posts, always Card:
 
-Posts are ordered first by if they have a URL or not (posts with
-URLs come first), then by `fetched at` (oldest first), then by `published at`
-(oldest first, unset last), then by post ID (ordering doesn't matter as long as
-its stable).
 
-The From address is hardcoded in the email provider settings (on their website)
-or via an environment config setting if we need to include a value in our API
-calls. The From name and Reply-To name are the publication title. The Reply-To
-address is the user's `email`. The subject is the title of the first post that
-has a title. If no posts have a title, the subject is the first 40 characters of
-the first post's plain text content, with an ellipsis if the content is longer
-than 40 characters.
+  <linked publication banner, if set>
+  +-----------------------------------------+
+  | # My Publication                        |
+  | <intro, if set>                         |
+  | <shared author info, if all match>      |
+  |                                         |
+  | [link: <post name>]                     |
+  | <author info, if different>             |
+  | <excerpt>... [link: Read more]          |
+  | <published at>                          |
+  |                                         |
+  | [link: <next post name>]                |
+  | <excerpt>... [link: Read more]          |
+  | <published at>                          |
+  |                                         |
+  | <address>. [link: Unsubscribe].         |
+  +-----------------------------------------+
 
-If a post doesn't have an `author name` and the publication does have a `default
-author name`, the post uses the `default author name`, `default author URL`, and
-`default author image URL` from the publication as its author information. The
-defaults are all-or-nothing; the publication's `default author name` would not
-be used with the post's `author URL` for example. If the post doesn't have an
-author name (whether from the post or the publication), the other author
-information is ignored.
 
-The intro is rendered in italics if set.
+A post without a URL shows its full content in the multi-post card.
+
+The address is formatted as a single line. The intro is rendered in italics if
+set. The publication colors, banner image, website URL, and mailing address
+are used in both styles.

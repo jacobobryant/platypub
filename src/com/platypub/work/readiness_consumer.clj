@@ -53,6 +53,8 @@
                       :publication/title
                       [:? :publication/address]
                       [:? :publication/intro]
+                      [:? :publication/email-style]
+                      [:? :publication/site-url]
                       [:? :publication/banner-image-url]
                       [:? :publication/default-author-name]
                       [:? :publication/default-author-url]

@@ -21,8 +21,16 @@
                            {:request/subscription-publication with-form})]
     (is (= {:status 404} (state {} {})))
     (is (= 200 (:status response)))
+    (is (re-find #"<title>News</title>" (:body response)))
+    (is (re-find #"min-h-screen" (:body response)))
+    (is (nil? (re-find #"platypub:resize" (:body response))))
     (is (nil? (re-find #"biff-datastar-sse" (:body response))))
-    (is (some? (re-find #"cf-turnstile" (:body response))))))
+    (is (some? (re-find #"cf-turnstile" (:body response))))
+    (let [embedded (state {:query-params {"embed" "1"}}
+                          {:request/subscription-publication with-form})]
+      (is (re-find #"<title>News</title>" (:body embedded)))
+      (is (re-find #"platypub:resize" (:body embedded)))
+      (is (nil? (re-find #"min-h-screen" (:body embedded)))))))
 
 (deftest embeddable-middleware-test
   (let [handler (subscription/wrap-embeddable

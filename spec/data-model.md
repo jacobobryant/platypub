@@ -49,6 +49,16 @@ Optional:
   are sent automatically. Default `created at`. When set, automatic sending is
   enabled.
 - `description`. Text shown on the subscribe form.
+- `hide form title`. Optional boolean; hides the "Sign up for" heading while
+  retaining the description.
+- `form style`. `rectangle` (the default) or `pill`.
+- `form placeholder`. Optional email field placeholder; defaults to "Enter your
+  email".
+- `archive URL`. Optional URL for an Archive link on the subscribe form. When
+  unset, the link is omitted.
+- `email style`. `card` (the default) or `letter` layout for single-post
+  sends. Sends containing multiple posts always use `card`.
+- `site URL`. Optional website URL used by styled email headers.
 - `intro`. HTML placed before email content e.g. to remind subscribers what this
   publication is.
 - `banner image URL`. An image placed at at the top of emails.
@@ -193,4 +203,3 @@ Required:
 
 - `send ID`
 - `subscriber ID`
-

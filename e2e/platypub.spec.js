@@ -82,7 +82,7 @@ async function submitSubscription(page, publication, email) {
   await page.goto(publication.replace('/app/publications/', '/subscribe/'));
   const responsePromise = page.waitForResponse((response) =>
     response.url().includes('/subscribe/') && response.request().method() === 'POST');
-  await page.getByPlaceholder('you@example.com').fill(email);
+  await page.locator('input[type=email]').fill(email);
   await page.getByRole('button', { name: 'Subscribe' }).click();
   expect((await responsePromise).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
@@ -154,7 +154,7 @@ test.describe.serial('Platypub user flows', () => {
     await page.goto(`${atomPublicationPath}/settings`);
     await settle(page);
     await expect(page.getByLabel('Feed URL')).toHaveValue('http://127.0.0.1:9090/atom.xml');
-    await expect(page.getByLabel('Title')).toHaveValue('Atom Fixture');
+    await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Atom Fixture');
     await expect(page.getByLabel('Description')).toHaveValue('An Atom publication.');
     await expect(page.getByLabel('Default author name')).toHaveValue('Atom Author');
 
@@ -278,30 +278,37 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByRole('link', { name: 'Settings' }).click();
     await expect(page.getByLabel('Feed URL')).toBeVisible();
     await settle(page);
-    await page.getByLabel('Title').fill('Unsaved preview title');
+    await page.getByLabel('Title', { exact: true }).fill('Unsaved preview title');
     await page.getByLabel('Description').fill('Unsaved preview description');
     await page.getByRole('button', { name: 'Preview subscribe form' }).click();
     const preview = page.locator('#settings-preview');
     const frame = page.frameLocator('#settings-preview iframe');
     await expect(preview).toBeVisible();
-    await expect(frame.getByRole('heading', { name: 'Subscribe to Unsaved preview title' }))
+    await expect(frame.getByRole('heading', { name: 'Sign up for Unsaved preview title' }))
       .toBeVisible();
     await expect(frame.getByText('Unsaved preview description')).toBeVisible();
-    await expect(frame.getByPlaceholder('you@example.com')).toBeDisabled();
+    await expect(frame.getByRole('heading', { name: 'Sign up for Unsaved preview title' }))
+      .toHaveCSS('font-size', '18px');
+    await expect.poll(async () => page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight >= el.contentDocument.body.scrollHeight)).toBe(true);
+    await expect(frame.locator('input[type=email]')).toBeDisabled();
     await expect(frame.locator('.cf-turnstile, .h-captcha')).toHaveCount(0);
     await page.mouse.click(10, 10);
     await expect(preview).toBeHidden();
-    await page.getByLabel('Title').fill('Fixture Gazette');
+    await page.getByLabel('Title', { exact: true }).fill('Fixture Gazette');
     await page.getByLabel('Description').fill('News from the Playwright fixture.');
     await page.getByLabel('Intro').fill('<strong>Unsaved intro</strong>');
     await page.getByRole('button', { name: 'Preview email (one post)' }).click();
     await expect(preview).toBeVisible();
     await expect(frame.locator('strong')).toHaveText('Unsaved intro');
-    await expect(frame.locator('article')).toHaveCount(1);
+    await expect(frame.getByRole('heading', { name: 'Example post' }))
+      .toBeVisible();
     await preview.getByRole('button', { name: 'Close' }).click();
     await page.getByRole('button', { name: 'Preview email (multiple posts)' }).click();
     await expect(preview).toBeVisible();
     await expect(frame.locator('article')).toHaveCount(2);
+    await expect.poll(async () => page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight >= el.contentDocument.body.scrollHeight)).toBe(true);
     await preview.getByRole('button', { name: 'Close' }).click();
     await page.getByLabel('Intro').fill('News from the Playwright fixture.');
 
@@ -337,7 +344,7 @@ test.describe.serial('Platypub user flows', () => {
     expect((await authorUploadResponse).status()).toBe(204);
     await expect(authorForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
 
-    await page.getByLabel('Title').fill('Updated Gazette');
+    await page.getByLabel('Title', { exact: true }).fill('Updated Gazette');
     await page.getByLabel('Address').fill('123 Test Street, Test City');
     await page.getByLabel('Description').fill('Updated publication description');
     await page.getByLabel('Intro').fill('A short introduction');
@@ -403,11 +410,11 @@ test.describe.serial('Platypub user flows', () => {
 
     const subscribeResponse = page.waitForResponse((response) =>
       response.url().includes('/subscribe/') && response.request().method() === 'POST');
-    await page.getByPlaceholder('you@example.com').fill(`  ${confirmedEmail.toUpperCase()}  `);
+    await page.locator('input[type=email]').fill(`  ${confirmedEmail.toUpperCase()}  `);
     await page.getByRole('button', { name: 'Subscribe' }).click();
     expect((await subscribeResponse).status()).toBe(200);
     await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Subscribe to Updated Gazette' }))
+    await expect(page.getByRole('heading', { name: 'Sign up for Updated Gazette' }))
       .toBeHidden();
 
     const confirmation = await latestEmail(request, confirmedEmail, 'Confirm your subscription');
@@ -477,7 +484,7 @@ test.describe.serial('Platypub user flows', () => {
     const settingsPage = await page.context().newPage();
     await settingsPage.goto(`${renderingPublicationPath}/settings`);
     await settle(settingsPage);
-    await settingsPage.getByLabel('Title').fill('Changed after preview');
+    await settingsPage.getByLabel('Title', { exact: true }).fill('Changed after preview');
     const settingsResponse = settingsPage.waitForResponse((response) =>
       response.url().endsWith('/settings') && response.request().method() === 'POST');
     await settingsPage.getByRole('button', { name: 'Save settings' }).click();
@@ -624,7 +631,7 @@ test.describe.serial('Platypub user flows', () => {
     expect(newsletter.from.name).toBe('Updated Gazette');
     expect(newsletter.reply_to.email).toBe(adminEmail);
     expect(newsletter.html).toContain('{{unsubscribe_url}}');
-    expect(newsletter.html).toContain('Fixture Editor');
+    expect(newsletter.html).toContain('max-width:596px');
     expect(newsletter.html).toContain('A short introduction');
     expect(newsletter.html).toContain('#123456');
     expect(newsletter.html).toContain('Read online');
@@ -705,7 +712,7 @@ test.describe.serial('Platypub user flows', () => {
     await page.goto(`${atomPublicationPath}/settings`);
     await settle(page);
     await expect(page.getByRole('heading', { name: 'Archive publication' })).toBeVisible();
-    await expect(page.getByLabel('Title')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await expect(page.getByLabel('Title', { exact: true })).toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await page.getByRole('button', { name: 'Archive publication' }).click();
     const dialog = page.locator('#archive-publication');
     await expect(dialog).toBeVisible();

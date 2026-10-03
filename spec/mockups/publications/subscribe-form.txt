@@ -1,17 +1,27 @@
 Subscribe form:
 
 
-  Subscribe to My Publication
-  <description>
-  [text: you@example.com] [primary btn: Subscribe]
+  Sign up for My Publication [omitted if hide form title is set]
+  <publication description, if set>
+  [text: Enter your email] [primary btn: Subscribe]
   [captcha widget]
+  RSS feed [· Archive, if archive URL is set]
 
 
 After submitting:
 
 
   Check your inbox
-  We've sent you a confirmation email to **<email>**.
+  We've sent a confirmation email to **<email>**.
 
 
-Note that "Subscribe to <publication>" is NOT shown after submitting the form.
+The `rectangle` style stacks the email field and button on narrow screens.
+The `pill` style joins them in one rounded row at all widths. The placeholder
+defaults to "Enter your email" and can be customized in publication settings.
+
+The hosted page fills the viewport, with one third of the free vertical space
+above the form and two thirds below. The embedded form takes the full iframe
+width and resizes its height to its content without scrollbars. The HTML page
+title is the publication title.
+
+Note that "Sign up for <publication>" is NOT shown after submitting the form.

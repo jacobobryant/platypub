@@ -29,3 +29,5 @@
   starts
 
 - biff.admin: show stuff like # of open sse connections
+
+- add a review checklist item about using datastar instead of writing custom JS

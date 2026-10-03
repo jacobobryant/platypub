@@ -32,7 +32,9 @@ settings after creating it:
   saving/updating posts using the same logic as when creating the publication)
 - automatic sending
 - require confirmation
-- title, description, intro
+- title, description, intro, optional archive URL and website URL
+- form style, placeholder, and optional hidden form title
+- email style
 - banner image
 - default author info
 - color settings

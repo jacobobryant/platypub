@@ -1,5 +1,22 @@
 # Sending emails
 
+Single-post emails use the publication's selected email style, with `card` as
+the default. Sends with multiple posts always use `card` regardless of that
+selection. See `spec/mockups/email.txt` for the appearance of each style.
+
+Posts are ordered by whether they have a URL (posts with URLs first), then by
+`fetched at` (oldest first), `published at` (oldest first, unset last), and post
+ID. A post without a URL uses its full content rather than an excerpt.
+
+The From address comes from the email provider or an environment setting. The
+From name and Reply-To name are the publication title, and the Reply-To address
+is the owner's email. The subject is the first available post title, or the first 40 characters
+of the first post's plain text with an ellipsis when longer.
+
+When a post has no author name, the publication's default author name, URL, and
+image are used as a group. Author URLs or images without an author name are
+ignored.
+
 Every 10 minutes, a scheduled task queries for all the publications and puts
 them on the "send readiness queue."
 

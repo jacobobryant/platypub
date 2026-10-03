@@ -1,8 +1,10 @@
 # Subscribing
 
-The publication page shows a URL for the subscribe form (hosted page, with
-publication ID as a URL path param) and an html snippet for embedding the
-subscribe form. The subscribe form is captcha protected.
+The publication page provides a hosted subscribe URL and an HTML embed snippet.
+Both use the publication's settings. A visitor enters an email address and
+submits the captcha-protected form. The hosted page uses the publication title
+as its HTML page title. The embed snippet resizes its iframe as the form's
+content changes, including after captcha and confirmation updates.
 
 Email addresses are normalized by trimming whitespace from the ends and
 converting to lower case.
@@ -17,7 +19,7 @@ converting to lower case.
   emails.
 
 In all cases, the subscribe form should show the same message afterward (even if
-that message is inaccurate, like "we've sent you a confirmation email") since we
+that message is inaccurate, like "we've sent a confirmation email") since we
 don't want to expose any information about the subscriber's state.
 
 ## Confirmation emails

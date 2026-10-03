@@ -91,7 +91,21 @@
                             "el.srcdoc = DOMPurify.sanitize("
                             "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})")
 
-                       :class ["min-h-96 w-full"]}]
+                       :data-on:load
+                       (str "el._previewObserver?.disconnect(); "
+                            "const resize = () => { "
+                            "el.style.height = '0px'; "
+                            "el.style.height = Math.max(384, "
+                            "el.contentDocument.body.scrollHeight, "
+                            "el.contentDocument.documentElement.scrollHeight) "
+                            "+ 'px' }; "
+                            "resize(); "
+                            "el._previewObserver = new ResizeObserver(resize); "
+                            "el._previewObserver.observe("
+                            "el.contentDocument.body)")
+
+                       :sandbox "allow-same-origin"
+                       :class ["block w-full border-0"]}]
              [:div
               {:class ["flex justify-end gap-2 border-t border-border p-5"]}
               [:button {:type "button"
@@ -123,6 +137,8 @@
       :publication/title
       [:? :publication/address]
       [:? :publication/intro]
+      [:? :publication/email-style]
+      [:? :publication/site-url]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
       [:? :publication/default-author-url]
@@ -201,6 +217,8 @@
       :publication/title
       [:? :publication/address]
       [:? :publication/intro]
+      [:? :publication/email-style]
+      [:? :publication/site-url]
       [:? :publication/banner-image-url]
       [:? :publication/default-author-name]
       [:? :publication/default-author-url]

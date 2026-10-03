@@ -39,12 +39,13 @@
                    lang
                    image
                    icon
-                   init-datastar]}
+                   init-datastar
+                   embed]}
         (merge default-page-opts opts)]
     (html-response
      [chassis/doctype-html5
       [:html
-       {:lang lang, :class ["min-h-full h-auto"]}
+       {:lang lang, :class (when-not embed ["min-h-full h-auto"])}
        [:head
         [:meta {:charset "utf-8"}]
         [:meta
@@ -84,7 +85,8 @@
          {:type "module", :src datastar-script-url}]]
        [:body
         (merge
-         {:class ["absolute min-h-full w-full flex flex-col"]}
+         {:class (if embed ["w-full"]
+                     ["absolute min-h-full w-full flex flex-col"])}
          (when init-datastar (biff.datastar/init-opts)))
         contents]]])))
 

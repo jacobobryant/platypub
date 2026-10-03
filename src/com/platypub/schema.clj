@@ -52,8 +52,18 @@
       [:map
        [:publication/title :string]
        [:publication/address ? :string]
+       [:publication/archive-url ? :string]
        [:publication/description ? :string]
+       [:publication/hide-form-title ? :boolean]
+       [:publication/email-style ? [:enum
+                                    :publication.email-style/card
+                                    :publication.email-style/letter]]
+       [:publication/form-placeholder ? :string]
+       [:publication/form-style ? [:enum
+                                   :publication.form-style/rectangle
+                                   :publication.form-style/pill]]
        [:publication/intro ? :string]
+       [:publication/site-url ? :string]
        [:publication/banner-image-url ? :string]
        [:publication/default-author-name ? :string]
        [:publication/default-author-url ? :string]
@@ -133,8 +143,18 @@
    ;; publications initialize it to "", and send workflows require it to be
    ;; non-blank.
    :publication/address                  (text)
+   :publication/archive-url              (text)
    :publication/description              (text)
+   :publication/hide-form-title          (bool)
+   :publication/email-style              (enum
+                                          {0 :publication.email-style/card
+                                           1 :publication.email-style/letter})
+   :publication/form-placeholder         (text)
+   :publication/form-style               (enum
+                                          {0 :publication.form-style/rectangle
+                                           1 :publication.form-style/pill})
    :publication/intro                    (text)
+   :publication/site-url                 (text)
    :publication/banner-image-url         (text)
    :publication/default-author-name      (text)
    :publication/default-author-url       (text)
@@ -213,6 +233,7 @@
    :publication/feed-id-updated-at
    :publication/title
    :publication/address
+   :publication/archive-url
    :publication/padding-color
    :publication/background-color
    :publication/text-color
@@ -221,7 +242,12 @@
    :publication/require-confirmation
    :publication/automatic-send-threshold
    :publication/description
+   :publication/hide-form-title
+   :publication/email-style
+   :publication/form-placeholder
+   :publication/form-style
    :publication/intro
+   :publication/site-url
    :publication/banner-image-url
    :publication/default-author-name
    :publication/default-author-url

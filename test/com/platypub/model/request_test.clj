@@ -238,6 +238,9 @@
 
             :request/publication-settings
             {:publication/title                "Title"
+             :publication/form-style           :publication.form-style/pill
+             :publication/email-style          :publication.email-style/letter
+             :publication/hide-form-title      false
              :publication/automatic-sending    true
              :publication/require-confirmation false}}
            (resolve-resolver
@@ -245,6 +248,8 @@
             {:biff.datastar/signals
              {:request/feed-url                 "https://example.com/feed"
               :publication/title                "Title"
+              :publication/form-style           "pill"
+              :publication/email-style          "letter"
               :publication/automatic-sending    "true"
               :publication/require-confirmation false}})))))
 

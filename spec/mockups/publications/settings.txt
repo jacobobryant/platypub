@@ -31,14 +31,24 @@ even if it hasn't been saved yet. The previews are rendered using the same code
 that renders the actual subscribe form/emails, though that code can accept a
 flag saying it's in "preview mode" if needed.
 
-In the subscribe form preview, the email input form is not be editable, and
+In the subscribe form preview, the email input is not editable, and
 the captcha widget is not included.
 
-Previews are rendered with DOMPurify.
+Previews are rendered with DOMPurify in script-disabled iframes. The subscribe
+form preview loads the application stylesheet. Preview frames grow to their content height so long emails remain visible.
+Email previews use three paragraphs of sample content per post; multi-post
+previews show the shortened excerpts.
 
 Notes on settings form fields:
 
 - `address` is a single-line text input.
+- `archive URL` is an optional URL input. If set, it appears as the Archive
+  link on the subscribe form.
+- `form style` selects rectangle or pill; `form placeholder` sets the email
+  input's placeholder text; `hide form title` removes the heading while leaving
+  the description visible.
+- `email style` selects card (default) or letter. `website URL` links the
+  header image in styled emails. Multi-post emails always use Card.
 
 `Archive publication` opens a confirmation modal. After confirming, the user is
 redirected back to the publication list page.

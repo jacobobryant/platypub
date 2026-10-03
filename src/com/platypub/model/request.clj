@@ -89,8 +89,13 @@
 (def settings-fields
   [:publication/title
    :publication/address
+   :publication/archive-url
    :publication/description
+   :publication/email-style
+   :publication/form-placeholder
+   :publication/form-style
    :publication/intro
+   :publication/site-url
    :publication/banner-image-url
    :publication/default-author-name
    :publication/default-author-url
@@ -133,7 +138,19 @@
                   (when-let [value (request/value ctx field)]
                     [field value])))
           settings-fields)
-    {:publication/automatic-sending
+    {:publication/form-style
+     (case (request/text (request/value ctx :publication/form-style))
+       "pill" :publication.form-style/pill
+       :publication.form-style/rectangle)}
+    {:publication/email-style
+     (case (request/text (request/value ctx :publication/email-style))
+       "card" :publication.email-style/card
+       "letter" :publication.email-style/letter
+       :publication.email-style/card)}
+    {:publication/hide-form-title
+     (boolean-value (request/value ctx :publication/hide-form-title))
+
+     :publication/automatic-sending
      (boolean-value (request/value ctx :publication/automatic-sending))
 
      :publication/require-confirmation
@@ -201,7 +218,13 @@
      [:publication/id
       :publication/title
       [:? :publication/description]
+      [:? :publication/hide-form-title]
+      [:? :publication/form-placeholder]
+      [:? :publication/form-style]
+      [:? :publication/archive-url]
       [:? :publication/intro]
+      [:? :publication/email-style]
+      [:? :publication/site-url]
       [:? :publication/banner-image-url]
       :publication/padding-color
       :publication/background-color
@@ -451,8 +474,13 @@
             {:request/publication-settings
              [:publication/title
               [:? :publication/address]
+              [:? :publication/archive-url]
               [:? :publication/description]
+              [:? :publication/form-placeholder]
+              [:? :publication/form-style]
               [:? :publication/intro]
+              [:? :publication/email-style]
+              [:? :publication/site-url]
               [:? :publication/banner-image-url]
               [:? :publication/default-author-name]
               [:? :publication/default-author-url]
