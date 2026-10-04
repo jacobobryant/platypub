@@ -357,9 +357,9 @@
      :biff.fx/seq
      (mapv (fn [{:keys [content-id data]}]
              {:_content [:platypub.fx/put-object
-                         content-id
-                         (json/generate-string data)
-                         "application/json"]})
+                         {:key          content-id
+                          :value        (json/generate-string data)
+                          :content-type "application/json"}]})
            (:objects result))}))
 
 (defn persist

@@ -19,7 +19,9 @@
   {:input  [:content/id]
    :output [:content/blob]}
   (fn [_ctx content]
-    {:content/blob [:platypub.fx/get-object (:content/id content)]}))
+    {:object [:platypub.fx/get-object (:content/id content)]})
+  (fn [_ctx {:keys [object]}]
+    {:content/blob (:body object)}))
 
 (defresolver values
   {:input  [:content/blob]

@@ -156,9 +156,10 @@
           (write {:platypub/cdn-url-template "https://cdn.example/%s"}
                  prepared)]
       (is (= [:platypub.fx/put-object
-              (str object-id ".png")
-              (get-in prepared [:_upload 2])
-              "image/png"]
+              {:key          (str object-id ".png")
+               :value        "/tmp/image.png"
+               :content-type "image/png"
+               :headers      {"x-amz-acl" "public-read"}}]
              (:_upload prepared)))
       (is (= :biff.sqlite.fx/execute (get-in result [:_write 0])))
       (is (= (str "https://cdn.example/" object-id ".png")

@@ -391,8 +391,13 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByLabel('Intro').fill('A short introduction');
     await page.getByLabel('Default author name').fill('Fixture Editor');
     await page.getByLabel('Default author URL').fill('https://example.test/editor');
-    await page.getByLabel('Padding color').fill('#f0f1f2');
+    const paddingPicker = page.getByLabel('Padding color');
+    const paddingHex = paddingPicker.locator('..').locator('input[type=text]');
+    await paddingHex.fill('#f0f1f2');
+    await expect(paddingPicker).toHaveValue('#f0f1f2');
     await page.getByLabel('Background color').fill('#fafafa');
+    await expect(page.getByLabel('Background color').locator('..').locator('input[type=text]'))
+      .toHaveValue('#fafafa');
     await page.getByLabel('Text color').fill('#101112');
     await page.getByLabel('Primary color').fill('#123456');
     await page.getByLabel('Filter tag').fill('include-me');
@@ -421,6 +426,7 @@ test.describe.serial('Platypub user flows', () => {
 
     await page.getByRole('link', { name: 'Settings' }).click();
     await settle(page);
+    await expect(paddingHex).toHaveValue('#f0f1f2');
     await expect(page.getByLabel('Hide form title')).toBeChecked();
     await expect(page.getByLabel('Default author URL')).toHaveValue('https://example.test/editor');
     await expect(page.getByLabel('Welcome HTML')).toHaveValue('<strong>Welcome aboard.</strong>');

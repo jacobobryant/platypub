@@ -290,9 +290,9 @@
                     :rendered    content}
 
        :_content [:platypub.fx/put-object
-                  content-id
-                  (json/generate-string stored-content)
-                  "application/json"]}))
+                  {:key          content-id
+                   :value        (json/generate-string stored-content)
+                   :content-type "application/json"}]}))
 
   (fn [_ctx {:keys [write-data]}]
     (let [{:keys [now tab-id result publication posts row-ids send-id

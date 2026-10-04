@@ -245,16 +245,36 @@
 
                :class ["mt-1 block w-full rounded border p-2"]}]]
             (for [[field label input-type] setting-fields]
-              [:label
-               label
-               [:input
-                {:data-bind (datastar/signal-name field),
-                 :name      (datastar/signal-name field),
-                 :type      input-type,
-
-                 :class (if (= input-type "color")
-                          ["mt-1 block h-12 w-full rounded border p-1"]
-                          ["mt-1 block w-full rounded border p-2"])}]])
+              (let [signal (datastar/signal-name field)]
+                (if (= input-type "color")
+                  (let [label-id  (str signal "-label")
+                        picker-id (str signal "-picker")]
+                    [:div
+                     [:label {:id label-id :for picker-id} label]
+                     [:div {:class ["mt-1 flex items-center gap-2"]}
+                      [:input {:id        picker-id
+                               :data-bind signal
+                               :name      signal
+                               :type      "color"
+                               :class     ["h-12 w-20 rounded border p-1"]}]
+                      [:input {:data-bind        signal
+                               :type             "text"
+                               :aria-label       "Hex value"
+                               :aria-describedby label-id
+                               :placeholder      "#RRGGBB"
+                               :pattern          "#[0-9a-fA-F]{6}"
+                               :maxlength        7
+                               :required         true
+                               :spellcheck       false
+                               :class            ["h-12 w-32 rounded border"
+                                                  "p-2 font-mono"]}]]])
+                  [:label
+                   label
+                   [:input {:data-bind signal
+                            :name      signal
+                            :type      input-type
+                            :class     ["mt-1 block w-full rounded border"
+                                        "p-2"]}]])))
             [:label
              {:class ["flex gap-2"]}
              [:input
@@ -306,10 +326,12 @@
               (fn [[kind label]]
                 [:button
                  {:type "button"
+
                   :data-on:click
                   (str "@post('"
                        (preview-path (:publication/id publication) kind)
                        "')")
+
                   :class ["rounded border border-border px-4 py-2"
                           "text-primary hover:bg-background"]}
                  label])
@@ -722,9 +744,10 @@
            :field       field
            :object-key  object-key
            :_upload     [:platypub.fx/put-object
-                         object-key
-                         (:tempfile upload)
-                         type]})
+                         {:key          object-key
+                          :value        (:tempfile upload)
+                          :content-type type
+                          :headers      {"x-amz-acl" "public-read"}}]})
         {:biff.fx/return {:status 422}})))
 
   (fn [{:keys [platypub/cdn-url-template]}

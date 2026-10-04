@@ -129,10 +129,11 @@
                                       content)]
       {:biff.fx/seq
        [{:_content [:platypub.fx/put-object
-                    content-id
-                    (json/generate-string
-                     {:html (:send/html content) :text (:send/text content)})
-                    "application/json"]}
+                    {:key          content-id
+                     :value        (json/generate-string
+                                    {:html (:send/html content)
+                                     :text (:send/text content)})
+                     :content-type "application/json"}]}
         {:_write (:_write send)}
         {:_submit [:biff.background.fx/submit-jobs
                    :platypub/send

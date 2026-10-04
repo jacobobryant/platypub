@@ -10,11 +10,20 @@
                   {:platypub/local-minio-enabled true
                    :path-params                  {:object-key "image.png"}})
           body   (byte-array [1 2 3])]
-      (is (= [:platypub.fx/get-object "image.png"] (:body loaded)))
+      (is (= [:platypub.fx/get-object "image.png"]
+             (:object loaded)))
       (is (= {:status  200
               :headers {"Content-Type" "image/png"
 
                         "Cache-Control"
                         "public, max-age=31536000, immutable"}
               :body    body}
-             (respond {} (assoc loaded :body body)))))))
+             (respond {} (assoc loaded :object
+                                {:headers {"x-amz-meta-platypub-access"
+                                           "public-read"}
+                                 :body    body}))))
+      (is (= {:status 403}
+             (respond {} (assoc loaded :object {:headers {} :body body}))))
+      (is (= {:status 404}
+             (respond {} (assoc loaded :object
+                                {:headers {} :body nil})))))))

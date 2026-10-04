@@ -1,5 +1,6 @@
 (ns com.platypub.fx
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log])
   (:import [io.minio BucketExistsArgs GetObjectArgs MakeBucketArgs MinioClient
             PutObjectArgs]
@@ -70,38 +71,60 @@
                      (.bucket bucket)
                      .build))))
 
+(defn- put-object-args
+  [bucket {:keys [key content-type headers]} data local-minio?]
+  (let [public? (= "public-read" (get headers "x-amz-acl"))]
+    (-> (cond-> (-> (PutObjectArgs/builder)
+                    (.bucket bucket)
+                    (.object (str key))
+                    (.contentType
+                     (or content-type "application/octet-stream"))
+                    (.stream (ByteArrayInputStream. data) (alength data) -1))
+          (seq headers) (.headers headers)
+        ;; MinIO accepts the ACL header but does not enforce object ACLs.
+        ;; Keep a marker so the mock CDN can deny private objects.
+          (and public? local-minio?)
+          (.userMetadata {"platypub-access" "public-read"}))
+        .build)))
+
 (defn put-object
-  [ctx object-key value content-type]
+  [ctx {:keys [key value] :as opts}]
   (let [client (object-store-client ctx)
         bucket (:platypub.object-store/bucket ctx)
         data   (object-bytes value)]
     (try
       (ensure-bucket client bucket)
       (.putObject client
-                  (-> (PutObjectArgs/builder)
-                      (.bucket bucket)
-                      (.object (str object-key))
-                      (.contentType
-                       (or content-type "application/octet-stream"))
-                      (.stream (ByteArrayInputStream. data) (alength data) -1)
-                      .build))
+                  (put-object-args bucket opts data
+                                   (:platypub/local-minio-enabled ctx)))
       (catch ErrorResponseException e
         (throw (ex-info
                 (str "Object upload failed: " (.code (.errorResponse e))
                      " (HTTP " (.code (.response e)) ")")
-                {:bucket bucket :object-key (str object-key)}
+                {:bucket bucket :object-key (str key)}
                 e))))
-    object-key))
+    key))
 
 (defn get-object
   [ctx object-key]
-  (with-open [input (.getObject
-                     (object-store-client ctx)
-                     (-> (GetObjectArgs/builder)
-                         (.bucket (:platypub.object-store/bucket ctx))
-                         (.object (str object-key))
-                         .build))]
-    (.readAllBytes input)))
+  (try
+    (with-open [input (.getObject
+                       (object-store-client ctx)
+                       (-> (GetObjectArgs/builder)
+                           (.bucket (:platypub.object-store/bucket ctx))
+                           (.object (str object-key))
+                           .build))]
+      (let [headers (.headers input)]
+        {:headers (into {}
+                        (map (fn [name]
+                               [(str/lower-case name) (.get headers name)]))
+                        (.names headers))
+         :body    (.readAllBytes input)}))
+    (catch ErrorResponseException e
+      (if (#{"NoSuchKey" "NoSuchObject" "NoSuchBucket"}
+           (.code (.errorResponse e)))
+        {:headers {} :body nil}
+        (throw e)))))
 
 (defn reset-atom
   [_ctx state value]
