@@ -183,7 +183,7 @@
 
 (defpipeline create-publication
   [:biff.graph.fx/query
-   [{:request/user [:user/id]}
+   [{:request/user [:user/id :user/email]}
     {:request/new-publication
      [:publication/url [:? :publication/feed-url]]}
     {:request/tab
@@ -194,6 +194,7 @@
    [(fn [{:keys [biff.datastar/tab-id]} result]
       {:url  (get-in result [:request/new-publication :publication/url])
        :data {:user-id     (get-in result [:request/user :user/id])
+              :user-email  (get-in result [:request/user :user/email])
               :feed-choice (get-in result
                                    [:request/new-publication
                                     :publication/feed-url])
@@ -248,6 +249,7 @@
                {:publication/id                       publication-id
                 :publication/created-at               now
                 :publication/user-id                  user-id
+                :publication/reply-to                 (:user-email data)
                 :publication/feed-id                  (:feed/id feed)
                 :publication/feed-id-updated-at       now
                 :publication/automatic-send-threshold now

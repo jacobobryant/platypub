@@ -33,6 +33,7 @@ settings after creating it:
 - automatic sending
 - require confirmation
 - title, description, intro, optional archive URL and website URL
+- reply-to email address (initially the owner's email address)
 - form style, placeholder, and optional hidden form title
 - email style
 - banner image

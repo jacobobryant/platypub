@@ -10,8 +10,9 @@ ID. A post without a URL uses its full content rather than an excerpt.
 
 The From address comes from the email provider or an environment setting. The
 From name and Reply-To name are the publication title, and the Reply-To address
-is the owner's email. The subject is the first available post title, or the first 40 characters
-of the first post's plain text with an ellipsis when longer.
+is the publication's reply-to email setting. That setting defaults to the
+owner's email address. The subject is the first available post title, or the
+first 40 characters of the first post's plain text with an ellipsis when longer.
 
 When a post has no author name, the publication's default author name, URL, and
 image are used as a group. Author URLs or images without an author name are

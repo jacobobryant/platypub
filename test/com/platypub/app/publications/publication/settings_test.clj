@@ -7,6 +7,7 @@
   {:publication/id                   (random-uuid)
    :publication/feed-id              (random-uuid)
    :publication/title                "News"
+   :publication/reply-to-address     "owner@example.com"
    :publication/address              "123 Main St"
    :publication/padding-color        "#fff"
    :publication/background-color     "#fff"
@@ -17,6 +18,7 @@
 
 (def request-settings
   {:publication/title                    " Updated news "
+   :publication/reply-to                 " replies@example.com "
    :publication/address                  " 123 Main St\nSuite 4 "
    :publication/archive-url              " https://example.com/archive/ "
    :publication/description              " Description "
@@ -194,6 +196,8 @@
     (is (= {:biff.fx/return {:status 404}} (save {} {})))
     (let [saved (save {:biff.fx/now now} result)]
       (is (= "Updated news" (get-in saved [:set-values :publication/title])))
+      (is (= "replies@example.com"
+             (get-in saved [:set-values :publication/reply-to])))
       (is (= "123 Main St Suite 4"
              (get-in saved [:set-values :publication/address])))
       (is (= "https://example.com/archive/"

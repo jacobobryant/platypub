@@ -136,7 +136,8 @@
         (state
          {:biff.fx/now              now
           :biff.fx/random-uuid7-seq [publication-id]}
-         {:data             {:user-id user-id}
+         {:data             {:user-id    user-id
+                             :user-email "owner@example.com"}
           :feed             {:feed/id     1
                              :feed/url    "https://example.com/feed"
                              :description "Description"
@@ -150,5 +151,7 @@
         row (some :values (get-in result [:_write 1]))]
     (is (= "Description"
            (:publication/description (first row))))
+    (is (= "owner@example.com"
+           (:publication/reply-to (first row))))
     (is (= "Author"
            (:publication/default-author-name (first row))))))

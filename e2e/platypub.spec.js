@@ -386,6 +386,8 @@ test.describe.serial('Platypub user flows', () => {
     await expect(authorForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
 
     await page.getByLabel('Title', { exact: true }).fill('Updated Gazette');
+    await expect(page.getByLabel('Reply-to email')).toHaveValue(adminEmail);
+    await page.getByLabel('Reply-to email').fill('replies@example.test');
     await page.getByLabel('Address').fill('123 Test Street, Test City');
     await page.getByLabel('Description').fill('Updated publication description');
     await page.getByLabel('Intro').fill('A short introduction');
@@ -429,6 +431,7 @@ test.describe.serial('Platypub user flows', () => {
     await expect(paddingHex).toHaveValue('#f0f1f2');
     await expect(page.getByLabel('Hide form title')).toBeChecked();
     await expect(page.getByLabel('Default author URL')).toHaveValue('https://example.test/editor');
+    await expect(page.getByLabel('Reply-to email')).toHaveValue('replies@example.test');
     await expect(page.getByLabel('Welcome HTML')).toHaveValue('<strong>Welcome aboard.</strong>');
     await page.getByLabel('Background color').fill('#f0f1f2');
     await page.getByRole('button', { name: 'Preview email (one post)' }).click();
@@ -483,12 +486,20 @@ test.describe.serial('Platypub user flows', () => {
       .toBeHidden();
 
     const confirmation = await latestEmail(request, confirmedEmail, 'Confirm your subscription');
+    expect(confirmation.subject).toBe('Confirm your subscription');
+    expect(confirmation.from.name).toBe('Updated Gazette');
+    expect(confirmation.reply_to).toEqual({
+      email: 'replies@example.test', name: 'Updated Gazette',
+    });
     const confirmationUrl = confirmation.text.match(/https?:\/\/\S+\/confirm\/\S+/)?.[0];
     expect(confirmationUrl).toBeTruthy();
     await page.goto(confirmationUrl);
     await expect(page.getByRole('heading', { name: 'Subscription confirmed' })).toBeVisible();
 
-    const welcome = await latestEmail(request, confirmedEmail, 'Welcome to Updated Gazette');
+    const welcome = await latestEmail(request, confirmedEmail, 'Welcome');
+    expect(welcome.subject).toBe('Welcome');
+    expect(welcome.from.name).toBe('Updated Gazette');
+    expect(welcome.reply_to.email).toBe('replies@example.test');
     expect(welcome.html).toContain('<strong>Welcome aboard.</strong>');
   });
 
@@ -499,7 +510,10 @@ test.describe.serial('Platypub user flows', () => {
     await expect(page.locator('.cf-turnstile, .h-captcha')).toHaveCount(0);
 
     await submitSubscription(page, renderingPublicationPath, `  ${immediateEmail.toUpperCase()}  `);
-    const welcome = await latestEmail(request, immediateEmail, 'Welcome to Rendering Fixture');
+    const welcome = await latestEmail(request, immediateEmail, 'Welcome');
+    expect(welcome.subject).toBe('Welcome');
+    expect(welcome.from.name).toBe('Rendering Fixture');
+    expect(welcome.reply_to.email).toBe(adminEmail);
     expect(welcome.text).toContain('Thanks for subscribing.');
 
     const before = (await emails(request)).filter((message) =>
@@ -694,7 +708,7 @@ test.describe.serial('Platypub user flows', () => {
 
     const newsletter = await latestEmail(request, deliveryEmail, 'JSON post');
     expect(newsletter.from.name).toBe('Updated Gazette');
-    expect(newsletter.reply_to.email).toBe(adminEmail);
+    expect(newsletter.reply_to.email).toBe('replies@example.test');
     expect(newsletter.html).toContain('{{unsubscribe_url}}');
     expect(newsletter.html).toContain('max-width:596px');
     expect(newsletter.html).toContain('A short introduction');
@@ -738,7 +752,7 @@ test.describe.serial('Platypub user flows', () => {
     expect(confirmationUrl).toBeTruthy();
     await page.goto(confirmationUrl);
     await expect(page.getByRole('heading', { name: 'Subscription confirmed' })).toBeVisible();
-    await latestEmail(request, deliveryEmail, 'Welcome to Updated Gazette');
+    await latestEmail(request, deliveryEmail, 'Welcome');
 
     await page.goto(`${publicationPath}/settings`);
     await settle(page);

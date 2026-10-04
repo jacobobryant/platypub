@@ -52,6 +52,8 @@
         publication
         {:publication/id                   (random-uuid)
          :publication/title                "News"
+         :publication/from-name            "News"
+         :publication/reply-to-address     "replies@example.com"
          :publication/require-confirmation true
          :publication/welcome-html         "<p>Welcome</p>"}]
     (testing "missing publication and invalid email stop before effects"
@@ -179,6 +181,7 @@
         (let [confirmation
               (respond {:biff.fx/now              now
                         :biff.fx/random-uuid7-seq uuids
+                        :mailersend/api-key       (delay "secret")
                         :platypub/base-url        "https://platypub.test"}
                        {:publication publication
                         :email       "person@example.com"
@@ -192,7 +195,8 @@
 
               welcome
               (respond {:biff.fx/now              now
-                        :biff.fx/random-uuid7-seq uuids}
+                        :biff.fx/random-uuid7-seq uuids
+                        :mailersend/api-key       (delay "secret")}
                        {:publication publication
                         :email       "person@example.com"
 
@@ -220,7 +224,24 @@
           (is (= :biff.sqlite.fx/execute
                  (get-in confirmation [:biff.fx/seq 0 :_write 0])))
           (is (= 200 (get-in confirmation [:biff.fx/return :status])))
+          (is (= "Confirm your subscription"
+                 (get-in confirmation
+                         [:biff.fx/seq 1 :_email 1 :form-params :subject])))
+          (is (= "News"
+                 (get-in confirmation
+                         [:biff.fx/seq 1 :_email 1 :form-params :from :name])))
+          (is (= "replies@example.com"
+                 (get-in confirmation
+                         [:biff.fx/seq 1 :_email 1 :form-params
+                          :reply_to :email])))
           (is (= 1 (count (:biff.fx/seq welcome))))
+          (is (= "Welcome"
+                 (get-in welcome
+                         [:biff.fx/seq 0 :_email 1 :form-params :subject])))
+          (is (= "replies@example.com"
+                 (get-in welcome
+                         [:biff.fx/seq 0 :_email 1 :form-params
+                          :reply_to :email])))
           (is (nil? (:biff.fx/seq no-email))))))))
 
 (deftest verified-captcha-reaches-subscriber-write-test

@@ -6,7 +6,8 @@
 
 (defn- send-statements
   [now ids publication posts content]
-  (let [[send-id content-id & post-ids] ids]
+  (let [[send-id content-id & post-ids]        ids
+        {:publication/keys [reply-to-address]} publication]
     {:send-id send-id
      :_write  [:biff.sqlite.fx/execute-tx
                (into [{:insert-into :send
@@ -21,11 +22,10 @@
                                       :send/status [:lift :send.status/pending]
 
                                       :send/from-name
-                                      (:publication/title publication)
+                                      (:publication/from-name publication)
 
                                       :send/reply-to
-                                      (get-in publication
-                                              [:publication/user :user/email])
+                                      reply-to-address
 
                                       :send/subject
                                       (:send/subject content)
@@ -51,6 +51,7 @@
                      {:publication/id publication-id}
                      [:publication/id
                       :publication/title
+                      [:? :publication/reply-to]
                       [:? :publication/address]
                       [:? :publication/intro]
                       [:? :publication/email-style]
@@ -67,7 +68,8 @@
                       [:? :publication/remove-tag]
                       [:? :publication/automatic-send-threshold]
                       :publication/active-subscriber-count
-                      {:publication/user [:user/email]}
+                      :publication/from-name
+                      :publication/reply-to-address
                       {:publication/sends
                        [:send/id :send/status :send/started-at]}]]}))
 

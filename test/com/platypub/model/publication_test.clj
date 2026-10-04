@@ -1,8 +1,24 @@
 (ns com.platypub.model.publication-test
   (:require [clojure.test :refer [deftest is]]
+            [com.biffweb.graph :as graph]
             [com.platypub.model.publication :as publication]
             [com.platypub.test-helpers :as helpers]
             [tick.core :as tick]))
+
+(deftest publication-sender-resolver
+  (let [ctx   (graph/new-ctx [publication/publication-sender])
+        input {:publication/title "News"
+               :publication/user  {:user/email "owner@example.com"}}
+        query [:publication/from-name :publication/reply-to-address]]
+    (is (= {:publication/from-name        "News"
+            :publication/reply-to-address "owner@example.com"}
+           (graph/query ctx input query)))
+    (is (= {:publication/from-name        "News"
+            :publication/reply-to-address "replies@example.com"}
+           (graph/query ctx
+                        (assoc input :publication/reply-to
+                               "replies@example.com")
+                        query)))))
 
 (deftest collection-resolvers-test
   (is (= {:publication/sends [{:send/id 1}]}

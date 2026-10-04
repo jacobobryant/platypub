@@ -82,6 +82,7 @@ CREATE TABLE publication (
   hide_form_title INT,
   intro TEXT,
   remove_tag TEXT,
+  reply_to TEXT,
   site_url TEXT,
   FOREIGN KEY(feed_id) REFERENCES feed(id),
   FOREIGN KEY(user_id) REFERENCES user(id)

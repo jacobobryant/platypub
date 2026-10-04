@@ -3,6 +3,17 @@
             [com.biffweb.graph :refer [defresolver]]
             [tick.core :as tick]))
 
+(defresolver publication-sender
+  {:input  [:publication/title
+            [:? :publication/reply-to]
+            {:publication/user [:user/email]}]
+   :output [:publication/from-name :publication/reply-to-address]}
+  [_ctx publication]
+  {:publication/from-name        (:publication/title publication)
+   :publication/reply-to-address (or (:publication/reply-to publication)
+                                     (get-in publication
+                                             [:publication/user :user/email]))})
+
 (defn- visible-posts-query
   [publication-id select]
   {:select-distinct select
@@ -121,7 +132,8 @@
 
 (def module
   {:biff.graph/resolvers
-   [sends
+   [publication-sender
+    sends
     active-subscriber-count
     subscribers
     visible-posts

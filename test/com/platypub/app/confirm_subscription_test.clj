@@ -16,8 +16,10 @@
          :subscriber/confirmation-token-active true}
 
         publication
-        {:publication/title        "News"
-         :publication/welcome-html "<p>Welcome</p>"}
+        {:publication/title            "News"
+         :publication/from-name        "News"
+         :publication/reply-to-address "replies@example.com"
+         :publication/welcome-html     "<p>Welcome</p>"}
 
         token (byte-array [1 2 3])]
     (is (contains? (lookup {} {}) :biff.fx/return))
@@ -50,6 +52,12 @@
            {:subscriber (assoc subscriber :subscriber/publication publication)
             :active     {:subscriber/active true}})]
       (is (= :biff.fx/http (get-in result [:_email 0])))
+      (is (= "Welcome"
+             (get-in result [:_email 1 :form-params :subject])))
+      (is (= "News"
+             (get-in result [:_email 1 :form-params :from :name])))
+      (is (= "replies@example.com"
+             (get-in result [:_email 1 :form-params :reply_to :email])))
       (is (= 200 (:status (:biff.fx/return result)))))
     (let [result (send-welcome
                   {}

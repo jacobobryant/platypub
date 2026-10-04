@@ -53,6 +53,7 @@
      [:settings/values
       [:map
        [:publication/title :string]
+       [:publication/reply-to ? :string]
        [:publication/address ? :string]
        [:publication/archive-url ? :string]
        [:publication/description ? :string]
@@ -135,6 +136,7 @@
    :publication/feed-id                  (ref* :feed/id :required :index)
    :publication/feed-id-updated-at       (inst :required)
    :publication/title                    (text :required)
+   :publication/reply-to                 (text)
    :publication/padding-color            (text :required)
    :publication/background-color         (text :required)
    :publication/text-color               (text :required)
@@ -234,6 +236,7 @@
   [:publication/feed-id
    :publication/feed-id-updated-at
    :publication/title
+   :publication/reply-to
    :publication/address
    :publication/archive-url
    :publication/padding-color

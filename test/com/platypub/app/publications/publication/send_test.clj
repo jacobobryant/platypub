@@ -33,10 +33,11 @@
 (deftest preview-send-state-test
   (let [[load-content write-preview] (send/preview-send)
 
-        publication {:publication/id      (random-uuid)
-                     :publication/title   "Frozen publication"
-                     :publication/address "123 Main St"
-                     :publication/user    {:user/email "owner@example.com"}}
+        publication {:publication/id               (random-uuid)
+                     :publication/title            "Frozen publication"
+                     :publication/address          "123 Main St"
+                     :publication/from-name        "Frozen publication"
+                     :publication/reply-to-address "replies@example.com"}
 
         post {:post/id (random-uuid)}
 
@@ -61,7 +62,7 @@
                             :send/html    "<p>Body</p>"}))]
         (is (= :biff.sqlite.fx/execute
                (get-in result [:_preview 0])))
-        (is (= "owner@example.com"
+        (is (= "replies@example.com"
                (get-in result [:_preview 1 :values 0 :tab-state/data
                                1 :tab/send-preview :send/reply-to])))
         (is (= revision
@@ -73,10 +74,13 @@
   (let [[prepare-content store-content create clear-preview submit]
         (send/confirm-send)
 
-        publication {:publication/id      (random-uuid)
-                     :publication/title   "Current name"
-                     :publication/address "123 Main St"
-                     :publication/user    {:user/email "current@example.com"}}
+        publication {:publication/id        (random-uuid)
+                     :publication/title     "Current name"
+                     :publication/address   "123 Main St"
+                     :publication/from-name "Current name"
+
+                     :publication/reply-to-address
+                     "current-replies@example.com"}
 
         post {:post/id (random-uuid)}
 
@@ -119,7 +123,7 @@
              (get-in created [:_write 0])))
       (is (= "Current name"
              (get-in created [:_write 1 0 :values 0 :send/from-name])))
-      (is (= "current@example.com"
+      (is (= "current-replies@example.com"
              (get-in created [:_write 1 0 :values 0 :send/reply-to])))
       (is (= :biff.sqlite.fx/execute
              (get-in cleared [:_clear-preview 0]))))

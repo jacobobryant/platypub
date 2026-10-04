@@ -123,6 +123,7 @@
    [{[:? :request/publication]
      [:publication/id
       :publication/title
+      [:? :publication/reply-to]
       [:? :publication/address]
       [:? :publication/intro]
       [:? :publication/email-style]
@@ -135,7 +136,8 @@
       :publication/background-color
       :publication/text-color
       :publication/primary-color
-      {:publication/user [:user/email]}]}
+      :publication/from-name
+      :publication/reply-to-address]}
     {:request/send-selection [[:? :send/post-ids]]}
     {:request/send-posts
      [:post/id
@@ -191,9 +193,8 @@
            :send/subject   (:send/subject content)
            :send/html      (:send/html content)
            :send/text      (:send/text content)
-           :send/from-name (:publication/title publication)
-           :send/reply-to  (get-in publication
-                                   [:publication/user :user/email])
+           :send/from-name (:publication/from-name publication)
+           :send/reply-to  (:publication/reply-to-address publication)
            :send/post-ids  (mapv :post/id posts)}})]
 
        :biff.fx/return {:status 204}})))
@@ -203,6 +204,7 @@
    [{[:? :request/publication]
      [:publication/id
       :publication/title
+      [:? :publication/reply-to]
       [:? :publication/address]
       [:? :publication/intro]
       [:? :publication/email-style]
@@ -215,7 +217,8 @@
       :publication/background-color
       :publication/text-color
       :publication/primary-color
-      {:publication/user [:user/email]}]}
+      :publication/from-name
+      :publication/reply-to-address]}
     {:request/send-posts
      [:post/id
       [:? :post/url]
@@ -315,12 +318,15 @@
                           :send/started-at     now
                           :send/progress-at    now
                           :send/status         [:lift :send.status/pending]
-                          :send/from-name      (:publication/title publication)
-                          :send/reply-to       (get-in publication
-                                                       [:publication/user
-                                                        :user/email])
-                          :send/subject        (:send/subject rendered)
-                          :send/content-id     content-id
+
+                          :send/from-name
+                          (:publication/from-name publication)
+
+                          :send/reply-to
+                          (:publication/reply-to-address publication)
+
+                          :send/subject    (:send/subject rendered)
+                          :send/content-id content-id
 
                           :send/provenance [:lift :send.provenance/manual]}]}]
          (map (fn [post row-id]

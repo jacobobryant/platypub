@@ -8,8 +8,10 @@
 (def publication
   {:publication/id                       1
    :publication/title                    "Publication"
+   :publication/reply-to                 "replies@example.com"
    :publication/address                  "123 Main St"
-   :publication/user                     {:user/email "owner@example.com"}
+   :publication/from-name                "Publication"
+   :publication/reply-to-address         "replies@example.com"
    :publication/automatic-send-threshold now})
 (def post
   {:post/id      (UUID/fromString "00000000-0000-0000-0000-000000000004")
@@ -32,6 +34,7 @@
              {:publication/id 1}
              [:publication/id
               :publication/title
+              [:? :publication/reply-to]
               [:? :publication/address]
               [:? :publication/intro]
               [:? :publication/email-style]
@@ -48,7 +51,8 @@
               [:? :publication/remove-tag]
               [:? :publication/automatic-send-threshold]
               :publication/active-subscriber-count
-              {:publication/user [:user/email]}
+              :publication/from-name
+              :publication/reply-to-address
               {:publication/sends [:send/id :send/status :send/started-at]}]]}
            (load-publication
             {:biff.background/job {:publication/id 1}})))
@@ -113,7 +117,7 @@
         (is (= :biff.graph.fx/query (get-in rendered [:content 0])))
         (is (= :platypub.fx/put-object
                (get-in effects [0 :_content 0])))
-        (is (= "owner@example.com"
+        (is (= "replies@example.com"
                (get-in effects [1 :_write 1 0 :values 0 :send/reply-to])))
         (is (= :biff.sqlite.fx/execute-tx
                (get-in effects [1 :_write 0])))

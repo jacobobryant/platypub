@@ -48,6 +48,8 @@ previews show the shortened excerpts.
 
 Notes on settings form fields:
 
+- `reply-to email` is an email input initialized to the owner's email address.
+  It controls replies to newsletter, welcome, and confirmation emails.
 - `address` is a single-line text input.
 - `archive URL` is an optional URL input. If set, it appears as the Archive
   link on the subscribe form.

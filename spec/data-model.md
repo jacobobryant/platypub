@@ -28,6 +28,9 @@ Required:
 - `title`. Text used on the subscribe form and as the "From" name on emails.
   When creating a publication, if the feed doesn't have a title, this defaults
   to the feed URL.
+- `reply to`. Email address used for replies to all publication emails.
+  Defaults to the owner's email address. Existing publications without a saved
+  value use the owner's current email address.
 - `padding color`. Color to use for the space around email content and around
   the subscribe form. Default off-white.
 - `background color`. Color to use for the backgrund of email content and the

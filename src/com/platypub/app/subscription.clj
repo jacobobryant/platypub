@@ -89,8 +89,11 @@
    [{[:? :request/subscription-publication]
      [:publication/id
       :publication/title
+      [:? :publication/reply-to]
       :publication/require-confirmation
-      :publication/welcome-html]}
+      :publication/welcome-html
+      :publication/from-name
+      :publication/reply-to-address]}
     {:request/subscription
      [:subscriber/email
       [:? :request/turnstile-token]
@@ -285,25 +288,21 @@
              [:biff.fx/http
               (email/request
                ctx
-               {:to email
-
-                :subject
-                (str "Confirm your subscription to "
-                     (:publication/title publication))
-
-                :text
-                (str "Confirm: "
-                     (:platypub/base-url ctx)
-                     (routes/confirm-subscription (bytes->token token)))
-
-                :html
-                (chassis/html
-                 [:p
-                  [:a
-                   {:href (str (:platypub/base-url ctx)
-                               (routes/confirm-subscription
-                                (bytes->token token)))}
-                   "Confirm subscription"]])})])}])
+               {:from-name (:publication/from-name publication)
+                :reply-to  (:publication/reply-to-address publication)
+                :to        email
+                :subject   "Confirm your subscription"
+                :text      (str "Confirm: "
+                                (:platypub/base-url ctx)
+                                (routes/confirm-subscription
+                                 (bytes->token token)))
+                :html      (chassis/html
+                            [:p
+                             [:a
+                              {:href (str (:platypub/base-url ctx)
+                                          (routes/confirm-subscription
+                                           (bytes->token token)))}
+                              "Confirm subscription"]])})])}])
 
         send-welcome
         (update
@@ -314,12 +313,13 @@
             [:biff.fx/http
              (email/request
               ctx
-              {:to      email
-               :subject (str "Welcome to " (:publication/title publication))
-
-               :text (text/html->text (:publication/welcome-html publication))
-
-               :html (:publication/welcome-html publication)})])})))))
+              {:from-name (:publication/from-name publication)
+               :reply-to  (:publication/reply-to-address publication)
+               :to        email
+               :subject   "Welcome"
+               :text      (text/html->text
+                           (:publication/welcome-html publication))
+               :html      (:publication/welcome-html publication)})])})))))
 
 (def module
   {:biff.ring/base-middleware [wrap-embeddable]

@@ -34,7 +34,11 @@
         :subscriber/email
         :subscriber/confirmation-token-active
         {:subscriber/publication
-         [:publication/title :publication/welcome-html]}]]
+         [:publication/title
+          [:? :publication/reply-to]
+          :publication/welcome-html
+          :publication/from-name
+          :publication/reply-to-address]}]]
       {:biff.fx/return (invalid-response)}))
 
   (fn [{:biff.fx/keys [now]} subscriber]
@@ -64,10 +68,13 @@
          [:biff.fx/http
           (email/request
            ctx
-           {:to      (:subscriber/email subscriber)
-            :subject (str "Welcome to " (:publication/title publication))
-            :text    (text/html->text (:publication/welcome-html publication))
-            :html    (:publication/welcome-html publication)})])
+           {:from-name (:publication/from-name publication)
+            :reply-to  (:publication/reply-to-address publication)
+            :to        (:subscriber/email subscriber)
+            :subject   "Welcome"
+            :text      (text/html->text
+                        (:publication/welcome-html publication))
+            :html      (:publication/welcome-html publication)})])
 
        :biff.fx/return
        (ui/page

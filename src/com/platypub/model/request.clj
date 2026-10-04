@@ -88,6 +88,7 @@
 
 (def settings-fields
   [:publication/title
+   :publication/reply-to
    :publication/address
    :publication/archive-url
    :publication/description
@@ -473,6 +474,7 @@
   {:output [{:request/feed [:feed/url]}
             {:request/publication-settings
              [:publication/title
+              [:? :publication/reply-to]
               [:? :publication/address]
               [:? :publication/archive-url]
               [:? :publication/description]

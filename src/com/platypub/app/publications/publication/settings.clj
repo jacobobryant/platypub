@@ -18,6 +18,7 @@
 
 (def setting-fields
   [[:publication/title "Title" "text"]
+   [:publication/reply-to "Reply-to email" "email"]
    [:publication/address "Address" "text"]
    [:publication/archive-url "Archive URL" "url"]
    [:publication/description "Description" "text"]
@@ -55,6 +56,7 @@
                         [:publication/banner-image-url
                          :publication/default-author-image-url]))
    {:request/feed-url        feed-url
+    :publication/reply-to    (:publication/reply-to-address publication)
     :publication/form-style  (name (or (:publication/form-style publication)
                                        :publication.form-style/rectangle))
     :publication/email-style (name (or (:publication/email-style publication)
@@ -90,6 +92,7 @@
      [:? :settings/html]
      {:settings/values
       [:publication/title
+       [:? :publication/reply-to]
        [:? :publication/address]
        [:? :publication/archive-url]
        [:? :publication/description]
@@ -148,6 +151,8 @@
    [{[:? :request/publication]
      [:publication/id
       :publication/title
+      [:? :publication/reply-to]
+      :publication/reply-to-address
       [:? :publication/address]
       [:? :publication/archive-url]
       [:? :publication/description]
@@ -273,6 +278,7 @@
                    [:input {:data-bind signal
                             :name      signal
                             :type      input-type
+                            :required  (= field :publication/reply-to)
                             :class     ["mt-1 block w-full rounded border"
                                         "p-2"]}]])))
             [:label
@@ -414,6 +420,7 @@
     :request/preview-kind
     {:request/publication-settings
      [:publication/title
+      [:? :publication/reply-to]
       [:? :publication/address]
       [:? :publication/archive-url]
       [:? :publication/description]
@@ -560,10 +567,12 @@
      [:publication/id
       [:? :publication/address]
       [:? :publication/automatic-send-threshold]
+      :publication/reply-to-address
       {:publication/feed [:feed/url]}]}
     {:request/feed [:feed/url]}
     {:request/publication-settings
      [:publication/title
+      [:? :publication/reply-to]
       [:? :publication/address]
       [:? :publication/archive-url]
       [:? :publication/description]
@@ -608,6 +617,10 @@
                    (map (fn [[field _ _]]
                           [field (setting-value field (get settings field))])
                         setting-fields))
+             {:publication/reply-to
+              (or (setting-value :publication/reply-to
+                                 (:publication/reply-to settings))
+                  (:publication/reply-to-address publication))}
              (select-keys settings
                           [:publication/banner-image-url
                            :publication/default-author-image-url])

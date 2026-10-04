@@ -24,6 +24,10 @@ don't want to expose any information about the subscriber's state.
 
 ## Confirmation emails
 
+A confirmation email uses the publication title as its From and Reply-To name,
+and the publication's reply-to email setting as its Reply-To address. Its
+subject is "Confirm your subscription".
+
 A confirmation email is sent when:
 
 - someone successfully submits the signup form
@@ -40,6 +44,9 @@ for 24 hours. If the user clicks the link and the token is still valid,
 `confirmation token` are both cleared.
 
 ## Welcome email
+
+A welcome email uses the same From and Reply-To details. Its subject is
+"Welcome".
 
 A welcome email is sent when someone who was not previously an active subscriber
 becomes an active subscriber, except when an admin imports subscribers. Imported
