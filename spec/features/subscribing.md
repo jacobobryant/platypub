@@ -68,3 +68,5 @@ requests, the unsubscribe is processed immediately.
 For captcha protection, default to cloudflare turnstile, falling back to
 hcaptcha if the user is blocking cloudflare. There is a config option which can
 be set to disable captcha; this flag will be set in dev.
+Only load a provider's widget and script when its site key is configured. If
+only hcaptcha is configured, show it immediately.

@@ -100,15 +100,25 @@
                      "hover:opacity-75"]
                     ["rounded px-4 py-2 text-white shadow"])}
           "Subscribe"]]
-        (when (and (not preview) (not (:biff.auth/skip-captcha ctx)))
+        (when (and (not preview)
+                   (not (:biff.auth/skip-captcha ctx))
+                   (or (not-empty (:biff.auth/turnstile-site-key ctx))
+                       (not-empty (:platypub/hcaptcha-site-key ctx))))
           [:div
-           [:div {:class         "cf-turnstile"
-                  :data-sitekey  (:biff.auth/turnstile-site-key ctx)
-                  :data-callback "platypubTurnstile"}]
-           [:div {:id            "hcaptcha-fallback"
-                  :class         "h-captcha hidden"
-                  :data-sitekey  (:platypub/hcaptcha-site-key ctx)
-                  :data-callback "platypubHcaptcha"}]
+           (when-let [site-key (not-empty
+                                (:biff.auth/turnstile-site-key ctx))]
+             [:div {:class         "cf-turnstile"
+                    :data-sitekey  site-key
+                    :data-callback "platypubTurnstile"}])
+           (when-let [site-key (not-empty
+                                (:platypub/hcaptcha-site-key ctx))]
+             [:div {:id            "hcaptcha-fallback"
+                    :class         (cond-> ["h-captcha"]
+                                     (not-empty
+                                      (:biff.auth/turnstile-site-key ctx))
+                                     (conj "hidden"))
+                    :data-sitekey  site-key
+                    :data-callback "platypubHcaptcha"}])
            [:input {:id        "turnstile-token"          :type "hidden"
                     :data-bind (datastar/signal-name
                                 :request/turnstile-token)}]
@@ -123,16 +133,22 @@
                  "platypubCaptchaToken('turnstile-token',token);};"
                  "window.platypubHcaptcha=function(token){"
                  "platypubCaptchaToken('hcaptcha-token',token);};")]
-           [:script
-            {:src     "https://challenges.cloudflare.com/turnstile/v0/api.js"
-             :async   true
-             :defer   true
-             :onerror (str "document.getElementById('hcaptcha-fallback')"
-                           ".classList.remove('hidden')")}]
-           [:script
-            {:src   "https://js.hcaptcha.com/1/api.js"
-             :async true
-             :defer true}]])
+           (when (not-empty (:biff.auth/turnstile-site-key ctx))
+             [:script
+              (cond-> {:src
+                       "https://challenges.cloudflare.com/turnstile/v0/api.js"
+
+                       :async true
+                       :defer true}
+                (not-empty (:platypub/hcaptcha-site-key ctx))
+                (assoc :onerror
+                       (str "document.getElementById('hcaptcha-fallback')"
+                            ".classList.remove('hidden')")))])
+           (when (not-empty (:platypub/hcaptcha-site-key ctx))
+             [:script
+              {:src   "https://js.hcaptcha.com/1/api.js"
+               :async true
+               :defer true}])])
         (when (or (get-in publication [:publication/feed :feed/url])
                   (:publication/archive-url publication))
           [:div {:class ["text-center"]}

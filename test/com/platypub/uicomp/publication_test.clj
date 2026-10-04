@@ -47,11 +47,41 @@
     (is (not (str/includes? hosted "platypub:resize")))
     (is (str/includes? hosted "flex-[2]"))
     (is (str/includes? html "data-sitekey=\"site\""))
+    (is (not (str/includes? html "js.hcaptcha.com/1/api.js")))
+    (is (not (str/includes? html "hcaptcha-fallback")))
     (is (not (str/includes? (chassis/html (skip-render {}))
                             "cf-turnstile")))
     (is (str/includes? preview "Sign up for News"))
     (is (str/includes? preview "disabled"))
     (is (not (str/includes? preview "cf-turnstile")))))
+
+(deftest captcha-provider-configuration-test
+  (let [publication {:publication/id               (random-uuid)
+                     :publication/title            "News"
+                     :publication/padding-color    "#eee"
+                     :publication/background-color "#fff"
+                     :publication/text-color       "#111"
+                     :publication/primary-color    "#00f"}
+        render-html (fn [ctx]
+                      (let [render
+                            (:publication/ui-subscribe-form
+                             (helpers/resolve-resolver
+                              publication/subscribe-form ctx publication))]
+                        (chassis/html (render {}))))
+        hcaptcha    (render-html {:platypub/hcaptcha-site-key "h-site"})
+        both        (render-html {:biff.auth/turnstile-site-key "t-site"
+                                  :platypub/hcaptcha-site-key   "h-site"})
+        neither     (render-html {})]
+    (is (str/includes? hcaptcha "js.hcaptcha.com/1/api.js"))
+    (is (str/includes? hcaptcha "data-sitekey=\"h-site\""))
+    (is (re-find #"class=\"h-captcha\"" hcaptcha))
+    (is (not (str/includes? hcaptcha "cf-turnstile")))
+    (is (not (str/includes? hcaptcha "turnstile/v0/api.js")))
+    (is (str/includes? both "turnstile/v0/api.js"))
+    (is (str/includes? both "js.hcaptcha.com/1/api.js"))
+    (is (re-find #"class=\"h-captcha hidden\"" both))
+    (is (not (str/includes? neither "turnstile/v0/api.js")))
+    (is (not (str/includes? neither "js.hcaptcha.com/1/api.js")))))
 
 (deftest pill-subscribe-form-test
   (let [publication {:publication/id               (random-uuid)

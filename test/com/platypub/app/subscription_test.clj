@@ -14,7 +14,9 @@
                      :publication/text-color       "#111"
                      :publication/primary-color    "#00f"}
         render      (get (helpers/resolve-resolver
-                          uicomp.publication/subscribe-form {} publication)
+                          uicomp.publication/subscribe-form
+                          {:biff.auth/turnstile-site-key "site"}
+                          publication)
                          :publication/ui-subscribe-form)
         with-form   (assoc publication :publication/ui-subscribe-form render)
         response    (state {}
