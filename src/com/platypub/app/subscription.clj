@@ -165,6 +165,7 @@
   (fn [_ctx {:keys [publication email captcha-valid captcha-provider
                     captcha-response]
              :as   state}]
+    (log/info "captcha response" (pr-str captcha-response))
     (if (or captcha-valid (true? (get-in captcha-response [:body :success])))
       (assoc state
              :existing
