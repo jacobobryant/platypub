@@ -1,8 +1,6 @@
 (ns com.platypub.app.publications.publication.settings-test
   (:require [clojure.test :refer [deftest is]]
             [com.platypub.app.publications.publication.settings :as settings]
-            [com.platypub.test-helpers :as helpers]
-            [com.platypub.uicomp.publication :as uicomp.publication]
             [tick.core :as tick]))
 
 (def publication
@@ -43,87 +41,97 @@
    :publication/require-confirmation     true})
 
 (deftest settings-page-state-test
-  (let [[prepare render] (settings/settings-page)
-        result           {:request/publication
-                          (assoc publication
-                                 :publication/feed {:feed/url "https://feed.example"})}
-        now              (tick/instant "2026-01-01T00:00:00Z")
-        ctx              {:biff.fx/now              now
-                          :biff.fx/random-uuid7-seq (repeatedly random-uuid)}]
-    (is (= {:status 404} (render {} (prepare ctx {}))))
-    (is (= 200 (:status (render {} (prepare ctx result)))))
-    (let [stored      {:publication/id    (:publication/id publication)
-                       :settings/kind     "form"
-                       :settings/revision (random-uuid)
-
-                       :settings/values
-                       {:publication/title       "Unsaved title"
-                        :publication/description "Unsaved description"}}
-          prepared    (prepare ctx (assoc result :request/tab
-                                          {:tab/settings-preview stored}))
-          render-form (:publication/ui-subscribe-form
-                       (helpers/resolve-resolver
-                        uicomp.publication/subscribe-form
-                        {}
-                        (get-in prepared [:preview-form 1])))
-          form-data   {:publication/ui-subscribe-form render-form}
-          response    (render {} (assoc prepared :preview-form form-data))]
-      (is (= [:publication/ui-subscribe-form]
-             (get-in prepared [:preview-form 2])))
-      (is (= 200 (:status response)))
-      (is (re-find #"Sign up for Unsaved title" (:body response)))
-      (is (re-find #"Unsaved description" (:body response)))
-      (is (re-find #"DOMPurify.sanitize" (:body response)))
-      (is (nil? (re-find #"cf-turnstile" (:body response)))))
-    (doseq [kind ["one" "multi"]]
-      (let [stored   {:publication/id    (:publication/id publication)
-                      :settings/kind     kind
-                      :settings/revision (random-uuid)
-                      :settings/values   {:publication/title "Unsaved title"}}
-            prepared (prepare ctx (assoc result :request/tab
-                                         {:tab/settings-preview stored}))]
-        (is (= (if (= kind "one") 1 2)
-               (count (get-in prepared [:preview-email 1 :send/posts]))))
-        (let [post (first (get-in prepared [:preview-email 1 :send/posts]))]
-          (is (= 3 (count (re-seq #"<p>"
-                                 (get-in post [:post/content :content/html])))))
-          (is (= 500 (count (:post/excerpt post)))))
-        (is (= "Unsaved title"
-               (get-in prepared [:preview-email 1 :send/publication
-                                 :publication/title])))
-        (let [rendered (render {}
-                               (assoc prepared :preview-email
-                                      {:send/html "<p>Rendered</p>"}))]
-          (is (re-find #"&lt;p&gt;Rendered&lt;/p&gt;"
-                       (:body rendered))))))))
+  (let [[render] (settings/settings-page)
+        result   {:request/publication
+                  (assoc publication
+                         :publication/feed {:feed/url "https://feed.example"})}
+        stored   {:publication/id  (:publication/id publication)
+                  :settings/kind   "form"
+                  :settings/open   true
+                  :settings/values {:publication/title "Unsaved title"}}
+        loading  (render {} (assoc result :request/tab
+                                   {:tab/settings-preview stored}))
+        ready    (render {} (assoc result :request/tab
+                                   {:tab/settings-preview
+                                    (assoc stored :settings/html
+                                           "<p>Rendered</p>")}))]
+    (is (= {:status 404} (render {} {})))
+    (is (= 200 (:status (render {} result))))
+    (is (re-find #"Preparing preview" (:body loading)))
+    (is (nil? (re-find #"srcdoc=" (:body loading))))
+    (is (re-find #"srcdoc=" (:body ready)))
+    (is (re-find #"&lt;p&gt;Rendered&lt;/p&gt;" (:body ready)))))
 
 (deftest settings-preview-states-test
-  (let [[write]  (settings/settings-preview)
-        tab-id   (random-uuid)
-        revision (random-uuid)
-        ctx      {:biff.datastar/tab-id     tab-id
-                  :biff.fx/random-uuid7-seq [revision]}
-        result   {:request/preview-kind "form"
-                  :request/publication  publication
+  (let [[clear _ _ _ finish] (settings/settings-preview)
+        tab-id               (random-uuid)
+        request-id           (random-uuid)
+        ctx                  {:biff.datastar/tab-id     tab-id
+                              :biff.fx/random-uuid7-seq [request-id]}
+        result               {:request/preview-kind "form"
+                              :request/publication  publication
 
-                  :request/publication-settings
-                  {:publication/title       "Unsaved title"
-                   :publication/description "Unsaved description"}
+                              :request/publication-settings
+                              {:publication/title       "Unsaved title"
+                               :publication/description "Unsaved description"}
 
-                  :request/tab {}}]
-    (is (= {:biff.fx/return {:status 404}} (write ctx {})))
+                              :request/tab
+                              {:tab/settings-preview
+                               {:publication/id  (:publication/id publication)
+                                :settings/kind   "one"
+                                :settings/open   false
+                                :settings/html   "<p>Old</p>"
+                                :settings/values {:publication/title "Old"}}}}]
+    (is (= {:biff.fx/return {:status 404}} (clear ctx {})))
     (is (= {:biff.fx/return {:status 404}}
-           (write ctx (assoc result :request/preview-kind "unknown"))))
+           (clear ctx (assoc result :request/preview-kind "unknown"))))
     (doseq [kind ["form" "one" "multi"]]
-      (let [response (write ctx (assoc result :request/preview-kind kind))
-            stored   (get-in response [:_write 1 :values 0 :tab-state/data
+      (let [response (clear ctx (assoc result :request/preview-kind kind))
+            stored   (get-in response [:_clear 1 :values 0 :tab-state/data
                                        1 :tab/settings-preview])]
-        (is (= {:status 204} (:biff.fx/return response)))
         (is (= (:publication/id publication) (:publication/id stored)))
         (is (= kind (:settings/kind stored)))
-        (is (= revision (:settings/revision stored)))
+        (is (true? (:settings/open stored)))
+        (is (= request-id (:settings/request-id stored)))
+        (is (nil? (:settings/html stored)))
         (is (= "Unsaved title"
-               (get-in stored [:settings/values :publication/title])))))))
+               (get-in stored [:settings/values :publication/title])))))
+    (let [current   {:tab/settings-preview
+                     {:publication/id      (:publication/id publication)
+                      :settings/kind       "one"
+                      :settings/open       true
+                      :settings/request-id request-id
+
+                      :settings/values
+                      {:publication/title "Unsaved title"}}}
+          completed (finish {} {:tab-id     tab-id
+                                :request-id request-id
+                                :html       "<p>New</p>"
+                                :latest-tab [{:tab-state/data current}]})
+          saved     (get-in completed [:_write 1 :values 0 :tab-state/data
+                                       1 :tab/settings-preview])]
+      (is (= "<p>New</p>" (:settings/html saved)))
+      (is (= {:status 204}
+             (finish {} {:tab-id     tab-id
+                         :request-id request-id
+                         :html       "<p>Stale</p>"
+                         :latest-tab [{:tab-state/data
+                                       (assoc-in current
+                                                 [:tab/settings-preview
+                                                  :settings/open]
+                                                 false)}]}))))))
+
+(deftest close-settings-preview-test
+  (let [[close]  (settings/close-settings-preview)
+        preview  {:publication/id  (:publication/id publication)
+                  :settings/kind   "one"
+                  :settings/open   true
+                  :settings/values {:publication/title "News"}}
+        response (close {:biff.datastar/tab-id (random-uuid)}
+                        {:request/publication publication
+                         :request/tab         {:tab/settings-preview preview}})]
+    (is (false? (get-in response [:_write 1 :values 0 :tab-state/data
+                                  1 :tab/settings-preview :settings/open])))))
 
 (deftest upload-image-states-test
   (let [[prepare write] (settings/upload-image)

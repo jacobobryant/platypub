@@ -91,21 +91,9 @@
                             "el.srcdoc = DOMPurify.sanitize("
                             "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})")
 
-                       :data-on:load
-                       (str "el._previewObserver?.disconnect(); "
-                            "const resize = () => { "
-                            "el.style.height = '0px'; "
-                            "el.style.height = Math.max(384, "
-                            "el.contentDocument.body.scrollHeight, "
-                            "el.contentDocument.documentElement.scrollHeight) "
-                            "+ 'px' }; "
-                            "resize(); "
-                            "el._previewObserver = new ResizeObserver(resize); "
-                            "el._previewObserver.observe("
-                            "el.contentDocument.body)")
-
                        :sandbox "allow-same-origin"
-                       :class ["block w-full border-0"]}]
+                       :style   {:height "min(720px, calc(100svh - 12rem))"}
+                       :class   ["block w-full border-0"]}]
              [:div
               {:class ["flex justify-end gap-2 border-t border-border p-5"]}
               [:button {:type "button"

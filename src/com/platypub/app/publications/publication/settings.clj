@@ -10,9 +10,10 @@
             [com.platypub.lib.ui :as ui]
             [com.platypub.routes :as routes]))
 
-(defpath root-path "")
 (defpath preview-path
   "/app/publications/:publication-id/settings/preview/:kind")
+(defpath close-preview-path
+  "/app/publications/:publication-id/settings/close-preview")
 (defpath image-path "/app/publications/:publication-id/settings/image/:field")
 
 (def setting-fields
@@ -53,13 +54,15 @@
                 (concat (map first setting-fields)
                         [:publication/banner-image-url
                          :publication/default-author-image-url]))
-   {:request/feed-url         feed-url
-    :publication/form-style   (name (or (:publication/form-style publication)
-                                        :publication.form-style/rectangle))
-    :publication/email-style  (name (or (:publication/email-style publication)
-                                        :publication.email-style/card))
+   {:request/feed-url        feed-url
+    :publication/form-style  (name (or (:publication/form-style publication)
+                                       :publication.form-style/rectangle))
+    :publication/email-style (name (or (:publication/email-style publication)
+                                       :publication.email-style/card))
+
     :publication/hide-form-title
     (boolean (:publication/hide-form-title publication))
+
     :publication/welcome-html (:publication/welcome-html publication)
 
     :publication/automatic-sending
@@ -82,13 +85,15 @@
    {[:? :tab/settings-preview]
     [:publication/id
      :settings/kind
-     :settings/revision
+     [:? :settings/open]
+     [:? :settings/request-id]
+     [:? :settings/html]
      {:settings/values
       [:publication/title
        [:? :publication/address]
        [:? :publication/archive-url]
        [:? :publication/description]
-      [:? :publication/hide-form-title]
+       [:? :publication/hide-form-title]
        [:? :publication/form-placeholder]
        [:? :publication/form-style]
        [:? :publication/intro]
@@ -121,18 +126,19 @@
               "ultrices risus, et tincidunt dui sem quis lacus. Aenean "
               "consequat nibh et massa tincidunt, sit amet vestibulum "
               "augue luctus.")]
-        plain (str/join "\n\n" paragraphs)
-        html (str "<p>" (str/join "</p><p>" paragraphs) "</p>")
-        post (fn [id title]
-               {:post/id         id
-                :post/title      title
-                :post/fetched-at now
-                :post/url        "https://example.com/post"
-                :post/excerpt    (subs plain 0 (min 500 (count plain)))
 
-                :post/content
-                {:content/html html
-                 :content/text plain}})]
+        plain (str/join "\n\n" paragraphs)
+        html  (str "<p>" (str/join "</p><p>" paragraphs) "</p>")
+        post  (fn [id title]
+                {:post/id         id
+                 :post/title      title
+                 :post/fetched-at now
+                 :post/url        "https://example.com/post"
+                 :post/excerpt    (subs plain 0 (min 500 (count plain)))
+
+                 :post/content
+                 {:content/html html
+                  :content/text plain}})]
     (cond-> [(post (first ids) "Example post")]
       (= kind "multi")
       (conj (post (second ids) "Another example post")))))
@@ -167,58 +173,30 @@
       {:publication/feed [:feed/url]}]}
     {:request/tab settings-tab-query}]]
 
-  (fn [{:biff.fx/keys [now random-uuid7-seq]} result]
-    (let [stored      (get-in result [:request/tab :tab/settings-preview])
-          current     (:request/publication result)
-          current-id  (:publication/id current)
-          preview     (when (= (:publication/id stored) current-id) stored)
-          kind        (:settings/kind preview)
-          publication (merge current (:settings/values preview))]
-      (cond-> {:result           result
-               :preview-kind     kind
-               :preview-revision (:settings/revision preview)}
-        (= kind "form")
-        (assoc :preview-form
-               [:biff.graph.fx/query publication
-                [:publication/ui-subscribe-form]])
-
-        (#{"one" "multi"} kind)
-        (assoc :preview-email
-               [:biff.graph.fx/query
-                {:send/publication publication
-                 :send/posts       (preview-posts kind now random-uuid7-seq)}
-                [:send/html]]))))
-
-  (fn [request {:keys [result preview-kind preview-revision
-                       preview-form preview-email]}]
+  (fn [request result]
     (if-let [publication (:request/publication result)]
-      (let [publication (merge publication
-                               (pending-images publication
-                                               (:request/tab result)))
-            feed-url    (get-in publication [:publication/feed :feed/url])
-
-            preview-html
-            (cond
-              (= preview-kind "form")
-              (:body
-               (ui/page request
-                        ((:publication/ui-subscribe-form preview-form)
-                         {:preview true})))
-
-              (#{"one" "multi"} preview-kind)
-              (:send/html preview-email))]
+      (let [publication  (merge publication
+                                (pending-images publication
+                                                (:request/tab result)))
+            feed-url     (get-in publication [:publication/feed :feed/url])
+            stored       (get-in result [:request/tab :tab/settings-preview])
+            preview      (when (= (:publication/id stored)
+                                  (:publication/id publication))
+                           stored)
+            preview-kind (:settings/kind preview)
+            preview-html (:settings/html preview)
+            preview-open (true? (:settings/open preview))]
         (ui/app-shell
          request
          [:main
           {:data-signals
            (datastar/signals-json
-            {:settings/activedialog (if preview-html "preview" false)
-             :settings/revision     (some-> preview-revision str)})
+            {:settings/archiveopen false})
 
            :class ["mx-auto w-full max-w-5xl p-6"]}
           (ui/publication-header publication :settings)
           [:div
-           {:class ["mb-6 grid gap-4 sm:grid-cols-2"]}
+           {:class ["my-6 grid gap-4 sm:grid-cols-2"]}
            (for [[field label image]
                  [["banner" "Banner image"
                    (:publication/banner-image-url publication)]
@@ -257,13 +235,6 @@
              (datastar/signals-json (settings-signals publication feed-url)),
 
              :class ["grid gap-4"]}
-            (mapv
-             (fn [field]
-               [:input {:type      "hidden"
-                        :name      (datastar/signal-name field)
-                        :data-bind (datastar/signal-name field)}])
-             [:publication/banner-image-url
-              :publication/default-author-image-url])
             [:label
              "Feed URL"
              [:input
@@ -288,20 +259,20 @@
              {:class ["flex gap-2"]}
              [:input
               {:data-bind (datastar/signal-name :publication/hide-form-title)
-               :type "checkbox"}]
+               :type      "checkbox"}]
              "Hide form title"]
             [:label "Form style"
              [:select
               {:data-bind (datastar/signal-name :publication/form-style)
-               :name (datastar/signal-name :publication/form-style)
-               :class ["mt-1 block w-full rounded border p-2"]}
+               :name      (datastar/signal-name :publication/form-style)
+               :class     ["mt-1 block w-full rounded border p-2"]}
               [:option {:value "rectangle"} "Rectangle"]
               [:option {:value "pill"} "Pill"]]]
             [:label "Email style"
              [:select
               {:data-bind (datastar/signal-name :publication/email-style)
-               :name (datastar/signal-name :publication/email-style)
-               :class ["mt-1 block w-full rounded border p-2"]}
+               :name      (datastar/signal-name :publication/email-style)
+               :class     ["mt-1 block w-full rounded border p-2"]}
               [:option {:value "card"} "Card"]
               [:option {:value "letter"} "Letter"]]]
             [:label
@@ -325,25 +296,26 @@
                :name      (datastar/signal-name :publication/welcome-html),
 
                :class ["mt-1 h-32 w-full rounded border p-2"]}]]
-            [:div {:class ["flex flex-wrap items-center gap-4"]}
+            [:div
+             [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
+              "Save settings"]]]
+           [:section {:class ["rounded border border-border bg-surface p-5"]}
+            [:h2 {:class ["text-xl font-semibold"]} "Preview"]
+            [:div {:class ["mt-4 flex flex-wrap items-center gap-3"]}
              (mapv
               (fn [[kind label]]
                 [:button
                  {:type "button"
-
                   :data-on:click
                   (str "@post('"
                        (preview-path (:publication/id publication) kind)
                        "')")
-
-                  :class ["text-primary hover:underline"]}
+                  :class ["rounded border border-border px-4 py-2"
+                          "text-primary hover:bg-background"]}
                  label])
               [["form" "Preview subscribe form"]
                ["one" "Preview email (one post)"]
-               ["multi" "Preview email (multiple posts)"]])]
-            [:div
-             [:button {:class ["rounded bg-primary px-4 py-2 text-white"]}
-              "Save settings"]]]
+               ["multi" "Preview email (multiple posts)"]])]]
            [:section {:class ["rounded border border-border bg-surface p-5"]}
             [:h2 {:class ["text-xl font-semibold"]} "Archive publication"]
             [:p {:class ["my-4"]}
@@ -353,53 +325,42 @@
             [:button {:type "button"
 
                       :data-on:click
-                      "$settings_activedialog = 'archive-publication'"
+                      "$settings_archiveopen = true"
 
                       :class ["rounded border border-border px-4 py-2"]}
              "Archive publication"]]
            [:div
             (ui/modal
              {:id    "settings-preview"
+              :open? preview-open
               :class ["w-full max-w-3xl rounded border border-border p-0"
                       "bg-surface shadow-xl"]}
-             "$settings_activedialog === 'preview'"
-             "$settings_activedialog = false"
-             [:iframe {:title             "Settings preview"
-                       :data-preview-html (or preview-html "")
-
-                       :data-effect
-                       (str "$settings_revision; "
-                            "el.srcdoc = DOMPurify.sanitize("
-                            "el.dataset.previewHtml, {WHOLE_DOCUMENT: true})"
-                            (when (= preview-kind "form")
-                              (str ".replace('<head>', '<head><link "
-                                   "rel=\"stylesheet\" "
-                                   "href=\"/css/main.css\">')")))
-
-                       :data-on:load
-                       (str "el._previewObserver?.disconnect(); "
-                            "const resize = () => { "
-                            "el.style.height = '0px'; "
-                            "el.style.height = Math.max(384, "
-                            "el.contentDocument.body.scrollHeight, "
-                            "el.contentDocument.documentElement.scrollHeight) "
-                            "+ 'px' }; "
-                            "resize(); "
-                            "el._previewObserver = new ResizeObserver(resize); "
-                            "el._previewObserver.observe("
-                            "el.contentDocument.body)")
-
-                       :sandbox "allow-same-origin"
-                       :class ["block w-full border-0"]}]
+             nil
+             (str "@post('" (close-preview-path
+                             (:publication/id publication)) "')")
+             (if preview-html
+               [:iframe {:title   "Settings preview"
+                         :srcdoc  preview-html
+                         :style   {:height (str "min("
+                                                (if (= preview-kind "form")
+                                                  "384px" "720px")
+                                                ", calc(100svh - 8rem))")}
+                         :sandbox "allow-same-origin"
+                         :class   ["block w-full border-0"]}]
+               [:div {:role  "status"
+                      :class ["p-8 text-center"]}
+                "Preparing preview…"])
              [:button {:type          "button"
-                       :data-on:click "$settings_activedialog = false"
+                       :data-on:click (str "@post('" (close-preview-path
+                                                      (:publication/id
+                                                       publication)) "')")
                        :class         ["m-4 text-primary"]} "Close"])
             (ui/modal
              {:id    "archive-publication"
               :class ["w-full max-w-md rounded border border-border bg-surface"
                       "p-6 shadow-xl"]}
-             "$settings_activedialog === 'archive-publication'"
-             "$settings_activedialog = false"
+             "$settings_archiveopen"
+             "$settings_archiveopen = false"
              [:h2 {:class ["text-xl font-semibold"]} "Archive publication?"]
              [:p {:class ["my-4"]}
               (str "Subscribers will no longer be able to subscribe and "
@@ -408,7 +369,7 @@
               [:button {:type "button"
 
                         :data-on:click
-                        "$settings_activedialog = false"
+                        "$settings_archiveopen = false"
 
                         :class
                         ["rounded border border-border px-4 py-2"]}
@@ -453,21 +414,123 @@
   (fn [{:biff.datastar/keys [tab-id]
         :biff.fx/keys       [random-uuid7-seq]} result]
     (let [publication (:request/publication result)
-          kind        (:request/preview-kind result)]
+          kind        (:request/preview-kind result)
+          request-id  (first random-uuid7-seq)]
       (if (and publication tab-id (#{"form" "one" "multi"} kind))
-        {:_write
+        {:result     result
+         :tab-id     tab-id
+         :kind       kind
+         :request-id request-id
+
+         :_clear
          [:biff.sqlite.fx/execute
           (tab/write-statement
            tab-id
            (:request/tab result)
            {:tab/settings-preview
-            {:publication/id    (:publication/id publication)
-             :settings/kind     kind
-             :settings/revision (first random-uuid7-seq)
-             :settings/values   (:request/publication-settings result)}})]
+            {:publication/id      (:publication/id publication)
+             :settings/kind       kind
+             :settings/open       true
+             :settings/request-id request-id
+             :settings/values     (:request/publication-settings result)}})]}
+        {:biff.fx/return {:status 404}})))
 
-         :biff.fx/return {:status 204}}
-        {:biff.fx/return {:status 404}}))))
+  (fn [_ {:keys [result] :as state}]
+    (assoc state :publication
+           [:biff.graph.fx/query
+            {:publication/id (get-in result [:request/publication
+                                             :publication/id])}
+            [:publication/id
+             :publication/title
+             [:? :publication/address]
+             [:? :publication/archive-url]
+             [:? :publication/description]
+             [:? :publication/hide-form-title]
+             [:? :publication/form-placeholder]
+             [:? :publication/form-style]
+             [:? :publication/intro]
+             [:? :publication/site-url]
+             [:? :publication/email-style]
+             [:? :publication/banner-image-url]
+             [:? :publication/default-author-name]
+             [:? :publication/default-author-url]
+             [:? :publication/default-author-image-url]
+             :publication/padding-color
+             :publication/background-color
+             :publication/text-color
+             :publication/primary-color]]))
+
+  (fn [{:biff.fx/keys [now random-uuid7-seq]}
+       {:keys [result publication kind] :as state}]
+    (let [values      (reduce
+                       (fn [values field]
+                         (if (str/blank? (get values field))
+                           (dissoc values field)
+                           values))
+                       (:request/publication-settings result)
+                       [:publication/banner-image-url
+                        :publication/default-author-image-url])
+          publication (merge publication values
+                             (pending-images publication
+                                             (:request/tab result)))]
+      (assoc state :content
+             (if (= kind "form")
+               [:biff.graph.fx/query publication
+                [:publication/ui-subscribe-form]]
+               [:biff.graph.fx/query
+                {:send/publication publication
+                 :send/posts       (preview-posts kind now
+                                                  (rest random-uuid7-seq))}
+                [:send/html]]))))
+
+  (fn [request {:keys [kind content] :as state}]
+    (assoc state
+           :html (if (= kind "form")
+                   (:body
+                    (ui/page request
+                             ((:publication/ui-subscribe-form content)
+                              {:preview true})))
+                   (:send/html content))
+           :latest-tab
+           [:biff.sqlite.fx/execute
+            {:select [:tab-state/data]
+             :from   :tab-state
+             :where  [:= :tab-state/id (:tab-id state)]}]))
+
+  (fn [_ {:keys [tab-id request-id html latest-tab]}]
+    (let [current (or (:tab-state/data (first latest-tab)) {})
+          preview (:tab/settings-preview current)]
+      (if (and (= request-id (:settings/request-id preview))
+               (:settings/open preview))
+        {:_write
+         [:biff.sqlite.fx/execute
+          (tab/write-statement
+           tab-id current
+           {:tab/settings-preview (assoc preview :settings/html html)})]
+
+         :status 204}
+        {:status 204}))))
+
+(defpipeline close-settings-preview
+  [:biff.graph.fx/query
+   [{[:? :request/publication] [:publication/id]}
+    {:request/tab settings-tab-query}]]
+
+  (fn [{:biff.datastar/keys [tab-id]} result]
+    (let [publication-id (get-in result [:request/publication
+                                         :publication/id])
+          preview        (get-in result [:request/tab
+                                         :tab/settings-preview])]
+      (if (and tab-id publication-id
+               (= publication-id (:publication/id preview)))
+        {:_write
+         [:biff.sqlite.fx/execute
+          (tab/write-statement
+           tab-id (:request/tab result)
+           {:tab/settings-preview (assoc preview :settings/open false)})]
+
+         :status 204}
+        {:status 404}))))
 
 (defpipeline save-settings
   [:biff.graph.fx/query
@@ -530,6 +593,7 @@
               (:publication/form-style settings)}
              {:publication/email-style
               (:publication/email-style settings)
+
               :publication/hide-form-title
               (boolean (:publication/hide-form-title settings))}
              {:publication/require-confirmation
@@ -681,9 +745,8 @@
 
 (def module
   {:biff.ring/routes
-   [[(root-path)
-     {:middleware [mid/wrap-app-access]}
-     [(routes/publication-settings)
-      {:get settings-page, :post save-settings}]
+   [["" {:middleware [mid/wrap-app-access]}
+     [(routes/publication-settings) {:get settings-page, :post save-settings}]
      [(preview-path) {:post settings-preview}]
+     [(close-preview-path) {:post close-settings-preview}]
      [(image-path) {:post upload-image}]]]})

@@ -47,7 +47,9 @@
     [:map
      [:publication/id :uuid]
      [:settings/kind [:enum "form" "one" "multi"]]
-     [:settings/revision :uuid]
+     [:settings/open ? :boolean]
+     [:settings/request-id ? :uuid]
+     [:settings/html ? :string]
      [:settings/values
       [:map
        [:publication/title :string]

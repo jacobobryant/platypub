@@ -1,10 +1,12 @@
 (ns com.platypub
   (:require [com.biffweb.core :as biff.core]
+            [com.biffweb.datastar :refer [disconnect]]
             [com.platypub.modules :refer [modules start-order]]
             [nrepl.cmdline :as nrepl])
   (:gen-class))
 
 (defonce system (atom {}))
+(disconnect @system)
 
 (defn start []
   (reset! system (biff.core/start #'modules start-order)))

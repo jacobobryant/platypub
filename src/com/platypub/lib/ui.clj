@@ -100,30 +100,35 @@
       (page (assoc ctx :ui/init-datastar true) content*))))
 
 (defn modal
-  [{:keys [overlay-class] :as attrs} open-expression close-expression
+  [{:keys [overlay-class open?] :as attrs} open-expression close-expression
    & contents]
-  [:div
-   {:data-show     open-expression
-    :data-on:click (str "evt.target === el && ("
-                        close-expression ")")
+  (let [backend-open? (contains? attrs :open?)]
+    [:div
+     (cond->
+      {:data-on:click (str "evt.target === el && ("
+                           close-expression ")")
 
-    :data-on:keydown__window
-    (str "(" open-expression ") && evt.key === 'Escape' && ("
-         close-expression ")")
+       :data-on:keydown__window
+       (str "(" (or open-expression "el.getClientRects().length > 0")
+            ") && evt.key === 'Escape' && ("
+            close-expression ")")
 
-    :style "display: none"
-    :class ["fixed inset-0 z-50 flex items-center"
-            "justify-center overflow-y-auto bg-black/45 p-4"
-            overlay-class]}
-   (into [:div
-          (-> attrs
-              (dissoc :overlay-class)
-              (assoc :role "dialog"
-                     :aria-modal "true"
-                     :class ["max-h-[calc(100dvh-2rem)] overflow-y-auto"
-                             "text-text"
-                             (:class attrs)]))]
-         contents)])
+       :style (if backend-open?
+                (if open? "display: flex" "display: none")
+                "display: none")
+       :class ["fixed inset-0 z-50 flex items-center"
+               "justify-center overflow-y-auto bg-black/45 p-4"
+               overlay-class]}
+       open-expression (assoc :data-show open-expression))
+     (into [:div
+            (-> attrs
+                (dissoc :overlay-class :open?)
+                (assoc :role "dialog"
+                       :aria-modal "true"
+                       :class ["max-h-[calc(100dvh-2rem)] overflow-y-auto"
+                               "text-text"
+                               (:class attrs)]))]
+           contents)]))
 
 (defn- app-navigation
   [request]

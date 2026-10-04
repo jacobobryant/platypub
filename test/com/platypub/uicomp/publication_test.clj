@@ -21,18 +21,18 @@
                       {:biff.auth/turnstile-site-key "site"}
                       publication))
         html        (chassis/html (render {:embed true}))
-        hosted     (chassis/html (render {}))
+        hosted      (chassis/html (render {}))
         preview     (chassis/html (render {:preview true}))
         skip-render (:publication/ui-subscribe-form
                      (helpers/resolve-resolver
                       publication/subscribe-form
                       {:biff.auth/skip-captcha true}
                       publication))
-        no-archive (:publication/ui-subscribe-form
-                    (helpers/resolve-resolver
-                     publication/subscribe-form
-                     {}
-                     (dissoc publication :publication/archive-url)))]
+        no-archive  (:publication/ui-subscribe-form
+                     (helpers/resolve-resolver
+                      publication/subscribe-form
+                      {}
+                      (dissoc publication :publication/archive-url)))]
     (is (fn? render))
     (is (str/includes? html "Sign up for News"))
     (is (str/includes? html "Current stories"))
@@ -64,12 +64,12 @@
                      :publication/hide-form-title  true
                      :publication/description      "A note from Jacob"
                      :publication/form-placeholder "Enter thine email address"}
-        render (:publication/ui-subscribe-form
-                (helpers/resolve-resolver
-                 publication/subscribe-form
-                 {:biff.auth/skip-captcha true}
-                 publication))
-        html (chassis/html (render {:embed true}))]
+        render      (:publication/ui-subscribe-form
+                     (helpers/resolve-resolver
+                      publication/subscribe-form
+                      {:biff.auth/skip-captcha true}
+                      publication))
+        html        (chassis/html (render {:embed true}))]
     (is (str/includes? html "rounded-l-full"))
     (is (str/includes? html "rounded-r-full"))
     (is (str/includes? html "Enter thine email address"))

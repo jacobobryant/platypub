@@ -476,6 +476,7 @@
               [:? :publication/address]
               [:? :publication/archive-url]
               [:? :publication/description]
+              [:? :publication/hide-form-title]
               [:? :publication/form-placeholder]
               [:? :publication/form-style]
               [:? :publication/intro]

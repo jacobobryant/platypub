@@ -47,7 +47,7 @@
             :data-signals__ifmissing
             (datastar/signals-json {:subscriber/search search}),
 
-            :class ["mb-4 flex gap-2"]}
+            :class ["my-6 flex gap-2"]}
            [:input
             {:data-bind   (datastar/signal-name :subscriber/search),
              :placeholder "Search email",

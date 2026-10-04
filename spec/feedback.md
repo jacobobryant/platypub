@@ -1,4 +1,7 @@
-- pub settings form: color inputs are squished vertically on tablet and can't
-  see the color; image inputs need better padding (and background color?),
-  "archive publication" placement is weird on lg screen (it should always come
-  below the publication settings form).
+- the obryant.dev newsletter seems to have issues with the banner image: it
+  isn't rendering either on the settings page or in the preview modals
+
+- for the subscribe form, the text for https://dev.tfos.co (served from
+  ~/obryant.dev) is smaller than the text for https://green.yakread.com/newsletter
+  (sourced from ~/biffweb). make the obryant.dev signup form text larger to
+  match.

@@ -10,8 +10,11 @@ Publication settings page:
 
   <settings form>
 
-  [btn:preview-form] [btn:preview-one] [btn:preview-multi]
   [primary btn: Save settings]
+
+  ## Preview
+
+  [btn:preview-form] [btn:preview-one] [btn:preview-multi]
 
   ## Archive publication
 
@@ -34,8 +37,12 @@ flag saying it's in "preview mode" if needed.
 In the subscribe form preview, the email input is not editable, and
 the captcha widget is not included.
 
-Previews are rendered with DOMPurify in script-disabled iframes. The subscribe
-form preview loads the application stylesheet. Preview frames grow to their content height so long emails remain visible.
+Previews are rendered from tab state as iframe srcdoc in script-disabled
+iframes. The subscribe form preview loads the application stylesheet. Preview
+frames have a stable viewport-relative height and scroll to show long emails.
+Opening a preview clears the previous HTML and opens the modal in one tab-state
+write. The modal shows a loading indicator until the new HTML is ready. Closing
+the modal also updates tab state.
 Email previews use three paragraphs of sample content per post; multi-post
 previews show the shortened excerpts.
 

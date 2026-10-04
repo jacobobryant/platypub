@@ -62,24 +62,25 @@
             embed-url (str (:platypub/base-url request)
                            (routes/subscribe (:publication/id publication))
                            "?embed=1")
-            embed (str
-                   (chassis/html
-                    [:iframe
-                     {:title "Subscribe to publication"
-                      :src embed-url
-                      :scrolling "no"
-                      :style (str "display:block;width:100%;height:260px;"
-                                  "border:0;overflow:hidden")}])
-                   "<script>(function(){var frame="
-                   "document.currentScript.previousElementSibling;"
-                   "var origin=new URL(frame.src).origin;"
-                   "window.addEventListener('message',function(event){"
-                   "if(event.source===frame.contentWindow&&"
-                   "event.origin===origin&&"
-                   "event.data&&event.data.type==='platypub:resize'&&"
-                   "Number.isFinite(event.data.height)){"
-                   "frame.style.height=Math.max(1,event.data.height)+'px';"
-                   "}});})();</script>")]
+            embed     (str
+                       (chassis/html
+                        [:iframe
+                         {:title     "Subscribe to publication"
+                          :src       embed-url
+                          :scrolling "no"
+                          :style     (str "display:block;width:100%;"
+                                          "height:260px;"
+                                          "border:0;overflow:hidden")}])
+                       "<script>(function(){var frame="
+                       "document.currentScript.previousElementSibling;"
+                       "var origin=new URL(frame.src).origin;"
+                       "window.addEventListener('message',function(event){"
+                       "if(event.source===frame.contentWindow&&"
+                       "event.origin===origin&&"
+                       "event.data&&event.data.type==='platypub:resize'&&"
+                       "Number.isFinite(event.data.height)){"
+                       "frame.style.height=Math.max(1,event.data.height)+'px';"
+                       "}});})();</script>")]
         (ui/app-shell
          request
          [:main

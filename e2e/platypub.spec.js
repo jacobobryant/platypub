@@ -289,10 +289,19 @@ test.describe.serial('Platypub user flows', () => {
     await expect(frame.getByText('Unsaved preview description')).toBeVisible();
     await expect(frame.getByRole('heading', { name: 'Sign up for Unsaved preview title' }))
       .toHaveCSS('font-size', '18px');
-    await expect.poll(async () => page.locator('#settings-preview iframe')
-      .evaluate((el) => el.clientHeight >= el.contentDocument.body.scrollHeight)).toBe(true);
+    const formHeight = await page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight);
     await expect(frame.locator('input[type=email]')).toBeDisabled();
     await expect(frame.locator('.cf-turnstile, .h-captcha')).toHaveCount(0);
+    await expect(page.locator('#settings-preview iframe'))
+      .toHaveAttribute('srcdoc', /Sign up for Unsaved preview title/);
+    const otherTab = await page.context().newPage();
+    await otherTab.bringToFront();
+    await page.bringToFront();
+    await expect(frame.getByRole('heading', { name: 'Sign up for Unsaved preview title' }))
+      .toBeVisible();
+    await expect.poll(async () => page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight)).toBe(formHeight);
     await page.mouse.click(10, 10);
     await expect(preview).toBeHidden();
     await page.getByLabel('Title', { exact: true }).fill('Fixture Gazette');
@@ -303,12 +312,33 @@ test.describe.serial('Platypub user flows', () => {
     await expect(frame.locator('strong')).toHaveText('Unsaved intro');
     await expect(frame.getByRole('heading', { name: 'Example post' }))
       .toBeVisible();
+    await expect(page.locator('#settings-preview iframe'))
+      .toHaveAttribute('srcdoc', /Example post/);
+    const onePostHeight = await page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight);
+    await otherTab.bringToFront();
+    await page.bringToFront();
+    await expect(frame.getByRole('heading', { name: 'Example post' }))
+      .toBeVisible();
+    await expect.poll(async () => page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight)).toBe(onePostHeight);
+    await expect(frame.locator('body')).toHaveCSS('background-color', 'rgb(247, 247, 242)');
+    await expect(frame.locator('body > div > div[style*="padding:16px"]'))
+      .toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await preview.getByRole('button', { name: 'Close' }).click();
     await page.getByRole('button', { name: 'Preview email (multiple posts)' }).click();
     await expect(preview).toBeVisible();
     await expect(frame.locator('article')).toHaveCount(2);
+    await expect(page.locator('#settings-preview iframe'))
+      .toHaveAttribute('srcdoc', /Another example post/);
+    const multiPostHeight = await page.locator('#settings-preview iframe')
+      .evaluate((el) => el.clientHeight);
+    await otherTab.bringToFront();
+    await page.bringToFront();
+    await expect(frame.locator('article')).toHaveCount(2);
     await expect.poll(async () => page.locator('#settings-preview iframe')
-      .evaluate((el) => el.clientHeight >= el.contentDocument.body.scrollHeight)).toBe(true);
+      .evaluate((el) => el.clientHeight)).toBe(multiPostHeight);
+    await otherTab.close();
     await preview.getByRole('button', { name: 'Close' }).click();
     await page.getByLabel('Intro').fill('News from the Playwright fixture.');
 
@@ -329,6 +359,17 @@ test.describe.serial('Platypub user flows', () => {
     });
     expect((await uploadResponse).status()).toBe(204);
     await expect(bannerForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
+    await page.getByRole('button', { name: 'Preview email (one post)' }).click();
+    await expect(frame.locator('img[alt="Fixture Gazette"]')).toBeVisible();
+    await expect(frame.locator('img[alt="Fixture Gazette"]'))
+      .toHaveJSProperty('naturalWidth', 1);
+    await preview.getByRole('button', { name: 'Close' }).click();
+    await page.getByLabel('Email style').selectOption('letter');
+    await page.getByRole('button', { name: 'Preview email (one post)' }).click();
+    await expect(frame.locator('div[style*="height:75px"]'))
+      .toHaveCSS('background-image', /_mock\/cdn\/.+\.png/);
+    await preview.getByRole('button', { name: 'Close' }).click();
+    await page.getByLabel('Email style').selectOption('card');
 
     const authorForm = page.locator('form').filter({ hasText: 'Default author image' });
     const authorUploadResponse = page.waitForResponse((response) =>
@@ -358,6 +399,7 @@ test.describe.serial('Platypub user flows', () => {
     await page.getByLabel('Remove tag').fill('remove-me');
     await page.getByLabel('Welcome HTML').fill('<strong>Welcome aboard.</strong>');
     await page.getByLabel('Require confirmation').check();
+    await page.getByLabel('Hide form title').check();
 
     const settingsResponse = page.waitForResponse((response) =>
       response.url().endsWith('/settings') && response.request().method() === 'POST');
@@ -379,8 +421,18 @@ test.describe.serial('Platypub user flows', () => {
 
     await page.getByRole('link', { name: 'Settings' }).click();
     await settle(page);
+    await expect(page.getByLabel('Hide form title')).toBeChecked();
     await expect(page.getByLabel('Default author URL')).toHaveValue('https://example.test/editor');
     await expect(page.getByLabel('Welcome HTML')).toHaveValue('<strong>Welcome aboard.</strong>');
+    await page.getByLabel('Background color').fill('#f0f1f2');
+    await page.getByRole('button', { name: 'Preview email (one post)' }).click();
+    await expect(frame.locator('img[alt="Updated Gazette"]'))
+      .toHaveJSProperty('naturalWidth', 1);
+    await expect(frame.locator('body')).toHaveCSS('background-color', 'rgb(240, 241, 242)');
+    await expect(frame.locator('body > div > div[style*="padding:16px"]'))
+      .toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await preview.getByRole('button', { name: 'Close' }).click();
+    await page.getByLabel('Background color').fill('#fafafa');
     await page.getByLabel('Automatic sending').uncheck();
     const disableAutomaticResponse = page.waitForResponse((response) =>
       response.url().endsWith('/settings') && response.request().method() === 'POST');
@@ -389,12 +441,19 @@ test.describe.serial('Platypub user flows', () => {
     await page.reload();
     await settle(page);
     await expect(page.getByLabel('Automatic sending')).not.toBeChecked();
+    await expect(page.getByLabel('Hide form title')).toBeChecked();
+    await expect(bannerForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
+    await expect(authorForm.locator('img')).toHaveAttribute('src', /_mock\/cdn\/.+\.png/);
+    await page.getByLabel('Hide form title').uncheck();
     await page.getByLabel('Automatic sending').check();
     await page.getByLabel('Feed URL').fill('http://127.0.0.1:9090/feed.json');
     const feedChangeResponse = page.waitForResponse((response) =>
       response.url().endsWith('/settings') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Save settings' }).click();
     expect((await feedChangeResponse).status()).toBe(204);
+    await page.reload();
+    await settle(page);
+    await expect(page.getByLabel('Hide form title')).not.toBeChecked();
 
     await page.getByRole('navigation', { name: 'Publication' })
       .getByRole('link', { name: 'Posts' }).click();

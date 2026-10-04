@@ -23,18 +23,21 @@
      [:main
       {:style (str "background:" (:publication/padding-color publication)
                    ";color:" (:publication/text-color publication))
-       :class (if embed
-                (if (= :publication.form-style/pill
-                       (:publication/form-style publication))
-                  ["w-full px-4 text-center text-sm"]
-                  ["w-full px-3 pb-12 pt-5 text-center"])
-                ["flex min-h-screen w-full flex-col px-3 text-center"])}
+       :class (concat
+               ["w-full text-center"]
+               (cond
+                 (not embed)
+                 ["flex min-h-screen flex-col px-3"]
+
+                 (= :publication.form-style/pill
+                    (:publication/form-style publication))
+                 ["px-4 text-base"]
+
+                 :else
+                 ["px-3 pb-12 pt-5"]))}
       (when-not embed [:div {:class ["flex-1"]}])
       [:div
-       {:class (cond-> (if (= :publication.form-style/pill
-                              (:publication/form-style publication))
-                         ["mx-auto w-full max-w-xs px-4 sm:max-w-md"]
-                         ["mx-auto w-full max-w-md"])
+       {:class (cond-> ["mx-auto w-full max-w-md"]
                  (not= (:publication/background-color publication)
                        (:publication/padding-color publication))
                  (conj "rounded p-4"))
@@ -42,10 +45,7 @@
                     (:publication/background-color publication))}
        [:div {:data-show "!$subscription_submitted"}
         (when-not (:publication/hide-form-title publication)
-          [:h1 {:class (if (= :publication.form-style/pill
-                            (:publication/form-style publication))
-                       ["text-base font-semibold"]
-                       ["text-lg font-bold"])}
+          [:h1 {:class ["text-lg font-bold"]}
            (str "Sign up for " (:publication/title publication))])
         (when-let [description (:publication/description publication)]
           [:p description])
@@ -80,7 +80,7 @@
                    :class       (if (= :publication.form-style/pill
                                        (:publication/form-style publication))
                                   ["min-w-0 flex-1 rounded-l-full border"
-                                   "border-r-0 bg-white px-3 py-2 text-sm"
+                                   "border-r-0 bg-white px-3 py-2 text-base"
                                    "text-black focus:outline-none focus:ring-0"]
                                   ["min-w-0 flex-1 rounded border"
                                    "border-stone-300"
@@ -137,20 +137,20 @@
                   (:publication/archive-url publication))
           [:div {:class ["text-center"]}
            (when-let [feed-url (get-in publication
-                                      [:publication/feed :feed/url])]
-             [:a {:href feed-url
+                                       [:publication/feed :feed/url])]
+             [:a {:href   feed-url
                   :target "_blank"
-                  :rel "noopener noreferrer"
-                  :class ["underline hover:opacity-75"]}
+                  :rel    "noopener noreferrer"
+                  :class  ["underline hover:opacity-75"]}
               "RSS feed"])
            (when (and (:publication/archive-url publication)
                       (get-in publication [:publication/feed :feed/url]))
              [:span " · "])
            (when-let [archive-url (:publication/archive-url publication)]
-             [:a {:href archive-url
-                  :target "_blank"
-                  :rel "noopener noreferrer"
-                  :class ["underline hover:opacity-75"]}
+             [:a {:href   archive-url
+                  :target "_top"
+                  :rel    "noopener noreferrer"
+                  :class  ["underline hover:opacity-75"]}
               "Archive"])])]]
       (when-not embed [:div {:class ["flex-[2]"]}])
       (when (and embed (not preview))
