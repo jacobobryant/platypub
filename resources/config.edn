@@ -13,13 +13,25 @@
     "org.slf4j.simpleLogger.log.com.zaxxer.hikari" "error",
     "org.slf4j.simpleLogger.log.org.eclipse.jetty" "error"},
 
-   :biff.ring/cookie-secret   #biff/secret COOKIE_SECRET,
-   :biff.ring/host            #or [#biff/env HOST "localhost"],
-   :biff.ring/port            #long #or [#biff/env PORT "8080"],
-   :biff.ring/secure          #boolean #or [#biff/env SECURE "true"],
-   :biff.sqlite/db-path       #or [#biff/env SQLITE_DB_PATH
-                                   "storage/sqlite/main.db"],
-   :biff.tasks/css-input-path "resources/tailwind.css",
+   :biff.ring/cookie-secret #biff/secret COOKIE_SECRET,
+   :biff.ring/host          #or [#biff/env HOST "localhost"],
+   :biff.ring/port          #long #or [#biff/env PORT "8080"],
+   :biff.ring/secure        #boolean #or [#biff/env SECURE "true"],
+
+   :biff.sqlite/db-path                  #or [#biff/env SQLITE_DB_PATH
+                                              "storage/sqlite/main.db"],
+   :biff.sqlite/litestream-access-key-id #biff/env LITESTREAM_ACCESS_KEY_ID,
+   :biff.sqlite/litestream-bucket        #biff/env LITESTREAM_BUCKET,
+   :biff.sqlite/litestream-endpoint      #biff/env LITESTREAM_ENDPOINT,
+   :biff.sqlite/litestream-region        #biff/env LITESTREAM_REGION,
+
+   :biff.sqlite/litestream-dir
+   #or [#biff/env LITESTREAM_DIR, #ref [:form 0 :biff.tasks/deployment-name]]
+
+   :biff.sqlite/litestream-secret-access-key
+   #biff/secret LITESTREAM_SECRET_ACCESS_KEY,
+
+   :biff.tasks/css-input-path       "resources/tailwind.css",
 
    :biff.tasks/css-output-path
    "target/resources/public/css/main.css",
