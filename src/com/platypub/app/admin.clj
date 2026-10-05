@@ -164,14 +164,11 @@
 
 (defn- csv-emails
   [contents]
-  (let [rows (with-open [reader (StringReader. (or contents ""))]
-               (doall (csv/read-csv reader)))
-
-        header
-        (mapv (comp str/lower-case str/trim)
-              (first rows))
-
-        index (.indexOf header "email")]
+  (let [rows   (with-open [reader (StringReader. (or contents ""))]
+                 (doall (csv/read-csv reader)))
+        header (mapv (comp str/lower-case str/trim)
+                     (first rows))
+        index  (.indexOf header "email")]
     (if (neg? index)
       []
       (->> (rest rows)
@@ -195,9 +192,8 @@
 
   (fn [{:biff.fx/keys [now random-uuid7-seq]}
        {:keys [publication-id csv existing]}]
-    (let [existing
-          (set (map :subscriber/email
-                    (:publication/subscribers existing)))
+    (let [existing (set (map :subscriber/email
+                             (:publication/subscribers existing)))
 
           emails (remove existing (csv-emails csv))
 
