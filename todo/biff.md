@@ -1,12 +1,3 @@
-- biff.sqlite should autogen more resolvers, like lookup-by-unique-field(s) and
-  back references.
-
-- revisit the custom fx handlers. biff should probably provide handlers for
-  working with atoms. custom handlers should use `platypub.fx` for the namespace.
-
-- pull schema helper functions from schema.clj into a new
-  com.biffweb.sqlite.schema namespace.
-
 - Apparently biff.graph doesn't actually work with `:type :edn` columns when
   they contain maps because it always uses scalar descriptors instead of `[:*]`.
   need to fix that and then change `:type :blob` to `:type :edn`.
@@ -18,6 +9,12 @@
 
 - biff.sqlite: add execute-one probably (handy for resolvers)
 
+- biff.sqlite should autogen more resolvers, like lookup-by-unique-field(s) and
+  back references.
+
+- pull schema helper functions from schema.clj into a new
+  com.biffweb.sqlite.schema namespace.
+
 - biff.datastar: make sure we're propagating :status appropriately
 
 - prod-setup task used 8080 for caddy port but 8087 for systemd port
@@ -28,6 +25,9 @@
 - biff.admin: fix problem with send-email not being in ctx when the listener
   starts
 
-- biff.admin: show stuff like # of open sse connections
+- revisit the custom fx handlers. biff should probably provide handlers for
+  working with atoms. custom handlers should use `platypub.fx` for the namespace.
 
-- add a review checklist item about using datastar instead of writing custom JS
+- guidance/structure for model.request?
+
+- biff.admin: show stuff like # of open sse connections

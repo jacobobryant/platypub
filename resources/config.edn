@@ -24,9 +24,7 @@
    :biff.sqlite/litestream-bucket        #biff/env LITESTREAM_BUCKET,
    :biff.sqlite/litestream-endpoint      #biff/env LITESTREAM_ENDPOINT,
    :biff.sqlite/litestream-region        #biff/env LITESTREAM_REGION,
-
-   :biff.sqlite/litestream-dir
-   #or [#biff/env LITESTREAM_DIR, #ref [:form 0 :biff.tasks/deployment-name]]
+   :biff.sqlite/litestream-replica-path  #biff/env LITESTREAM_REPLICA_PATH
 
    :biff.sqlite/litestream-secret-access-key
    #biff/secret LITESTREAM_SECRET_ACCESS_KEY,
