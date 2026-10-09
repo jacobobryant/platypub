@@ -34,3 +34,5 @@
 
 - application code shouldn't use biff.auth config for subscriptions. it's ok for
   config.edn to use the same env var for both though, at least as a default
+
+- make :publication/address required with a default

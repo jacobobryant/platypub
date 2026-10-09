@@ -1,0 +1,170 @@
+classDiagram
+  class content {
+    content/blob
+    content/html
+    content/id
+    content/json
+    content/string
+    content/text
+  }
+  class feed {
+    feed/created-at
+    feed/etag
+    feed/failed-syncs
+    feed/fetched-at
+    feed/id
+    feed/last-modified
+    feed/posts
+    feed/publications
+    feed/url
+  }
+  class post {
+    post/author-image-url
+    post/author-name
+    post/author-url
+    post/content
+    post/content-hash
+    post/content-id
+    post/excerpt
+    post/feed
+    post/feed-id
+    post/fetched-at
+    post/guid
+    post/id
+    post/length
+    post/present-as-of
+    post/published-at
+    post/tags
+    post/title
+    post/url
+  }
+  class publication {
+    publication/active-subscriber-count
+    publication/address
+    publication/archive-url
+    publication/archived-at
+    publication/automatic-posts
+    publication/automatic-send-threshold
+    publication/background-color
+    publication/banner-image-url
+    publication/created-at
+    publication/default-author-image-url
+    publication/default-author-name
+    publication/default-author-url
+    publication/description
+    publication/email-style
+    publication/feed
+    publication/feed-id
+    publication/feed-id-updated-at
+    publication/filter-tag
+    publication/form-placeholder
+    publication/form-style
+    publication/from-name
+    publication/hide-form-title
+    publication/id
+    publication/intro
+    publication/padding-color
+    publication/primary-color
+    publication/remove-tag
+    publication/reply-to
+    publication/reply-to-address
+    publication/require-confirmation
+    publication/sends
+    publication/site-url
+    publication/subscribers
+    publication/text-color
+    publication/title
+    publication/ui-subscribe-form
+    publication/user
+    publication/user-id
+    publication/visible-posts
+    publication/welcome-html
+  }
+  class send-attempt {
+    send-attempt/id
+    send-attempt/send
+    send-attempt/send-id
+    send-attempt/subscriber
+    send-attempt/subscriber-id
+  }
+  class send-post {
+    send-post/id
+    send-post/post
+    send-post/post-id
+    send-post/send
+    send-post/send-id
+  }
+  class send {
+    send/attempts
+    send/content
+    send/content-id
+    send/delivery-subscribers
+    send/from-name
+    send/html
+    send/id
+    send/posts
+    send/progress-at
+    send/provenance
+    send/publication
+    send/publication-id
+    send/reply-to
+    send/started-at
+    send/status
+    send/subject
+    send/text
+  }
+  class subscriber {
+    subscriber/active
+    subscriber/confirmation-token
+    subscriber/confirmation-token-active
+    subscriber/confirmation-triggered-at
+    subscriber/confirmed-at
+    subscriber/email
+    subscriber/form-params
+    subscriber/headers
+    subscriber/id
+    subscriber/publication
+    subscriber/publication-id
+    subscriber/query-params
+    subscriber/require-confirmation
+    subscriber/subscribed-at
+    subscriber/suppressed
+    subscriber/unsubscribed-at
+  }
+  class tab-state {
+    tab-state/data
+    tab-state/id
+  }
+  class user {
+    user/active-publications
+    user/archived-publications
+    user/display-name
+    user/email
+    user/id
+    user/joined-at
+    user/publications
+    user/tier
+  }
+  feed -- post : feed/posts
+  feed -- publication : feed/publications
+  post -- content : post/content
+  post -- feed : post/feed
+  publication -- feed : publication/feed
+  publication -- post : publication/automatic-posts
+  publication -- post : publication/visible-posts
+  publication -- send : publication/sends
+  publication -- subscriber : publication/subscribers
+  publication -- user : publication/user
+  send -- content : send/content
+  send -- post : send/posts
+  send -- publication : send/publication
+  send -- send-attempt : send/attempts
+  send -- subscriber : send/delivery-subscribers
+  send-attempt -- send : send-attempt/send
+  send-attempt -- subscriber : send-attempt/subscriber
+  send-post -- post : send-post/post
+  send-post -- send : send-post/send
+  subscriber -- publication : subscriber/publication
+  user -- publication : user/active-publications
+  user -- publication : user/archived-publications
+  user -- publication : user/publications
